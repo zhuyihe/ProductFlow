@@ -58,12 +58,18 @@ If the GHCR packages are private, use a GitHub classic PAT or fine-grained token
 
 ## Caddy
 
-Host-level Caddy can proxy to the loopback web port:
+Create a shared Docker network when Caddy runs in a separate compose stack:
+
+```bash
+docker network create relay-edge
+```
+
+Attach the Caddy service and `productflow-web` to `relay-edge`, then proxy by service name:
 
 ```caddyfile
 image.example.com {
-    reverse_proxy 127.0.0.1:29281
+    reverse_proxy productflow-web:80
 }
 ```
 
-Keep public ports `80` and `443` on Caddy. ProductFlow binds only `127.0.0.1:29281` by default.
+Keep public ports `80` and `443` on Caddy. ProductFlow still binds `127.0.0.1:29281` by default for local smoke checks.

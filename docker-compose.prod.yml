@@ -158,6 +158,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${WEB_PORT:-29281}:80"
+    networks:
+      - default
+      - relay-edge
     depends_on:
       productflow-backend:
         condition: service_healthy
@@ -172,3 +175,7 @@ volumes:
   productflow-postgres-data:
   productflow-redis-data:
   productflow-storage:
+
+networks:
+  relay-edge:
+    external: true
