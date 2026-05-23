@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import Field, ValidationError, ValidationInfo, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -34,6 +34,15 @@ PROMPT_CONFIG_KEYS = {
     "prompt_poster_image_edit_template",
     "prompt_poster_image_reference_policy",
     "prompt_image_chat_template",
+}
+DATABASE_ONLY_RUNTIME_DEFAULTS: dict[str, Any] = {
+    "new_api_base_url": None,
+    "new_api_relay_base_url": None,
+    "new_api_sso_start_url": None,
+    "new_api_sso_verify_url": None,
+    "new_api_sso_verify_path": "/api/productflow/sso/verify",
+    "new_api_sso_shared_secret": None,
+    "new_api_sso_timeout_seconds": 10,
 }
 IMAGE_TOOL_FIELD_KEYS: tuple[str, ...] = (
     "model",
@@ -206,6 +215,34 @@ class Settings(BaseSettings):
     admin_access_required: bool = True
     deletion_enabled: bool = False
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[Any, ...]:
+        def without_database_only_runtime_settings(source: PydanticBaseSettingsSource):
+            def load() -> dict[str, Any]:
+                values = source()
+                return {
+                    key: value
+                    for key, value in values.items()
+                    if key not in DATABASE_ONLY_RUNTIME_DEFAULTS
+                }
+
+            load.__name__ = f"{type(source).__name__}WithoutDatabaseOnlyRuntimeSettings"
+            return load
+
+        return (
+            init_settings,
+            without_database_only_runtime_settings(env_settings),
+            without_database_only_runtime_settings(dotenv_settings),
+            without_database_only_runtime_settings(file_secret_settings),
+        )
+
     @field_validator("image_main_image_size", "image_promo_poster_size")
     @classmethod
     def _normalize_image_generation_fallback_size(cls, value: str, info: ValidationInfo) -> str:
@@ -294,7 +331,7 @@ def get_settings() -> Settings:
 
 
 def resolve_new_api_relay_base_url(settings: Settings | None = None) -> str | None:
-    resolved_settings = settings or get_settings()
+    resolved_settings = settings or get_runtime_settings()
     if resolved_settings.new_api_relay_base_url:
         return resolved_settings.new_api_relay_base_url.rstrip("/")
     if not resolved_settings.new_api_base_url:
@@ -568,6 +605,63 @@ CONFIG_DEFINITIONS: tuple[ConfigDefinition, ...] = (
         maximum=24 * 60 * 60,
     ),
     ConfigDefinition(
+        key="new_api_base_url",
+        label="New API 基础地址",
+        category="安全与运维",
+        input_type="text",
+        description="ProductFlow 集成的 New API 根地址；未单独配置 relay/verify 地址时会从这里派生。",
+        optional=True,
+    ),
+    ConfigDefinition(
+        key="new_api_relay_base_url",
+        label="New API Relay 地址",
+        category="安全与运维",
+        input_type="text",
+        description="用于真实模型调用的 New API relay 地址；留空时会根据基础地址自动补全 /v1。",
+        optional=True,
+    ),
+    ConfigDefinition(
+        key="new_api_sso_start_url",
+        label="New API SSO 入口",
+        category="安全与运维",
+        input_type="text",
+        description="登录页点击授权时跳转到的 New API SSO 启动地址。",
+        optional=True,
+    ),
+    ConfigDefinition(
+        key="new_api_sso_verify_url",
+        label="New API SSO 校验地址",
+        category="安全与运维",
+        input_type="text",
+        description="ProductFlow 服务端用来校验 ticket 的完整地址；留空时按基础地址和校验路径拼接。",
+        optional=True,
+    ),
+    ConfigDefinition(
+        key="new_api_sso_verify_path",
+        label="New API SSO 校验路径",
+        category="安全与运维",
+        input_type="text",
+        description="仅在未单独配置 SSO 校验地址时使用，会自动挂到 New API 基础地址下。",
+    ),
+    ConfigDefinition(
+        key="new_api_sso_shared_secret",
+        label="New API SSO 共享密钥",
+        category="安全与运维",
+        input_type="password",
+        description="ProductFlow 服务端向 New API 校验 ticket 时使用的共享密钥。",
+        secret=True,
+        optional=True,
+    ),
+    ConfigDefinition(
+        key="new_api_sso_timeout_seconds",
+        label="New API SSO 校验超时（秒）",
+        category="安全与运维",
+        input_type="number",
+        description="ProductFlow 服务端调用 New API 校验 ticket 的超时时间。",
+        minimum=1,
+        maximum=60,
+    ),
+    ConfigDefinition(
         key="admin_access_required",
         label="要求登录访问密钥",
         category="安全与运维",
@@ -752,7 +846,7 @@ def normalize_config_values(values: Mapping[str, Any]) -> dict[str, str]:
     return {key: normalize_config_value(key, value) for key, value in values.items()}
 
 
-def build_settings_with_overrides(overrides: Mapping[str, str]) -> Settings:
+def build_settings_with_overrides(overrides: Mapping[str, Any]) -> Settings:
     try:
         return Settings(**dict(overrides))
     except ValidationError as exc:
@@ -762,7 +856,8 @@ def build_settings_with_overrides(overrides: Mapping[str, str]) -> Settings:
         raise ValueError(f"配置校验失败 {field}: {message}") from exc
 
 
-def _load_database_config_overrides() -> dict[str, str]:
+def _load_database_config_overrides() -> dict[str, Any]:
+    overrides: dict[str, Any] = dict(DATABASE_ONLY_RUNTIME_DEFAULTS)
     try:
         from productflow_backend.infrastructure.db.models import AppSetting
         from productflow_backend.infrastructure.db.session import get_session_factory
@@ -770,26 +865,25 @@ def _load_database_config_overrides() -> dict[str, str]:
         session = get_session_factory()()
         try:
             rows = session.scalars(select(AppSetting).where(AppSetting.key.in_(RUNTIME_CONFIG_KEYS))).all()
-            return {row.key: row.value for row in rows}
+            overrides.update({row.key: row.value for row in rows})
+            return overrides
         finally:
             session.close()
     except Exception as exc:  # noqa: BLE001
         if exc.__class__.__name__ in {"OperationalError", "ProgrammingError"}:
-            return {}
+            return overrides
         if isinstance(exc, SQLAlchemyError):
-            return {}
+            return overrides
         raise
 
 
 def get_runtime_settings() -> Settings:
     """Settings with database overrides applied.
 
-    If a key does not exist in the database, env/default Settings remains the
-    fallback. Missing app_settings table is tolerated so fresh databases can
-    still start before migrations have run.
+    Runtime settings are authoritative in the database when present. The
+    ProductFlow integration fields are always hydrated from database rows or
+    code defaults so they never fall back to env values.
     """
 
     overrides = _load_database_config_overrides()
-    if not overrides:
-        return get_settings()
     return build_settings_with_overrides(overrides)

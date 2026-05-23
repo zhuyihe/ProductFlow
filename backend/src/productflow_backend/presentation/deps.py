@@ -11,7 +11,7 @@ from productflow_backend.application.auth_sessions import (
     principal_owner_user_id,
 )
 from productflow_backend.application.new_api_sso import is_new_api_sso_configured
-from productflow_backend.config import get_runtime_settings, get_settings
+from productflow_backend.config import get_runtime_settings
 from productflow_backend.infrastructure.db.session import get_db_session
 
 
@@ -77,7 +77,7 @@ def require_admin_audit_principal(
 def require_workspace_principal(principal: Principal | None = Depends(current_principal)) -> Principal:
     if principal is not None:
         return principal
-    if is_new_api_sso_configured(get_settings()):
+    if is_new_api_sso_configured(get_runtime_settings()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="请先登录")
     if not get_runtime_settings().admin_access_required:
         return Principal(

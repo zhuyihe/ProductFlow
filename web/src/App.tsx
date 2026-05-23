@@ -51,7 +51,7 @@ function AppRoutes() {
 
   const authenticated = Boolean(sessionQuery.data?.authenticated);
   const isAdmin = sessionQuery.data?.principal_kind === "admin";
-  const ssoStartUrl = sessionQuery.data?.sso_start_url;
+  const ssoStartUrl = sessionQuery.data?.sso_start_url ?? null;
 
   useEffect(() => {
     if (!authenticated) {
@@ -61,25 +61,16 @@ function AppRoutes() {
     void loadImageChatPage();
   }, [authenticated]);
 
-  useEffect(() => {
-    if (authenticated || !ssoStartUrl || window.location.pathname === "/admin-login") {
-      return;
-    }
-    window.location.assign(ssoStartUrl);
-  }, [authenticated, ssoStartUrl]);
-
   if (sessionQuery.isLoading) {
     return <LoadingScreen />;
   }
 
   const workspaceLoginTarget = "/login";
-  const adminLoginTarget = ssoStartUrl ? "/admin-login" : "/login";
 
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-        <Route path="/login" element={<LoginPage authenticated={authenticated} />} />
-        <Route path="/admin-login" element={<LoginPage authenticated={authenticated} />} />
+        <Route path="/login" element={<LoginPage authenticated={authenticated} ssoStartUrl={ssoStartUrl} />} />
         <Route
           path="/products"
           element={authenticated ? <ProductListPage /> : <Navigate to={workspaceLoginTarget} replace />}
@@ -97,7 +88,7 @@ function AppRoutes() {
           element={
             authenticated
               ? (isAdmin ? <GalleryPage /> : <Navigate to="/products" replace />)
-              : <Navigate to={adminLoginTarget} replace />
+              : <Navigate to={workspaceLoginTarget} replace />
           }
         />
         <Route
@@ -109,7 +100,7 @@ function AppRoutes() {
           element={
             authenticated
               ? (isAdmin ? <SettingsPage /> : <Navigate to="/products" replace />)
-              : <Navigate to={adminLoginTarget} replace />
+              : <Navigate to={workspaceLoginTarget} replace />
           }
         />
         <Route

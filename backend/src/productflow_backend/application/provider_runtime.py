@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from productflow_backend.application.auth_sessions import Principal
-from productflow_backend.config import get_settings, resolve_new_api_relay_base_url
+from productflow_backend.config import get_runtime_settings, resolve_new_api_relay_base_url
 from productflow_backend.infrastructure.db.models import ImageSessionGenerationTask, WorkflowRun
 from productflow_backend.infrastructure.provider_config import ProviderCredentialOverride
 
@@ -84,7 +84,7 @@ def provider_credential_override_from_context(
         return None
     if not context.new_api_token:
         raise RuntimeError("当前 ProductFlow 会话缺少 New API token")
-    relay_base_url = resolve_new_api_relay_base_url(get_settings())
+    relay_base_url = resolve_new_api_relay_base_url(get_runtime_settings())
     if relay_base_url is None:
         raise RuntimeError("New API relay base URL 未配置")
     return ProviderCredentialOverride(

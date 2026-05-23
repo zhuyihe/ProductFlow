@@ -89,12 +89,6 @@ export const api = {
   getSessionState(): Promise<SessionState> {
     return request<SessionState>("/api/auth/session");
   },
-  createSession(adminKey: string): Promise<{ ok: boolean }> {
-    return request("/api/auth/session", {
-      method: "POST",
-      body: JSON.stringify({ admin_key: adminKey }),
-    });
-  },
   destroySession(): Promise<{ ok: boolean }> {
     return request("/api/auth/session", { method: "DELETE" });
   },

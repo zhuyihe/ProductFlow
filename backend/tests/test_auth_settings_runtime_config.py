@@ -234,7 +234,37 @@ def test_settings_unlock_does_not_bypass_missing_token_after_env_change(
     assert config.json()["detail"] == "设置解锁令牌未配置，请联系管理员"
 
 
-def test_settings_api_persists_database_overrides(configured_env: Path) -> None:
+def test_new_api_runtime_settings_ignore_bootstrap_env(configured_env: Path, monkeypatch) -> None:
+    monkeypatch.setenv("NEW_API_BASE_URL", "https://legacy-env.example")
+    monkeypatch.setenv("NEW_API_RELAY_BASE_URL", "https://legacy-env.example/v1")
+    monkeypatch.setenv("NEW_API_SSO_START_URL", "https://legacy-env.example/sso/start")
+    monkeypatch.setenv("NEW_API_SSO_VERIFY_URL", "https://legacy-env.example/sso/verify")
+    monkeypatch.setenv("NEW_API_SSO_VERIFY_PATH", "/legacy/verify")
+    monkeypatch.setenv("NEW_API_SSO_SHARED_SECRET", "legacy-env-secret")
+    monkeypatch.setenv("NEW_API_SSO_TIMEOUT_SECONDS", "not-an-int")
+    get_settings.cache_clear()
+
+    settings = get_settings()
+
+    assert settings.new_api_base_url is None
+    assert settings.new_api_relay_base_url is None
+    assert settings.new_api_sso_start_url is None
+    assert settings.new_api_sso_verify_url is None
+    assert settings.new_api_sso_verify_path == "/api/productflow/sso/verify"
+    assert settings.new_api_sso_shared_secret is None
+    assert settings.new_api_sso_timeout_seconds == 10
+
+
+def test_settings_api_persists_database_overrides(configured_env: Path, monkeypatch) -> None:
+    monkeypatch.setenv("NEW_API_BASE_URL", "https://legacy-env.example")
+    monkeypatch.setenv("NEW_API_RELAY_BASE_URL", "https://legacy-env.example/v1")
+    monkeypatch.setenv("NEW_API_SSO_START_URL", "https://legacy-env.example/sso/start")
+    monkeypatch.setenv("NEW_API_SSO_VERIFY_URL", "https://legacy-env.example/sso/verify")
+    monkeypatch.setenv("NEW_API_SSO_VERIFY_PATH", "/legacy/verify")
+    monkeypatch.setenv("NEW_API_SSO_SHARED_SECRET", "legacy-env-secret")
+    monkeypatch.setenv("NEW_API_SSO_TIMEOUT_SECONDS", "30")
+    get_settings.cache_clear()
+
     from productflow_backend.presentation.api import create_app
 
     app = create_app()
@@ -269,6 +299,15 @@ def test_settings_api_persists_database_overrides(configured_env: Path) -> None:
     assert initial_items["workflow_image_generation_provider_timeout_seconds"]["category"] == "生成队列"
     assert initial_items["workflow_image_generation_provider_timeout_seconds"]["minimum"] == 1
     assert initial_items["workflow_image_generation_provider_timeout_seconds"]["maximum"] == 24 * 60 * 60
+    assert initial_items["new_api_base_url"]["value"] is None
+    assert initial_items["new_api_relay_base_url"]["value"] is None
+    assert initial_items["new_api_sso_start_url"]["value"] is None
+    assert initial_items["new_api_sso_verify_url"]["value"] is None
+    assert initial_items["new_api_sso_verify_path"]["value"] == "/api/productflow/sso/verify"
+    assert initial_items["new_api_base_url"]["category"] == "安全与运维"
+    assert initial_items["new_api_sso_shared_secret"]["secret"] is True
+    assert initial_items["new_api_sso_shared_secret"]["value"] == ""
+    assert initial_items["new_api_sso_timeout_seconds"]["value"] == 10
     assert initial_items["admin_access_required"]["value"] is True
     assert initial_items["admin_access_required"]["category"] == "安全与运维"
     assert initial_items["deletion_enabled"]["value"] is False
@@ -281,6 +320,10 @@ def test_settings_api_persists_database_overrides(configured_env: Path) -> None:
                 "generation_max_concurrent_tasks": 2,
                 "image_session_stale_running_after_minutes": 75,
                 "workflow_image_generation_provider_timeout_seconds": 120,
+                "new_api_base_url": "https://new-api.example",
+                "new_api_sso_start_url": "https://new-api.example/sso/start",
+                "new_api_sso_shared_secret": "runtime-shared-secret",
+                "new_api_sso_timeout_seconds": 7,
                 "deletion_enabled": True,
             }
         },
@@ -289,12 +332,18 @@ def test_settings_api_persists_database_overrides(configured_env: Path) -> None:
     assert get_runtime_settings().generation_max_concurrent_tasks == 2
     assert get_runtime_settings().image_session_stale_running_after_minutes == 75
     assert get_runtime_settings().workflow_image_generation_provider_timeout_seconds == 120
+    assert get_runtime_settings().new_api_base_url == "https://new-api.example"
+    assert get_runtime_settings().new_api_sso_start_url == "https://new-api.example/sso/start"
+    assert get_runtime_settings().new_api_sso_shared_secret == "runtime-shared-secret"
+    assert get_runtime_settings().new_api_sso_timeout_seconds == 7
     assert get_runtime_settings().deletion_enabled is True
 
     session = get_session_factory()()
     try:
         assert session.get(AppSetting, "image_session_stale_running_after_minutes").value == "75"
         assert session.get(AppSetting, "workflow_image_generation_provider_timeout_seconds").value == "120"
+        assert session.get(AppSetting, "new_api_base_url").value == "https://new-api.example"
+        assert session.get(AppSetting, "new_api_sso_shared_secret").value == "runtime-shared-secret"
     finally:
         session.close()
 
@@ -1060,11 +1109,7 @@ def test_resolvers_ignore_legacy_rows_after_provider_bindings_exist(configured_e
 
 def test_resolvers_override_real_provider_credentials_with_current_user_token(
     configured_env: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("NEW_API_BASE_URL", "https://relay.example")
-    get_settings.cache_clear()
-
     from productflow_backend.application.auth_sessions import Principal
     from productflow_backend.application.provider_runtime import (
         provider_credential_override_from_context,
@@ -1089,6 +1134,7 @@ def test_resolvers_override_real_provider_credentials_with_current_user_token(
         )
         session.add(profile)
         session.flush()
+        session.add(AppSetting(key="new_api_base_url", value="https://relay.example"))
         session.add_all(
             [
                 ProviderBinding(
@@ -1143,7 +1189,6 @@ def test_resolvers_override_real_provider_credentials_with_current_user_token(
     assert image_config.model == "gpt-image-2"
     assert image_config.images_quality == "high"
     assert image_config.images_style == "natural"
-    get_settings.cache_clear()
 
 
 def test_resolvers_reject_missing_models_instead_of_using_legacy_defaults(

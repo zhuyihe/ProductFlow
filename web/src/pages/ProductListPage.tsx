@@ -64,7 +64,7 @@ export function ProductListPage() {
     mutationFn: api.destroySession,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["session"] });
-      navigate(sessionQuery.data?.sso_start_url ? "/admin-login" : "/login", { replace: true });
+      navigate("/login", { replace: true });
     },
   });
 

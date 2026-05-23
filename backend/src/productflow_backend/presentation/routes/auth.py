@@ -51,7 +51,8 @@ def get_session_state(
     request: Request,
     session: Session = Depends(get_session),
 ) -> SessionStateResponse:
-    access_required = get_runtime_settings().admin_access_required
+    runtime_settings = get_runtime_settings()
+    access_required = runtime_settings.admin_access_required
     auth_session_id = request.session.get(AUTH_SESSION_COOKIE_KEY)
     principal = load_principal(session, auth_session_id)
     return SessionStateResponse(
@@ -61,7 +62,7 @@ def get_session_state(
         username=principal.username if principal is not None else None,
         new_api_user_id=principal.new_api_user_id if principal is not None else None,
         new_api_token_id=principal.new_api_token_id if principal is not None else None,
-        sso_start_url=_configured_sso_start_url(get_settings()),
+        sso_start_url=_configured_sso_start_url(runtime_settings),
     )
 
 
@@ -79,7 +80,7 @@ def destroy_session(
 
 @router.get("/sso/new-api/start", response_model=SessionResponse)
 def get_new_api_sso_start() -> SessionResponse:
-    settings = get_settings()
+    settings = get_runtime_settings()
     if not is_new_api_sso_configured(settings):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="New API SSO 未配置")
     if not settings.new_api_sso_start_url:
@@ -94,7 +95,7 @@ def new_api_sso_callback(
     session: Session = Depends(get_session),
 ) -> RedirectResponse:
     try:
-        claims = verify_new_api_sso_ticket(ticket, settings=get_settings())
+        claims = verify_new_api_sso_ticket(ticket, settings=get_runtime_settings())
     except NewApiSsoError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 

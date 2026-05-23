@@ -135,6 +135,8 @@ For runtime settings:
 - UI/API metadata, allowed values, min/max, and secret masking live in `CONFIG_DEFINITIONS`.
 - Database rows override only keys in `RUNTIME_CONFIG_KEYS`.
 - Reset deletes the database row and falls back to the env/default `Settings` value.
+- Database-only integration fields such as `new_api_*` may opt out of env fallback by seeding code defaults before reading
+  `app_settings` and by filtering matching env/.env/file-secret values in `Settings.settings_customise_sources`.
 
 ## Scenario: Provider profile and purpose binding configuration
 

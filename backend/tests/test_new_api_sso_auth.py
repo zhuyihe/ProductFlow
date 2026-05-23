@@ -1,21 +1,51 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from helpers import _make_demo_image_bytes
+from helpers import _login, _make_demo_image_bytes, _unlock_settings
 from sqlalchemy import select
 
-from productflow_backend.infrastructure.db.models import AuditLog, AuthSession
+from productflow_backend.infrastructure.db.models import AppSetting, AuditLog, AuthSession
 from productflow_backend.infrastructure.db.session import get_session_factory
 
 
-def test_new_api_sso_callback_creates_server_side_user_session(configured_env, monkeypatch) -> None:
-    monkeypatch.setenv("NEW_API_BASE_URL", "https://api.example.test")
-    monkeypatch.setenv("NEW_API_SSO_SHARED_SECRET", "server-secret")
+def _seed_app_settings(values: dict[str, str]) -> None:
+    session = get_session_factory()()
+    try:
+        for key, value in values.items():
+            session.merge(AppSetting(key=key, value=value))
+        session.commit()
+    finally:
+        session.close()
 
-    from productflow_backend.config import get_settings
+
+def _seed_new_api_sso_settings(
+    *,
+    base_url: str,
+    shared_secret: str,
+    start_url: str | None = None,
+    verify_url: str | None = None,
+    verify_path: str | None = None,
+    timeout_seconds: int | None = None,
+) -> None:
+    values = {
+        "new_api_base_url": base_url,
+        "new_api_sso_shared_secret": shared_secret,
+    }
+    if start_url is not None:
+        values["new_api_sso_start_url"] = start_url
+    if verify_url is not None:
+        values["new_api_sso_verify_url"] = verify_url
+    if verify_path is not None:
+        values["new_api_sso_verify_path"] = verify_path
+    if timeout_seconds is not None:
+        values["new_api_sso_timeout_seconds"] = str(timeout_seconds)
+    _seed_app_settings(values)
+
+
+def test_new_api_sso_callback_creates_server_side_user_session(configured_env, monkeypatch) -> None:
     from productflow_backend.presentation.api import create_app
 
-    get_settings.cache_clear()
+    _seed_new_api_sso_settings(base_url="https://api.example.test", shared_secret="server-secret")
 
     def fake_post(url: str, *, json: dict, headers: dict, timeout: int):
         assert url == "https://api.example.test/api/productflow/sso/verify"
@@ -77,13 +107,9 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
 
 
 def test_new_api_sso_callback_rejects_invalid_ticket(configured_env, monkeypatch) -> None:
-    monkeypatch.setenv("NEW_API_BASE_URL", "https://api.example.test")
-    monkeypatch.setenv("NEW_API_SSO_SHARED_SECRET", "server-secret")
-
-    from productflow_backend.config import get_settings
     from productflow_backend.presentation.api import create_app
 
-    get_settings.cache_clear()
+    _seed_new_api_sso_settings(base_url="https://api.example.test", shared_secret="server-secret")
 
     class Response:
         status_code = 401
@@ -164,14 +190,82 @@ def test_session_state_hides_sso_fields_when_not_configured(configured_env) -> N
     assert state.json() == {"authenticated": False, "access_required": True}
 
 
-def test_new_api_sso_user_can_access_workspace_but_not_admin_only_routes(configured_env, monkeypatch) -> None:
-    monkeypatch.setenv("NEW_API_BASE_URL", "https://api.example.test")
-    monkeypatch.setenv("NEW_API_SSO_SHARED_SECRET", "server-secret")
-
-    from productflow_backend.config import get_settings
+def test_runtime_new_api_settings_drive_session_state_and_sso_callback(configured_env, monkeypatch) -> None:
     from productflow_backend.presentation.api import create_app
 
-    get_settings.cache_clear()
+    app = create_app()
+    admin = TestClient(app)
+    _login(admin)
+    _unlock_settings(admin)
+
+    updated = admin.patch(
+        "/api/settings",
+        json={
+            "values": {
+                "new_api_base_url": "https://api.runtime.test",
+                "new_api_sso_start_url": "https://api.runtime.test/sso/start",
+                "new_api_sso_verify_path": "/custom/verify",
+                "new_api_sso_shared_secret": "runtime-secret",
+                "new_api_sso_timeout_seconds": 7,
+            }
+        },
+    )
+    assert updated.status_code == 200
+
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json() -> dict:
+            return {
+                "data": {
+                    "user_id": "runtime-user",
+                    "username": "alice",
+                    "token": "sk-runtime-token",
+                    "token_id": "runtime-token-id",
+                    "token_name": "ProductFlow",
+                }
+            }
+
+    def fake_post(url: str, *, json: dict, headers: dict, timeout: int):
+        assert url == "https://api.runtime.test/custom/verify"
+        assert json == {"ticket": "runtime-ticket"}
+        assert headers == {"Authorization": "Bearer runtime-secret"}
+        assert timeout == 7
+        return Response()
+
+    monkeypatch.setattr("productflow_backend.application.new_api_sso.httpx.post", fake_post)
+
+    public = TestClient(app)
+    state = public.get("/api/auth/session")
+    assert state.status_code == 200
+    assert state.json() == {
+        "authenticated": False,
+        "access_required": True,
+        "sso_start_url": "https://api.runtime.test/sso/start",
+    }
+
+    callback = public.get("/auth/new-api/callback?ticket=runtime-ticket", follow_redirects=False)
+    assert callback.status_code == 303
+    assert callback.headers["location"] == "/products"
+
+    authenticated_state = public.get("/api/auth/session")
+    assert authenticated_state.status_code == 200
+    assert authenticated_state.json() == {
+        "authenticated": True,
+        "access_required": True,
+        "principal_kind": "user",
+        "username": "alice",
+        "new_api_user_id": "runtime-user",
+        "new_api_token_id": "runtime-token-id",
+        "sso_start_url": "https://api.runtime.test/sso/start",
+    }
+
+
+def test_new_api_sso_user_can_access_workspace_but_not_admin_only_routes(configured_env, monkeypatch) -> None:
+    _seed_new_api_sso_settings(base_url="https://api.example.test", shared_secret="server-secret")
+
+    from productflow_backend.presentation.api import create_app
 
     class Response:
         status_code = 200
@@ -213,14 +307,10 @@ def test_new_api_sso_user_can_access_workspace_but_not_admin_only_routes(configu
 
 
 def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configured_env, monkeypatch) -> None:
-    monkeypatch.setenv("NEW_API_BASE_URL", "https://api.example.test")
-    monkeypatch.setenv("NEW_API_SSO_SHARED_SECRET", "server-secret")
-
-    from productflow_backend.config import get_settings
     from productflow_backend.domain.enums import WorkflowNodeType
     from productflow_backend.presentation.api import create_app
 
-    get_settings.cache_clear()
+    _seed_new_api_sso_settings(base_url="https://api.example.test", shared_secret="server-secret")
 
     tickets = {
         "ticket-a": {
@@ -327,13 +417,9 @@ def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configu
 
 
 def test_admin_user_content_inspection_writes_audit_log(configured_env, monkeypatch) -> None:
-    monkeypatch.setenv("NEW_API_BASE_URL", "https://api.example.test")
-    monkeypatch.setenv("NEW_API_SSO_SHARED_SECRET", "server-secret")
-
-    from productflow_backend.config import get_settings
     from productflow_backend.presentation.api import create_app
 
-    get_settings.cache_clear()
+    _seed_new_api_sso_settings(base_url="https://api.example.test", shared_secret="server-secret")
 
     class Response:
         status_code = 200
