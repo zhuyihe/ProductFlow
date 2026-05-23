@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from productflow_backend.application.auth_sessions import Principal
 from productflow_backend.config import get_runtime_settings, resolve_new_api_relay_base_url
@@ -13,7 +13,7 @@ class ProviderExecutionContext:
     new_api_user_id: str | None = None
     new_api_token_id: str | None = None
     new_api_token_name: str | None = None
-    new_api_token: str | None = None
+    new_api_token: str | None = field(default=None, repr=False)
 
     @property
     def enabled(self) -> bool:

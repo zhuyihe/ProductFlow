@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
@@ -22,7 +22,7 @@ class Principal:
     role: str | None
     new_api_token_id: str | None
     new_api_token_name: str | None
-    new_api_token: str | None
+    new_api_token: str | None = field(repr=False)
 
     @property
     def is_admin(self) -> bool:
@@ -47,7 +47,7 @@ class NewApiSessionClaims:
     email: str | None = None
     group: str | None = None
     role: str | None = None
-    token: str | None = None
+    token: str | None = field(default=None, repr=False)
     token_id: str | None = None
     token_name: str | None = None
     expires_in_seconds: int | None = None
