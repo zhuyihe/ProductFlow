@@ -26,6 +26,18 @@ NEW_API_RELAY_BASE_URL=https://api.example.com/v1
 NEW_API_SSO_START_URL=https://api.example.com/api/productflow/sso/start
 NEW_API_SSO_VERIFY_PATH=/api/productflow/sso/verify
 NEW_API_SSO_SHARED_SECRET=replace-with-the-same-secret-used-by-new-api
+
+TEXT_PROVIDER_KIND=openai
+TEXT_API_KEY=
+TEXT_BASE_URL=https://api.example.com/v1
+TEXT_BRIEF_MODEL=gpt-4o
+TEXT_COPY_MODEL=gpt-4o
+
+IMAGE_PROVIDER_KIND=openai_images
+IMAGE_API_KEY=
+IMAGE_BASE_URL=https://api.example.com/v1
+IMAGE_GENERATE_MODEL=gpt-image-1
+POSTER_GENERATION_MODE=generated
 ```
 
 `NEW_API_SSO_SHARED_SECRET` must match the New API `PRODUCTFLOW_SSO_SECRET`.
