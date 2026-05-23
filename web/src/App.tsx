@@ -50,6 +50,8 @@ function AppRoutes() {
   });
 
   const authenticated = Boolean(sessionQuery.data?.authenticated);
+  const isAdmin = sessionQuery.data?.principal_kind === "admin";
+  const ssoStartUrl = sessionQuery.data?.sso_start_url;
 
   useEffect(() => {
     if (!authenticated) {
@@ -59,47 +61,66 @@ function AppRoutes() {
     void loadImageChatPage();
   }, [authenticated]);
 
+  useEffect(() => {
+    if (authenticated || !ssoStartUrl || window.location.pathname === "/admin-login") {
+      return;
+    }
+    window.location.assign(ssoStartUrl);
+  }, [authenticated, ssoStartUrl]);
+
   if (sessionQuery.isLoading) {
     return <LoadingScreen />;
   }
+
+  const workspaceLoginTarget = "/login";
+  const adminLoginTarget = ssoStartUrl ? "/admin-login" : "/login";
 
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/login" element={<LoginPage authenticated={authenticated} />} />
+        <Route path="/admin-login" element={<LoginPage authenticated={authenticated} />} />
         <Route
           path="/products"
-          element={authenticated ? <ProductListPage /> : <Navigate to="/login" replace />}
+          element={authenticated ? <ProductListPage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
         <Route
           path="/products/new"
-          element={authenticated ? <ProductCreatePage /> : <Navigate to="/login" replace />}
+          element={authenticated ? <ProductCreatePage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
         <Route
           path="/image-chat"
-          element={authenticated ? <ImageChatPage /> : <Navigate to="/login" replace />}
+          element={authenticated ? <ImageChatPage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
         <Route
           path="/gallery"
-          element={authenticated ? <GalleryPage /> : <Navigate to="/login" replace />}
+          element={
+            authenticated
+              ? (isAdmin ? <GalleryPage /> : <Navigate to="/products" replace />)
+              : <Navigate to={adminLoginTarget} replace />
+          }
         />
         <Route
           path="/help"
-          element={authenticated ? <HelpPage /> : <Navigate to="/login" replace />}
+          element={authenticated ? <HelpPage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
         <Route
           path="/settings"
-          element={authenticated ? <SettingsPage /> : <Navigate to="/login" replace />}
+          element={
+            authenticated
+              ? (isAdmin ? <SettingsPage /> : <Navigate to="/products" replace />)
+              : <Navigate to={adminLoginTarget} replace />
+          }
         />
         <Route
           path="/products/:productId/image-chat"
-          element={authenticated ? <ImageChatPage /> : <Navigate to="/login" replace />}
+          element={authenticated ? <ImageChatPage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
         <Route
           path="/products/:productId"
-          element={authenticated ? <ProductDetailPage /> : <Navigate to="/login" replace />}
+          element={authenticated ? <ProductDetailPage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
-        <Route path="*" element={<Navigate to={authenticated ? "/products" : "/login"} replace />} />
+        <Route path="*" element={<Navigate to={authenticated ? "/products" : workspaceLoginTarget} replace />} />
       </Routes>
     </Suspense>
   );

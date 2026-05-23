@@ -284,6 +284,10 @@ export function ImageChatPage() {
     queryFn: () => api.getProduct(productId!),
     enabled: isProductMode,
   });
+  const sessionQuery = useQuery({
+    queryKey: ["session"],
+    queryFn: api.getSessionState,
+  });
 
   const productsQuery = useQuery({
     queryKey: ["products"],
@@ -500,7 +504,7 @@ export function ImageChatPage() {
     mutationFn: api.destroySession,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["session"] });
-      navigate("/login", { replace: true });
+      navigate(sessionQuery.data?.sso_start_url ? "/admin-login" : "/login", { replace: true });
     },
   });
 
@@ -1037,6 +1041,7 @@ export function ImageChatPage() {
         breadcrumbs={isProductMode ? `${productQuery.data?.name ?? t("chat.productFallback")} / ${t("chat.breadcrumb")}` : t("chat.breadcrumb")}
         onHome={() => navigate(isProductMode && productId ? `/products/${productId}` : "/products")}
         onLogout={() => logoutMutation.mutate()}
+        session={sessionQuery.data}
       />
 
       <main

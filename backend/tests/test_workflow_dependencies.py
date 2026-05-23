@@ -12,6 +12,7 @@ from productflow_backend.application.product_workflow_dependencies import (
     default_workflow_execution_dependencies,
 )
 from productflow_backend.domain.enums import PosterKind
+from productflow_backend.infrastructure.provider_config import ProviderCredentialOverride
 
 
 def test_workflow_execution_dependencies_use_explicit_resolvers_without_global_factories() -> None:
@@ -56,6 +57,36 @@ def test_default_workflow_execution_dependencies_use_direct_factory_resolvers(
 
     assert dependencies.text_provider() is text_provider
     assert dependencies.image_provider() is image_provider
+
+
+def test_default_workflow_execution_dependencies_forward_credential_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[tuple[str, ProviderCredentialOverride | None]] = []
+    text_provider = object()
+    image_provider = object()
+    override = ProviderCredentialOverride(api_key="sk-user-token", base_url="https://relay.example/v1")
+
+    monkeypatch.setattr(
+        "productflow_backend.application.product_workflow_dependencies.get_text_provider",
+        lambda credential_override=None: (
+            captured.append(("text", credential_override)),
+            text_provider,
+        )[1],
+    )
+    monkeypatch.setattr(
+        "productflow_backend.application.product_workflow_dependencies.get_image_provider",
+        lambda credential_override=None: (
+            captured.append(("image", credential_override)),
+            image_provider,
+        )[1],
+    )
+
+    dependencies = default_workflow_execution_dependencies(override)
+
+    assert dependencies.text_provider() is text_provider
+    assert dependencies.image_provider() is image_provider
+    assert captured == [("text", override), ("image", override)]
 
 
 def test_workflow_image_generation_uses_injected_renderer_factory() -> None:

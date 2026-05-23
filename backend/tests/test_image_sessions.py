@@ -976,6 +976,89 @@ def test_image_session_worker_auto_retry_exposes_last_failure_metadata(
     assert sent == [result.task.id]
 
 
+def test_image_session_generation_task_uses_current_user_new_api_token(
+    configured_env: Path,
+    db_session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("NEW_API_BASE_URL", "https://relay.example")
+    monkeypatch.setenv("IMAGE_PROVIDER_KIND", "openai_images")
+    monkeypatch.setenv("IMAGE_API_KEY", "shared-admin-key")
+    monkeypatch.setenv("IMAGE_BASE_URL", "https://upstream.example/v1")
+    monkeypatch.setenv("IMAGE_GENERATE_MODEL", "gpt-image-2")
+    get_settings.cache_clear()
+
+    from productflow_backend.application.auth_sessions import Principal
+    from productflow_backend.application.image_sessions import (
+        create_image_session,
+        create_image_session_generation_task,
+        execute_image_session_generation_task,
+    )
+    from productflow_backend.domain.enums import JobStatus
+
+    client_kwargs: list[dict[str, str]] = []
+    calls: list[dict[str, object]] = []
+    encoded_result = b64encode(_make_demo_image_bytes()).decode("utf-8")
+
+    class DummyImages:
+        def generate(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                data=[SimpleNamespace(b64_json=encoded_result, revised_prompt="relay result")]
+            )
+
+    class DummyOpenAI:
+        def __init__(self, **kwargs) -> None:
+            client_kwargs.append(kwargs)
+            self.images = DummyImages()
+
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+
+    image_session = create_image_session(db_session, product_id=None, title="relay token")
+    principal = Principal(
+        session_id="auth-session-1",
+        kind="user",
+        new_api_user_id="42",
+        username="alice",
+        email=None,
+        group="default",
+        role="user",
+        new_api_token_id="77",
+        new_api_token_name="ProductFlow",
+        new_api_token="sk-user-token",
+    )
+    result = create_image_session_generation_task(
+        db_session,
+        image_session_id=image_session.id,
+        prompt="使用当前用户 token 生图",
+        size="1024x1024",
+        principal=principal,
+    )
+
+    execute_image_session_generation_task(result.task.id)
+
+    db_session.expire_all()
+    task = db_session.get(ImageSessionGenerationTask, result.task.id)
+    assert task is not None
+    assert task.status == JobStatus.SUCCEEDED
+    assert task.new_api_user_id == "42"
+    assert task.new_api_token_id == "77"
+    assert task.new_api_token_name == "ProductFlow"
+    assert task.new_api_token == "sk-user-token"
+    assert client_kwargs == [{"api_key": "sk-user-token", "base_url": "https://relay.example/v1"}]
+    assert calls == [
+        {
+            "model": "gpt-image-2",
+            "prompt": calls[0]["prompt"],
+            "size": "1024x1024",
+            "n": 1,
+            "response_format": "b64_json",
+        }
+    ]
+    assert isinstance(calls[0]["prompt"], str)
+    get_settings.cache_clear()
+
+
 def test_image_session_worker_non_retryable_policy_failure_stops_without_auto_retry(
     configured_env: Path,
     db_session,

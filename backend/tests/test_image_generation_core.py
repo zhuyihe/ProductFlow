@@ -29,7 +29,8 @@ def test_image_generation_core_normalizes_ids_tool_options_and_reference_payload
             "quality": "high",
             "background": "transparent",
             "output_compression": 75,
-        }
+        },
+        allowed_fields=("quality", "output_compression"),
     ) == {
         "quality": "high",
         "output_compression": 75,

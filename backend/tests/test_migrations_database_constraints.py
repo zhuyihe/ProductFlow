@@ -20,11 +20,15 @@ from productflow_backend.domain.enums import (
     WorkflowRunStatus,
 )
 from productflow_backend.infrastructure.db.models import (
+    AuditLog,
+    AuthSession,
     CopySet,
     ImageGalleryEntry,
+    ImageSession,
     ImageSessionAsset,
     ImageSessionGenerationTask,
     PosterVariant,
+    Product,
     SourceAsset,
     UserCanvasTemplate,
     WorkflowNode,
@@ -107,7 +111,108 @@ def test_user_canvas_template_model_matches_migration_contract() -> None:
     assert {constraint.name for constraint in table.constraints if isinstance(constraint, sa.UniqueConstraint)} == {
         None
     }
-    assert {index.name for index in table.indexes} == {"ix_user_canvas_templates_archived_at"}
+    assert {index.name for index in table.indexes} == {
+        "ix_user_canvas_templates_archived_at",
+        "ix_user_canvas_templates_owner_user_id",
+    }
+
+
+def test_auth_session_model_matches_migration_contract() -> None:
+    table = AuthSession.__table__
+    assert table.c.id.type.length == 36
+    assert not table.c.id.nullable
+    assert table.c.id.default is not None
+    assert table.c.id.default.arg.__name__ == new_id.__name__
+    assert table.c.principal_kind.type.length == 20
+    assert not table.c.principal_kind.nullable
+    assert table.c.new_api_user_id.type.length == 64
+    assert table.c.new_api_user_id.nullable
+    assert table.c.username.type.length == 255
+    assert table.c.username.nullable
+    assert table.c.email.type.length == 255
+    assert table.c.email.nullable
+    assert table.c.group.type.length == 120
+    assert table.c.group.nullable
+    assert table.c.role.type.length == 80
+    assert table.c.role.nullable
+    assert table.c.new_api_token_id.type.length == 64
+    assert table.c.new_api_token_id.nullable
+    assert table.c.new_api_token_name.type.length == 120
+    assert table.c.new_api_token_name.nullable
+    assert table.c.new_api_token.nullable
+    assert table.c.revoked_at.nullable
+    assert table.c.expires_at.nullable
+    assert not table.c.created_at.nullable
+    assert not table.c.updated_at.nullable
+    assert {index.name for index in table.indexes} == {
+        "ix_auth_sessions_expires_at",
+        "ix_auth_sessions_new_api_user_id",
+    }
+
+
+def test_audit_log_model_matches_migration_contract() -> None:
+    table = AuditLog.__table__
+    assert table.c.id.type.length == 36
+    assert not table.c.id.nullable
+    assert table.c.id.default is not None
+    assert table.c.id.default.arg.__name__ == new_id.__name__
+    assert table.c.admin_user_id.type.length == 64
+    assert not table.c.admin_user_id.nullable
+    assert table.c.admin_session_id.type.length == 36
+    assert table.c.admin_session_id.nullable
+    assert table.c.admin_username.type.length == 255
+    assert table.c.admin_username.nullable
+    assert table.c.target_user_id.type.length == 64
+    assert not table.c.target_user_id.nullable
+    assert table.c.action.type.length == 80
+    assert not table.c.action.nullable
+    assert table.c.resource_type.type.length == 80
+    assert not table.c.resource_type.nullable
+    assert table.c.resource_id.type.length == 120
+    assert not table.c.resource_id.nullable
+    assert table.c.client_address.type.length == 255
+    assert table.c.client_address.nullable
+    assert table.c.user_agent.nullable
+    assert not table.c.created_at.nullable
+    assert table.c.created_at.default is not None
+    assert table.c.created_at.default.arg.__name__ == utcnow.__name__
+    assert {index.name for index in table.indexes} == {
+        "ix_audit_logs_admin_user_id",
+        "ix_audit_logs_created_at",
+        "ix_audit_logs_target_user_id",
+    }
+
+
+def test_multi_user_owner_model_columns_match_migration_contract() -> None:
+    owned_tables = (
+        (Product.__table__, "ix_products_owner_user_id"),
+        (ImageSession.__table__, "ix_image_sessions_owner_user_id"),
+        (UserCanvasTemplate.__table__, "ix_user_canvas_templates_owner_user_id"),
+    )
+    for table, index_name in owned_tables:
+        assert table.c.owner_user_id.type.length == 64
+        assert table.c.owner_user_id.nullable
+        indexes = {index.name: index for index in table.indexes}
+        assert index_name in indexes
+        assert [column.name for column in indexes[index_name].columns] == ["owner_user_id"]
+
+
+def test_generation_task_new_api_token_context_model_columns_match_migration_contract() -> None:
+    task_tables = (
+        (WorkflowRun.__table__, "ix_workflow_runs_new_api_user_id"),
+        (ImageSessionGenerationTask.__table__, "ix_image_session_generation_tasks_new_api_user_id"),
+    )
+    for table, index_name in task_tables:
+        assert table.c.new_api_user_id.type.length == 64
+        assert table.c.new_api_user_id.nullable
+        assert table.c.new_api_token_id.type.length == 64
+        assert table.c.new_api_token_id.nullable
+        assert table.c.new_api_token_name.type.length == 120
+        assert table.c.new_api_token_name.nullable
+        assert table.c.new_api_token.nullable
+        indexes = {index.name: index for index in table.indexes}
+        assert index_name in indexes
+        assert [column.name for column in indexes[index_name].columns] == ["new_api_user_id"]
 
 
 def test_alembic_upgrade_head_supports_sqlite(tmp_path: Path, monkeypatch) -> None:
@@ -126,6 +231,179 @@ def test_alembic_upgrade_head_supports_sqlite(tmp_path: Path, monkeypatch) -> No
     command.upgrade(config, "head")
 
     assert database_path.exists()
+    get_settings.cache_clear()
+
+
+def test_auth_session_migration_schema_and_downgrade_support_sqlite(tmp_path: Path, monkeypatch) -> None:
+    database_path = tmp_path / "auth-session-migration.db"
+    storage_root = tmp_path / "storage"
+    monkeypatch.setenv("ADMIN_ACCESS_KEY", "super-secret-admin-key")
+    monkeypatch.setenv("SESSION_SECRET", "super-secret-session-key-123")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database_path}")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/9")
+    monkeypatch.setenv("STORAGE_ROOT", str(storage_root))
+    get_settings.cache_clear()
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    config = Config(str(backend_dir / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.upgrade(config, "head")
+
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    assert "auth_sessions" in inspector.get_table_names()
+    columns = {column["name"]: column for column in inspector.get_columns("auth_sessions")}
+    assert columns["id"]["nullable"] is False
+    assert columns["principal_kind"]["nullable"] is False
+    assert columns["new_api_user_id"]["nullable"] is True
+    assert columns["new_api_token"]["nullable"] is True
+    assert columns["revoked_at"]["nullable"] is True
+    assert columns["expires_at"]["nullable"] is True
+    assert columns["created_at"]["nullable"] is False
+    assert columns["updated_at"]["nullable"] is False
+    indexes = {index["name"]: index for index in inspector.get_indexes("auth_sessions")}
+    assert indexes["ix_auth_sessions_new_api_user_id"]["column_names"] == ["new_api_user_id"]
+    assert indexes["ix_auth_sessions_expires_at"]["column_names"] == ["expires_at"]
+
+    engine.dispose()
+    command.downgrade(config, "20260513_0028")
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    assert "auth_sessions" not in inspector.get_table_names()
+    engine.dispose()
+    get_settings.cache_clear()
+
+
+def test_resource_owner_columns_migration_schema_and_downgrade_support_sqlite(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "owner-columns-migration.db"
+    storage_root = tmp_path / "storage"
+    monkeypatch.setenv("ADMIN_ACCESS_KEY", "super-secret-admin-key")
+    monkeypatch.setenv("SESSION_SECRET", "super-secret-session-key-123")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database_path}")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/9")
+    monkeypatch.setenv("STORAGE_ROOT", str(storage_root))
+    get_settings.cache_clear()
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    config = Config(str(backend_dir / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.upgrade(config, "head")
+
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    expected = {
+        "products": "ix_products_owner_user_id",
+        "image_sessions": "ix_image_sessions_owner_user_id",
+        "user_canvas_templates": "ix_user_canvas_templates_owner_user_id",
+    }
+    for table_name, index_name in expected.items():
+        columns = {column["name"]: column for column in inspector.get_columns(table_name)}
+        assert columns["owner_user_id"]["nullable"] is True
+        indexes = {index["name"]: index for index in inspector.get_indexes(table_name)}
+        assert indexes[index_name]["column_names"] == ["owner_user_id"]
+
+    engine.dispose()
+    command.downgrade(config, "20260522_0029")
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    for table_name in expected:
+        columns = {column["name"] for column in inspector.get_columns(table_name)}
+        assert "owner_user_id" not in columns
+    engine.dispose()
+    get_settings.cache_clear()
+
+
+def test_generation_task_token_context_migration_schema_and_downgrade_support_sqlite(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "new-api-token-context-migration.db"
+    storage_root = tmp_path / "storage"
+    monkeypatch.setenv("ADMIN_ACCESS_KEY", "super-secret-admin-key")
+    monkeypatch.setenv("SESSION_SECRET", "super-secret-session-key-123")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database_path}")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/9")
+    monkeypatch.setenv("STORAGE_ROOT", str(storage_root))
+    get_settings.cache_clear()
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    config = Config(str(backend_dir / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.upgrade(config, "head")
+
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    expected = {
+        "workflow_runs": "ix_workflow_runs_new_api_user_id",
+        "image_session_generation_tasks": "ix_image_session_generation_tasks_new_api_user_id",
+    }
+    for table_name, index_name in expected.items():
+        columns = {column["name"]: column for column in inspector.get_columns(table_name)}
+        assert columns["new_api_user_id"]["nullable"] is True
+        assert columns["new_api_token_id"]["nullable"] is True
+        assert columns["new_api_token_name"]["nullable"] is True
+        assert columns["new_api_token"]["nullable"] is True
+        indexes = {index["name"]: index for index in inspector.get_indexes(table_name)}
+        assert indexes[index_name]["column_names"] == ["new_api_user_id"]
+
+    engine.dispose()
+    command.downgrade(config, "20260522_0030")
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    for table_name in expected:
+        columns = {column["name"] for column in inspector.get_columns(table_name)}
+        assert not {"new_api_user_id", "new_api_token_id", "new_api_token_name", "new_api_token"} & columns
+    engine.dispose()
+    get_settings.cache_clear()
+
+
+def test_audit_log_migration_schema_and_downgrade_support_sqlite(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "audit-log-migration.db"
+    storage_root = tmp_path / "storage"
+    monkeypatch.setenv("ADMIN_ACCESS_KEY", "super-secret-admin-key")
+    monkeypatch.setenv("SESSION_SECRET", "super-secret-session-key-123")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database_path}")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/9")
+    monkeypatch.setenv("STORAGE_ROOT", str(storage_root))
+    get_settings.cache_clear()
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    config = Config(str(backend_dir / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.upgrade(config, "head")
+
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    assert "audit_logs" in inspector.get_table_names()
+    columns = {column["name"]: column for column in inspector.get_columns("audit_logs")}
+    assert columns["id"]["nullable"] is False
+    assert columns["admin_user_id"]["nullable"] is False
+    assert columns["admin_session_id"]["nullable"] is True
+    assert columns["admin_username"]["nullable"] is True
+    assert columns["target_user_id"]["nullable"] is False
+    assert columns["action"]["nullable"] is False
+    assert columns["resource_type"]["nullable"] is False
+    assert columns["resource_id"]["nullable"] is False
+    assert columns["client_address"]["nullable"] is True
+    assert columns["user_agent"]["nullable"] is True
+    assert columns["created_at"]["nullable"] is False
+    indexes = {index["name"]: index for index in inspector.get_indexes("audit_logs")}
+    assert indexes["ix_audit_logs_admin_user_id"]["column_names"] == ["admin_user_id"]
+    assert indexes["ix_audit_logs_target_user_id"]["column_names"] == ["target_user_id"]
+    assert indexes["ix_audit_logs_created_at"]["column_names"] == ["created_at"]
+
+    engine.dispose()
+    command.downgrade(config, "20260522_0031")
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    assert "audit_logs" not in inspector.get_table_names()
+    engine.dispose()
     get_settings.cache_clear()
 
 

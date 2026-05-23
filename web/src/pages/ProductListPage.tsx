@@ -40,6 +40,11 @@ export function ProductListPage() {
     queryFn: api.getRuntimeConfig,
     staleTime: RUNTIME_CONFIG_STALE_TIME_MS,
   });
+  const sessionQuery = useQuery({
+    queryKey: ["session"],
+    queryFn: api.getSessionState,
+    staleTime: PRODUCT_LIST_STALE_TIME_MS,
+  });
   const products = productsQuery.data?.items ?? [];
   const total = productsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -59,7 +64,7 @@ export function ProductListPage() {
     mutationFn: api.destroySession,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["session"] });
-      navigate("/login", { replace: true });
+      navigate(sessionQuery.data?.sso_start_url ? "/admin-login" : "/login", { replace: true });
     },
   });
 
@@ -92,6 +97,7 @@ export function ProductListPage() {
       <TopNav
         onHome={() => navigate("/products")}
         onLogout={() => logoutMutation.mutate()}
+        session={sessionQuery.data}
       />
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 px-4 pt-4 pb-40 sm:px-6 lg:py-10">

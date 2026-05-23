@@ -60,6 +60,52 @@ class AppSetting(Base, TimestampMixin):
     value: Mapped[str] = mapped_column(Text)
 
 
+class AuthSession(Base, TimestampMixin):
+    """服务端登录会话，浏览器 cookie 只保存不含敏感信息的会话 id。"""
+
+    __tablename__ = "auth_sessions"
+    __table_args__ = (
+        Index("ix_auth_sessions_new_api_user_id", "new_api_user_id"),
+        Index("ix_auth_sessions_expires_at", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    principal_kind: Mapped[str] = mapped_column(String(20), default="user")
+    new_api_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    group: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    new_api_token_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_token_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    new_api_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AuditLog(Base):
+    """管理员跨用户查看或操作用户内容时写入的审计记录。"""
+
+    __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_admin_user_id", "admin_user_id"),
+        Index("ix_audit_logs_target_user_id", "target_user_id"),
+        Index("ix_audit_logs_created_at", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    admin_user_id: Mapped[str] = mapped_column(String(64))
+    admin_session_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    admin_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target_user_id: Mapped[str] = mapped_column(String(64))
+    action: Mapped[str] = mapped_column(String(80))
+    resource_type: Mapped[str] = mapped_column(String(80))
+    resource_id: Mapped[str] = mapped_column(String(120))
+    client_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class ProviderProfile(Base, TimestampMixin):
     """统一供应商档案，持有连接信息和可用能力。"""
 
@@ -105,10 +151,14 @@ class UserCanvasTemplate(Base, TimestampMixin):
     """用户保存的可复用画布节点组模板。"""
 
     __tablename__ = "user_canvas_templates"
-    __table_args__ = (Index("ix_user_canvas_templates_archived_at", "archived_at"),)
+    __table_args__ = (
+        Index("ix_user_canvas_templates_archived_at", "archived_at"),
+        Index("ix_user_canvas_templates_owner_user_id", "owner_user_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     key: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     kind: Mapped[str] = mapped_column(String(40), default="node_group")
@@ -119,8 +169,10 @@ class UserCanvasTemplate(Base, TimestampMixin):
 
 class Product(Base, TimestampMixin):
     __tablename__ = "products"
+    __table_args__ = (Index("ix_products_owner_user_id", "owner_user_id"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     name: Mapped[str] = mapped_column(String(255))
     category: Mapped[str | None] = mapped_column(String(120), nullable=True)
     price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
@@ -259,6 +311,7 @@ class WorkflowRun(Base):
     """一次工作流执行记录。"""
 
     __tablename__ = "workflow_runs"
+    __table_args__ = (Index("ix_workflow_runs_new_api_user_id", "new_api_user_id"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     workflow_id: Mapped[str] = mapped_column(String(36), ForeignKey("product_workflows.id", ondelete="CASCADE"))
@@ -266,6 +319,10 @@ class WorkflowRun(Base):
         enum_value_column(WorkflowRunStatus),
         default=WorkflowRunStatus.RUNNING,
     )
+    new_api_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_token_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_token_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    new_api_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -421,8 +478,10 @@ class ImageSession(Base, TimestampMixin):
     """连续生图会话，含多轮对话历史与生成结果。"""
 
     __tablename__ = "image_sessions"
+    __table_args__ = (Index("ix_image_sessions_owner_user_id", "owner_user_id"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     product_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("products.id", ondelete="CASCADE"),
@@ -516,11 +575,16 @@ class ImageSessionGenerationTask(Base):
     __table_args__ = (
         Index("ix_image_session_generation_tasks_session_id", "session_id"),
         Index("ix_image_session_generation_tasks_status", "status"),
+        Index("ix_image_session_generation_tasks_new_api_user_id", "new_api_user_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     session_id: Mapped[str] = mapped_column(String(36), ForeignKey("image_sessions.id", ondelete="CASCADE"))
     status: Mapped[JobStatus] = mapped_column(enum_value_column(JobStatus), default=JobStatus.QUEUED)
+    new_api_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_token_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_token_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    new_api_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     prompt: Mapped[str] = mapped_column(Text)
     size: Mapped[str] = mapped_column(String(32))
     base_asset_id: Mapped[str | None] = mapped_column(

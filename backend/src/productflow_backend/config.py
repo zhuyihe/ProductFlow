@@ -122,6 +122,13 @@ class Settings(BaseSettings):
     admin_access_key: str = Field(min_length=8)
     settings_access_token: str | None = None
     session_secret: str = Field(min_length=16)
+    new_api_base_url: str | None = None
+    new_api_relay_base_url: str | None = None
+    new_api_sso_start_url: str | None = None
+    new_api_sso_verify_url: str | None = None
+    new_api_sso_verify_path: str = "/api/productflow/sso/verify"
+    new_api_sso_shared_secret: str | None = None
+    new_api_sso_timeout_seconds: int = Field(default=10, ge=1, le=60)
 
     database_url: str
     redis_url: str
@@ -222,6 +229,25 @@ class Settings(BaseSettings):
         normalized = "" if value is None else str(value).strip()
         return normalized or None
 
+    @field_validator(
+        "new_api_base_url",
+        "new_api_relay_base_url",
+        "new_api_sso_start_url",
+        "new_api_sso_verify_url",
+        "new_api_sso_shared_secret",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_optional_new_api_text(cls, value: Any) -> str | None:
+        normalized = "" if value is None else str(value).strip()
+        return normalized or None
+
+    @field_validator("new_api_sso_verify_path", mode="before")
+    @classmethod
+    def _normalize_new_api_sso_verify_path(cls, value: Any) -> str:
+        normalized = str(value or "").strip() or "/api/productflow/sso/verify"
+        return normalized if normalized.startswith("/") else f"/{normalized}"
+
     @field_validator("image_tool_output_compression", "image_tool_partial_images", "image_tool_n", mode="before")
     @classmethod
     def _normalize_optional_image_tool_int(cls, value: Any) -> int | None:
@@ -265,6 +291,18 @@ def get_settings() -> Settings:
     """
 
     return Settings()
+
+
+def resolve_new_api_relay_base_url(settings: Settings | None = None) -> str | None:
+    resolved_settings = settings or get_settings()
+    if resolved_settings.new_api_relay_base_url:
+        return resolved_settings.new_api_relay_base_url.rstrip("/")
+    if not resolved_settings.new_api_base_url:
+        return None
+    base_url = resolved_settings.new_api_base_url.rstrip("/")
+    if base_url.endswith("/v1"):
+        return base_url
+    return f"{base_url}/v1"
 
 
 CONFIG_DEFINITIONS: tuple[ConfigDefinition, ...] = (

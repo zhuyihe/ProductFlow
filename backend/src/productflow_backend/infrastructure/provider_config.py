@@ -61,6 +61,12 @@ class ResolvedTextProviderConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class ProviderCredentialOverride:
+    api_key: str
+    base_url: str
+
+
+@dataclass(frozen=True, slots=True)
 class ResolvedImageProviderConfig:
     provider_kind: Literal["mock", "openai_responses", "openai_images", "google_gemini_image"]
     model: str
@@ -368,7 +374,9 @@ def normalize_provider_binding_model_settings(*, purpose: str, model_settings: d
     return _normalize_binding_model_settings(purpose=purpose, model_settings=model_settings)
 
 
-def resolve_text_provider_config() -> ResolvedTextProviderConfig:
+def resolve_text_provider_config(
+    credential_override: ProviderCredentialOverride | None = None,
+) -> ResolvedTextProviderConfig:
     session = get_session_factory()()
     try:
         ensure_provider_config_bootstrapped(session)
@@ -401,14 +409,16 @@ def resolve_text_provider_config() -> ResolvedTextProviderConfig:
             brief_model=brief_model,
             copy_model=copy_model,
             provider_profile_id=profile.id,
-            api_key=profile.api_key,
-            base_url=profile.base_url,
+            api_key=credential_override.api_key if credential_override is not None else profile.api_key,
+            base_url=credential_override.base_url if credential_override is not None else profile.base_url,
         )
     finally:
         session.close()
 
 
-def resolve_image_provider_config() -> ResolvedImageProviderConfig:
+def resolve_image_provider_config(
+    credential_override: ProviderCredentialOverride | None = None,
+) -> ResolvedImageProviderConfig:
     session = get_session_factory()()
     try:
         ensure_provider_config_bootstrapped(session)
@@ -421,6 +431,8 @@ def resolve_image_provider_config() -> ResolvedImageProviderConfig:
             )
         if kind not in {"openai_responses", "openai_images", "google_gemini_image"}:
             raise RuntimeError(f"暂不支持的图片 provider: {kind}")
+        if credential_override is not None and kind == "google_gemini_image":
+            raise RuntimeError("New API relay 当前只支持 OpenAI 兼容图片 provider")
         profile = _require_active_profile(binding)
         capability = _capability_for_kind(kind)
         _require_capability(profile, capability)
@@ -434,8 +446,8 @@ def resolve_image_provider_config() -> ResolvedImageProviderConfig:
                 fallback_key="image_model",
             ),
             provider_profile_id=profile.id,
-            api_key=profile.api_key,
-            base_url=profile.base_url,
+            api_key=credential_override.api_key if credential_override is not None else profile.api_key,
+            base_url=credential_override.base_url if credential_override is not None else profile.base_url,
             images_quality=(
                 _optional_str(binding.config_json.get("images_quality")) if kind == "openai_images" else None
             ),

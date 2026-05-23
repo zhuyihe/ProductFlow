@@ -40,6 +40,10 @@ export function GalleryPage() {
     queryKey: ["gallery"],
     queryFn: api.listGalleryEntries,
   });
+  const sessionQuery = useQuery({
+    queryKey: ["session"],
+    queryFn: api.getSessionState,
+  });
   const entries = galleryQuery.data?.items ?? [];
 
   useEffect(() => {
@@ -70,13 +74,18 @@ export function GalleryPage() {
     mutationFn: api.destroySession,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["session"] });
-      navigate("/login", { replace: true });
+      navigate(sessionQuery.data?.sso_start_url ? "/admin-login" : "/login", { replace: true });
     },
   });
 
   return (
     <div className="min-h-screen bg-[#07111d] text-slate-950">
-      <TopNav breadcrumbs={t("gallery.title")} onHome={() => navigate("/products")} onLogout={() => logoutMutation.mutate()} />
+      <TopNav
+        breadcrumbs={t("gallery.title")}
+        onHome={() => navigate("/products")}
+        onLogout={() => logoutMutation.mutate()}
+        session={sessionQuery.data}
+      />
 
       <main className="w-full">
         {galleryQuery.isLoading ? (

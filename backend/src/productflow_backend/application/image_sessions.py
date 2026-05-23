@@ -11,7 +11,7 @@ from typing import Any, Literal, cast
 from dramatiq.middleware.time_limit import TimeLimitExceeded
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 
 from productflow_backend.application.admission import (
@@ -21,6 +21,7 @@ from productflow_backend.application.admission import (
     get_generation_task_queue_metadata,
     get_queued_generation_positions,
 )
+from productflow_backend.application.auth_sessions import Principal
 from productflow_backend.application.image_generation_core import (
     normalize_image_generation_tool_options,
     provider_output_with_actual_image_size,
@@ -29,6 +30,12 @@ from productflow_backend.application.image_generation_core import (
 from productflow_backend.application.image_generation_failures import (
     ImageGenerationFailureDecision,
     classify_image_generation_failure,
+)
+from productflow_backend.application.provider_runtime import (
+    provider_credential_override_from_context,
+    provider_execution_context_from_image_generation_task,
+    provider_execution_context_from_principal,
+    provider_execution_context_values,
 )
 from productflow_backend.application.queue_submission import enqueue_or_mark_failed
 from productflow_backend.application.time import now_utc
@@ -52,6 +59,7 @@ from productflow_backend.infrastructure.db.session import get_session_factory
 from productflow_backend.infrastructure.image.base import infer_extension
 from productflow_backend.infrastructure.image.chat_service import ImageChatService, ImageChatTurn
 from productflow_backend.infrastructure.image.responses_provider import PROVIDER_TEXT_OUTPUT_MESSAGE
+from productflow_backend.infrastructure.provider_config import resolve_image_provider_config
 from productflow_backend.infrastructure.queue import (
     enqueue_image_session_generation_task,
     enqueue_image_session_generation_task_later,
@@ -115,8 +123,8 @@ class ImageSessionGenerationCancelledError(Exception):
     """Raised inside worker execution when durable cancellation is observed."""
 
 
-def _image_session_query():
-    return (
+def _image_session_query(*, owner_user_id: str | None = None):
+    stmt = (
         select(ImageSession)
         .options(
             selectinload(ImageSession.assets),
@@ -126,14 +134,26 @@ def _image_session_query():
         )
         .order_by(desc(ImageSession.updated_at))
     )
+    if owner_user_id is not None:
+        stmt = stmt.where(ImageSession.owner_user_id == owner_user_id)
+    return stmt
 
 
-def _image_session_status_query():
-    return select(ImageSession).options(selectinload(ImageSession.generation_tasks))
+def _image_session_status_query(*, owner_user_id: str | None = None):
+    stmt = select(ImageSession).options(selectinload(ImageSession.generation_tasks))
+    if owner_user_id is not None:
+        stmt = stmt.where(ImageSession.owner_user_id == owner_user_id)
+    return stmt
 
 
-def _get_image_session_or_raise(session: Session, image_session_id: str) -> ImageSession:
-    image_session = session.scalar(_image_session_query().where(ImageSession.id == image_session_id))
+def _get_image_session_or_raise(
+    session: Session,
+    image_session_id: str,
+    owner_user_id: str | None = None,
+) -> ImageSession:
+    image_session = session.scalar(
+        _image_session_query(owner_user_id=owner_user_id).where(ImageSession.id == image_session_id)
+    )
     if image_session is None:
         raise NotFoundError("连续生图会话不存在")
     _attach_generation_task_queue_metadata(session, image_session)
@@ -153,13 +173,36 @@ def _attach_generation_task_queue_metadata(session: Session, image_session: Imag
         task.__dict__["_queue_metadata"] = metadata
 
 
-def _get_product_or_raise(session: Session, product_id: str) -> Product:
-    product = session.scalar(
-        select(Product).options(selectinload(Product.source_assets)).where(Product.id == product_id)
-    )
+def _get_product_or_raise(session: Session, product_id: str, owner_user_id: str | None = None) -> Product:
+    stmt = select(Product).options(selectinload(Product.source_assets)).where(Product.id == product_id)
+    if owner_user_id is not None:
+        stmt = stmt.where(Product.owner_user_id == owner_user_id)
+    product = session.scalar(stmt)
     if product is None:
         raise NotFoundError("商品不存在")
     return product
+
+
+def get_image_session_asset_or_raise(
+    session: Session,
+    asset_id: str,
+    *,
+    owner_user_id: str | None = None,
+    detail: str = "会话图片不存在",
+) -> ImageSessionAsset:
+    stmt = (
+        select(ImageSessionAsset)
+        .options(joinedload(ImageSessionAsset.session))
+        .where(ImageSessionAsset.id == asset_id)
+    )
+    if owner_user_id is not None:
+        stmt = stmt.join(ImageSession, ImageSessionAsset.session_id == ImageSession.id).where(
+            ImageSession.owner_user_id == owner_user_id
+        )
+    asset = session.scalar(stmt)
+    if asset is None:
+        raise NotFoundError(detail)
+    return asset
 
 
 def _session_data_url(storage: LocalStorage, path: str, mime_type: str) -> str:
@@ -332,8 +375,9 @@ def list_image_sessions(
     session: Session,
     *,
     product_id: str | None = None,
+    owner_user_id: str | None = None,
 ) -> list[ImageSession]:
-    stmt = _image_session_query()
+    stmt = _image_session_query(owner_user_id=owner_user_id)
     if product_id is None:
         stmt = stmt.where(ImageSession.product_id.is_(None))
     else:
@@ -341,12 +385,22 @@ def list_image_sessions(
     return list(session.scalars(stmt).all())
 
 
-def get_image_session_detail(session: Session, image_session_id: str) -> ImageSession:
-    return _get_image_session_or_raise(session, image_session_id)
+def get_image_session_detail(
+    session: Session,
+    image_session_id: str,
+    owner_user_id: str | None = None,
+) -> ImageSession:
+    return _get_image_session_or_raise(session, image_session_id, owner_user_id)
 
 
-def get_image_session_status(session: Session, image_session_id: str) -> ImageSessionStatusSnapshot:
-    image_session = session.scalar(_image_session_status_query().where(ImageSession.id == image_session_id))
+def get_image_session_status(
+    session: Session,
+    image_session_id: str,
+    owner_user_id: str | None = None,
+) -> ImageSessionStatusSnapshot:
+    image_session = session.scalar(
+        _image_session_status_query(owner_user_id=owner_user_id).where(ImageSession.id == image_session_id)
+    )
     if image_session is None:
         raise NotFoundError("连续生图会话不存在")
     _attach_generation_task_queue_metadata(session, image_session)
@@ -391,12 +445,13 @@ def create_image_session(
     session: Session,
     *,
     product_id: str | None,
+    owner_user_id: str | None = None,
     title: str | None = None,
 ) -> ImageSession:
     if product_id:
-        _get_product_or_raise(session, product_id)
+        _get_product_or_raise(session, product_id, owner_user_id)
     normalized_title = (title or DEFAULT_SESSION_TITLE).strip() or DEFAULT_SESSION_TITLE
-    image_session = ImageSession(product_id=product_id, title=normalized_title)
+    image_session = ImageSession(owner_user_id=owner_user_id, product_id=product_id, title=normalized_title)
     session.add(image_session)
     session.commit()
     session.expire_all()
@@ -408,8 +463,9 @@ def update_image_session(
     *,
     image_session_id: str,
     title: str,
+    owner_user_id: str | None = None,
 ) -> ImageSession:
-    image_session = _get_image_session_or_raise(session, image_session_id)
+    image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
     image_session.title = title.strip() or DEFAULT_SESSION_TITLE
     image_session.updated_at = now_utc()
     session.commit()
@@ -421,9 +477,10 @@ def delete_image_session(
     session: Session,
     *,
     image_session_id: str,
+    owner_user_id: str | None = None,
     storage: LocalStorage | None = None,
 ) -> None:
-    image_session = _get_image_session_or_raise(session, image_session_id)
+    image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
     storage = storage or LocalStorage()
     session.delete(image_session)
     session.commit()
@@ -434,10 +491,11 @@ def add_image_session_reference_images(
     session: Session,
     *,
     image_session_id: str,
+    owner_user_id: str | None = None,
     reference_image_uploads: list[tuple[bytes, str, str]],
     storage: LocalStorage | None = None,
 ) -> ImageSession:
-    image_session = _get_image_session_or_raise(session, image_session_id)
+    image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
     storage = storage or LocalStorage()
     for content, filename, mime_type in reference_image_uploads:
         relative_path = storage.save_image_session_reference(image_session.id, filename, content)
@@ -461,9 +519,10 @@ def delete_image_session_reference_image(
     *,
     image_session_id: str,
     asset_id: str,
+    owner_user_id: str | None = None,
     storage: LocalStorage | None = None,
 ) -> ImageSession:
-    image_session = _get_image_session_or_raise(session, image_session_id)
+    image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
     asset = next((item for item in image_session.assets if item.id == asset_id), None)
     if asset is None:
         raise NotFoundError("会话参考图不存在")
@@ -477,7 +536,7 @@ def delete_image_session_reference_image(
     session.commit()
     storage.delete_image_with_variants(storage_path)
     session.expire_all()
-    return _get_image_session_or_raise(session, image_session.id)
+    return _get_image_session_or_raise(session, image_session.id, owner_user_id)
 
 
 def _execute_image_session_round_generation(
@@ -498,7 +557,17 @@ def _execute_image_session_round_generation(
     storage = storage or LocalStorage()
     generation_task = session.get(ImageSessionGenerationTask, generation_task_id) if generation_task_id else None
     normalized_tool_options = _normalize_tool_options(tool_options)
-    service = ImageChatService()
+    provider_context = (
+        provider_execution_context_from_image_generation_task(generation_task)
+        if generation_task is not None
+        else None
+    )
+    provider_config = (
+        resolve_image_provider_config(provider_credential_override_from_context(provider_context))
+        if provider_context is not None
+        else None
+    )
+    service = ImageChatService(provider_config=provider_config)
     normalized_size, normalized_base_asset_id, normalized_reference_ids = _validate_generation_request(
         image_session,
         size=size,
@@ -752,16 +821,19 @@ def create_image_session_generation_task(
     session: Session,
     *,
     image_session_id: str,
+    owner_user_id: str | None = None,
     prompt: str,
     size: str,
     base_asset_id: str | None = None,
     selected_reference_asset_ids: list[str] | None = None,
     generation_count: int = 1,
     tool_options: dict[str, Any] | None = None,
+    principal: Principal | None = None,
 ) -> ImageSessionGenerationTaskCreationResult:
     """校验并创建连续生图 durable 任务；不调用 provider。"""
-    image_session = _get_image_session_or_raise(session, image_session_id)
+    image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
     normalized_tool_options = _normalize_tool_options(tool_options)
+    provider_context = provider_execution_context_from_principal(principal)
     normalized_size, normalized_base_asset_id, normalized_reference_ids = _validate_generation_request(
         image_session,
         size=size,
@@ -774,6 +846,7 @@ def create_image_session_generation_task(
     task = ImageSessionGenerationTask(
         session_id=image_session.id,
         status=JobStatus.QUEUED,
+        **provider_execution_context_values(provider_context),
         prompt=prompt.strip(),
         size=normalized_size,
         base_asset_id=normalized_base_asset_id,
@@ -787,7 +860,7 @@ def create_image_session_generation_task(
     session.expire_all()
     return ImageSessionGenerationTaskCreationResult(
         task=session.get(ImageSessionGenerationTask, task.id) or task,
-        image_session=_get_image_session_or_raise(session, image_session.id),
+        image_session=_get_image_session_or_raise(session, image_session.id, owner_user_id),
     )
 
 
@@ -795,6 +868,7 @@ def submit_image_session_generation_task(
     session: Session,
     *,
     image_session_id: str,
+    owner_user_id: str | None = None,
     prompt: str,
     size: str,
     base_asset_id: str | None = None,
@@ -802,16 +876,19 @@ def submit_image_session_generation_task(
     generation_count: int = 1,
     tool_options: dict[str, Any] | None = None,
     enqueue: Callable[[str], None] | None = None,
+    principal: Principal | None = None,
 ) -> ImageSession:
     result = create_image_session_generation_task(
         session,
         image_session_id=image_session_id,
+        owner_user_id=owner_user_id,
         prompt=prompt,
         size=size,
         base_asset_id=base_asset_id,
         selected_reference_asset_ids=selected_reference_asset_ids,
         generation_count=generation_count,
         tool_options=tool_options,
+        principal=principal,
     )
     enqueue_or_mark_failed(
         result.task.id,
@@ -823,7 +900,7 @@ def submit_image_session_generation_task(
         ),
     )
     session.expire_all()
-    return get_image_session_detail(session, image_session_id)
+    return get_image_session_detail(session, image_session_id, owner_user_id)
 
 
 def retry_image_session_generation_task(
@@ -831,9 +908,10 @@ def retry_image_session_generation_task(
     *,
     image_session_id: str,
     task_id: str,
+    owner_user_id: str | None = None,
     enqueue: Callable[[str], None] | None = None,
 ) -> ImageSession:
-    _get_image_session_or_raise(session, image_session_id)
+    _get_image_session_or_raise(session, image_session_id, owner_user_id)
     task = session.scalar(
         select(ImageSessionGenerationTask).where(
             ImageSessionGenerationTask.id == task_id,
@@ -862,7 +940,7 @@ def retry_image_session_generation_task(
         ),
     )
     session.expire_all()
-    return get_image_session_detail(session, image_session_id)
+    return get_image_session_detail(session, image_session_id, owner_user_id)
 
 
 def cancel_image_session_generation_task(
@@ -870,8 +948,9 @@ def cancel_image_session_generation_task(
     *,
     image_session_id: str,
     task_id: str,
+    owner_user_id: str | None = None,
 ) -> ImageSession:
-    _get_image_session_or_raise(session, image_session_id)
+    _get_image_session_or_raise(session, image_session_id, owner_user_id)
     task = session.scalar(
         select(ImageSessionGenerationTask).where(
             ImageSessionGenerationTask.id == task_id,
@@ -881,7 +960,7 @@ def cancel_image_session_generation_task(
     if task is None:
         raise NotFoundError("生成任务不存在")
     if task.status == JobStatus.CANCELLED:
-        return get_image_session_detail(session, image_session_id)
+        return get_image_session_detail(session, image_session_id, owner_user_id)
     if task.status in {JobStatus.SUCCEEDED, JobStatus.FAILED}:
         raise BusinessValidationError("已结束的生成任务不能取消")
 
@@ -894,7 +973,7 @@ def cancel_image_session_generation_task(
         is_retryable=False,
     )
     session.expire_all()
-    return get_image_session_detail(session, image_session_id)
+    return get_image_session_detail(session, image_session_id, owner_user_id)
 
 
 def mark_image_session_generation_task_enqueue_failed(session: Session, *, task_id: str, reason: str) -> None:
@@ -1304,10 +1383,11 @@ def attach_image_session_asset_to_product(
     asset_id: str,
     target: ATTACH_TARGET,
     product_id: str | None,
+    owner_user_id: str | None = None,
     storage: LocalStorage | None = None,
 ) -> Product:
     """将生图结果写回商品（设为参考图或替换主图）。"""
-    image_session = _get_image_session_or_raise(session, image_session_id)
+    image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
     asset = next((item for item in image_session.assets if item.id == asset_id), None)
     if asset is None:
         raise NotFoundError("会话图片不存在")
@@ -1317,7 +1397,7 @@ def attach_image_session_asset_to_product(
     resolved_product_id = product_id or image_session.product_id
     if not resolved_product_id:
         raise BusinessValidationError("请选择要写回的商品")
-    product = _get_product_or_raise(session, resolved_product_id)
+    product = _get_product_or_raise(session, resolved_product_id, owner_user_id)
 
     storage = storage or LocalStorage()
     image_bytes = storage.resolve(asset.storage_path).read_bytes()
@@ -1350,4 +1430,4 @@ def attach_image_session_asset_to_product(
     product.updated_at = now_utc()
     session.commit()
     session.expire_all()
-    return _get_product_or_raise(session, product.id)
+    return _get_product_or_raise(session, product.id, owner_user_id)

@@ -61,8 +61,8 @@ def workflow_status_query():
     )
 
 
-def get_product_or_raise(session: Session, product_id: str) -> Product:
-    product = session.scalar(
+def get_product_or_raise(session: Session, product_id: str, owner_user_id: str | None = None) -> Product:
+    stmt = (
         select(Product)
         .options(
             selectinload(Product.source_assets),
@@ -73,23 +73,34 @@ def get_product_or_raise(session: Session, product_id: str) -> Product:
         )
         .where(Product.id == product_id)
     )
+    if owner_user_id is not None:
+        stmt = stmt.where(Product.owner_user_id == owner_user_id)
+    product = session.scalar(stmt)
     if product is None:
         raise NotFoundError("商品不存在")
     return product
 
 
-def get_workflow_or_raise(session: Session, workflow_id: str) -> ProductWorkflow:
-    workflow = session.scalar(workflow_query().where(ProductWorkflow.id == workflow_id))
+def get_workflow_or_raise(session: Session, workflow_id: str, owner_user_id: str | None = None) -> ProductWorkflow:
+    stmt = workflow_query().where(ProductWorkflow.id == workflow_id)
+    if owner_user_id is not None:
+        stmt = stmt.join(Product, ProductWorkflow.product_id == Product.id).where(
+            Product.owner_user_id == owner_user_id
+        )
+    workflow = session.scalar(stmt)
     if workflow is None:
         raise NotFoundError("工作流不存在")
     attach_workflow_run_queue_metadata(session, workflow.runs)
     return workflow
 
 
-def get_active_workflow(session: Session, product_id: str) -> ProductWorkflow | None:
-    workflow = session.scalar(
-        workflow_query().where(ProductWorkflow.product_id == product_id, ProductWorkflow.active.is_(True))
-    )
+def get_active_workflow(session: Session, product_id: str, owner_user_id: str | None = None) -> ProductWorkflow | None:
+    stmt = workflow_query().where(ProductWorkflow.product_id == product_id, ProductWorkflow.active.is_(True))
+    if owner_user_id is not None:
+        stmt = stmt.join(Product, ProductWorkflow.product_id == Product.id).where(
+            Product.owner_user_id == owner_user_id
+        )
+    workflow = session.scalar(stmt)
     if workflow is not None:
         attach_workflow_run_queue_metadata(session, workflow.runs)
     return workflow
@@ -107,12 +118,19 @@ def attach_workflow_run_queue_metadata(session: Session, runs: list[WorkflowRun]
         )
 
 
-def get_active_workflow_status(session: Session, product_id: str) -> ProductWorkflowStatusSnapshot:
-    workflow = session.scalar(
-        workflow_status_query().where(ProductWorkflow.product_id == product_id, ProductWorkflow.active.is_(True))
-    )
+def get_active_workflow_status(
+    session: Session,
+    product_id: str,
+    owner_user_id: str | None = None,
+) -> ProductWorkflowStatusSnapshot:
+    stmt = workflow_status_query().where(ProductWorkflow.product_id == product_id, ProductWorkflow.active.is_(True))
+    if owner_user_id is not None:
+        stmt = stmt.join(Product, ProductWorkflow.product_id == Product.id).where(
+            Product.owner_user_id == owner_user_id
+        )
+    workflow = session.scalar(stmt)
     if workflow is None:
-        get_product_or_raise(session, product_id)
+        get_product_or_raise(session, product_id, owner_user_id)
         raise NotFoundError("工作流不存在")
     nodes = list(
         session.scalars(
@@ -197,15 +215,31 @@ def get_active_workflow_status(session: Session, product_id: str) -> ProductWork
     )
 
 
-def get_node_or_raise(session: Session, node_id: str) -> WorkflowNode:
-    node = session.get(WorkflowNode, node_id)
+def get_node_or_raise(session: Session, node_id: str, owner_user_id: str | None = None) -> WorkflowNode:
+    if owner_user_id is None:
+        node = session.get(WorkflowNode, node_id)
+    else:
+        node = session.scalar(
+            select(WorkflowNode)
+            .join(ProductWorkflow, WorkflowNode.workflow_id == ProductWorkflow.id)
+            .join(Product, ProductWorkflow.product_id == Product.id)
+            .where(WorkflowNode.id == node_id, Product.owner_user_id == owner_user_id)
+        )
     if node is None:
         raise NotFoundError("工作流节点不存在")
     return node
 
 
-def get_edge_or_raise(session: Session, edge_id: str) -> WorkflowEdge:
-    edge = session.get(WorkflowEdge, edge_id)
+def get_edge_or_raise(session: Session, edge_id: str, owner_user_id: str | None = None) -> WorkflowEdge:
+    if owner_user_id is None:
+        edge = session.get(WorkflowEdge, edge_id)
+    else:
+        edge = session.scalar(
+            select(WorkflowEdge)
+            .join(ProductWorkflow, WorkflowEdge.workflow_id == ProductWorkflow.id)
+            .join(Product, ProductWorkflow.product_id == Product.id)
+            .where(WorkflowEdge.id == edge_id, Product.owner_user_id == owner_user_id)
+        )
     if edge is None:
         raise NotFoundError("工作流连线不存在")
     return edge

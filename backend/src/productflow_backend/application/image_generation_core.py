@@ -34,8 +34,12 @@ def unique_image_generation_ids(ids: list[str] | None) -> list[str]:
     return values
 
 
-def normalize_image_generation_tool_options(tool_options: dict[str, Any] | None) -> dict[str, Any] | None:
-    normalized = filter_image_tool_options(tool_options)
+def normalize_image_generation_tool_options(
+    tool_options: dict[str, Any] | None,
+    *,
+    allowed_fields: tuple[str, ...] | None = None,
+) -> dict[str, Any] | None:
+    normalized = filter_image_tool_options(tool_options, allowed_fields=allowed_fields)
     if not normalized:
         return None
     normalized.pop("n", None)

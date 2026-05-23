@@ -44,7 +44,7 @@ from productflow_backend.infrastructure.provider_config import (
     validate_provider_capabilities,
     validate_provider_profile_contract,
 )
-from productflow_backend.presentation.deps import get_session, require_admin
+from productflow_backend.presentation.deps import get_session, require_admin, require_workspace_principal
 from productflow_backend.presentation.schemas.settings import (
     ConfigItemResponse,
     ConfigOptionResponse,
@@ -68,6 +68,11 @@ from productflow_backend.presentation.schemas.settings import (
 )
 
 router = APIRouter(prefix="/api/settings", tags=["settings"], dependencies=[Depends(require_admin)])
+runtime_router = APIRouter(
+    prefix="/api/settings",
+    tags=["settings"],
+    dependencies=[Depends(require_workspace_principal)],
+)
 SETTINGS_EXPORT_SCHEMA_VERSION = 1
 SETTINGS_EXPORT_COMPATIBILITY = "productflow-settings-v1"
 
@@ -406,43 +411,43 @@ def _build_settings_import_bundle(payload: Any) -> _SettingsImportBundle:
 
 
 def _apply_settings_import_bundle(session: Session, bundle: _SettingsImportBundle) -> None:
-    with session.begin():
-        for key, value in bundle.normalized_runtime_config.items():
-            existing = session.get(AppSetting, key)
-            if existing is None:
-                session.add(AppSetting(key=key, value=value))
-            else:
-                existing.value = value
+    for key, value in bundle.normalized_runtime_config.items():
+        existing = session.get(AppSetting, key)
+        if existing is None:
+            session.add(AppSetting(key=key, value=value))
+        else:
+            existing.value = value
 
-        session.execute(delete(ProviderBinding))
-        session.execute(delete(ProviderProfile))
-        session.flush()
+    session.execute(delete(ProviderBinding))
+    session.execute(delete(ProviderProfile))
+    session.flush()
 
-        for profile in bundle.provider_profiles:
-            session.add(
-                ProviderProfile(
-                    id=profile["id"],
-                    name=profile["name"],
-                    provider_type=profile["provider_type"],
-                    base_url=profile["base_url"],
-                    api_key=profile["api_key"],
-                    capabilities_json=profile["capabilities_json"],
-                    default_models_json=profile["default_models_json"],
-                    config_json=profile["config_json"],
-                    enabled=profile["enabled"],
-                )
+    for profile in bundle.provider_profiles:
+        session.add(
+            ProviderProfile(
+                id=profile["id"],
+                name=profile["name"],
+                provider_type=profile["provider_type"],
+                base_url=profile["base_url"],
+                api_key=profile["api_key"],
+                capabilities_json=profile["capabilities_json"],
+                default_models_json=profile["default_models_json"],
+                config_json=profile["config_json"],
+                enabled=profile["enabled"],
             )
-        session.flush()
-        for binding in bundle.provider_bindings:
-            session.add(
-                ProviderBinding(
-                    purpose=binding["purpose"],
-                    provider_kind=binding["provider_kind"],
-                    provider_profile_id=binding["provider_profile_id"],
-                    model_settings_json=binding["model_settings_json"],
-                    config_json=binding["config_json"],
-                )
+        )
+    session.flush()
+    for binding in bundle.provider_bindings:
+        session.add(
+            ProviderBinding(
+                purpose=binding["purpose"],
+                provider_kind=binding["provider_kind"],
+                provider_profile_id=binding["provider_profile_id"],
+                model_settings_json=binding["model_settings_json"],
+                config_json=binding["config_json"],
             )
+        )
+    session.commit()
     session.expire_all()
 
 
@@ -630,7 +635,7 @@ def update_provider_binding_endpoint(
     return _serialize_provider_binding(binding)
 
 
-@router.get("/runtime", response_model=RuntimeConfigResponse)
+@runtime_router.get("/runtime", response_model=RuntimeConfigResponse)
 def get_runtime_config_endpoint() -> RuntimeConfigResponse:
     settings = get_runtime_settings()
     return RuntimeConfigResponse(

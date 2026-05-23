@@ -1684,6 +1684,10 @@ export function SettingsPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const sessionQuery = useQuery({
+    queryKey: ["session"],
+    queryFn: api.getSessionState,
+  });
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftValue>>({});
   const [draftSnapshots, setDraftSnapshots] = useState<Record<string, DraftSnapshot>>({});
@@ -2009,7 +2013,7 @@ export function SettingsPage() {
       queryClient.removeQueries({ queryKey: ["config"] });
       queryClient.removeQueries({ queryKey: ["provider-config"] });
       await queryClient.invalidateQueries({ queryKey: ["session"] });
-      navigate("/login", { replace: true });
+      navigate(sessionQuery.data?.sso_start_url ? "/admin-login" : "/login", { replace: true });
     },
   });
 
@@ -2059,6 +2063,7 @@ export function SettingsPage() {
         breadcrumbs={t("settings.breadcrumb")}
         onHome={() => navigate("/products")}
         onLogout={() => logoutMutation.mutate()}
+        session={sessionQuery.data}
       />
 
       <main className="mx-auto flex w-full max-w-[1440px] flex-1">

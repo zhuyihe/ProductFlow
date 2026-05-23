@@ -199,18 +199,22 @@ def apply_workflow_node_patch(
     return changed
 
 
-def get_or_create_product_workflow(session: Session, product_id: str) -> ProductWorkflow:
-    existing = product_workflow_graph.get_active_workflow(session, product_id)
+def get_or_create_product_workflow(
+    session: Session,
+    product_id: str,
+    owner_user_id: str | None = None,
+) -> ProductWorkflow:
+    existing = product_workflow_graph.get_active_workflow(session, product_id, owner_user_id)
     if existing is not None:
         if _normalize_product_context_singleton(session, existing):
             session.commit()
             session.expire_all()
             return product_workflow_graph.get_active_workflow(
-                session, product_id
-            ) or product_workflow_graph.get_workflow_or_raise(session, existing.id)
+                session, product_id, owner_user_id
+            ) or product_workflow_graph.get_workflow_or_raise(session, existing.id, owner_user_id)
         return existing
 
-    product = product_workflow_graph.get_product_or_raise(session, product_id)
+    product = product_workflow_graph.get_product_or_raise(session, product_id, owner_user_id)
     workflow = ProductWorkflow(
         product_id=product.id,
         title=product_workflow_graph.DEFAULT_WORKFLOW_TITLE,
@@ -232,27 +236,28 @@ def get_or_create_product_workflow(session: Session, product_id: str) -> Product
         session.commit()
     except IntegrityError:
         session.rollback()
-        existing = product_workflow_graph.get_active_workflow(session, product_id)
+        existing = product_workflow_graph.get_active_workflow(session, product_id, owner_user_id)
         if existing is not None:
             return existing
         raise
     session.expire_all()
     return product_workflow_graph.get_active_workflow(
-        session, product_id
-    ) or product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+        session, product_id, owner_user_id
+    ) or product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
 
 
 def create_workflow_node(
     session: Session,
     *,
     product_id: str,
+    owner_user_id: str | None = None,
     node_type: WorkflowNodeType,
     title: str,
     position_x: int,
     position_y: int,
     config_json: dict[str, Any] | None,
 ) -> ProductWorkflow:
-    workflow = get_or_create_product_workflow(session, product_id)
+    workflow = get_or_create_product_workflow(session, product_id, owner_user_id)
     if node_type == WorkflowNodeType.PRODUCT_CONTEXT and any(
         node.node_type == WorkflowNodeType.PRODUCT_CONTEXT for node in workflow.nodes
     ):
@@ -269,7 +274,7 @@ def create_workflow_node(
     workflow.updated_at = now_utc()
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
 
 
 def apply_node_group_template_to_workflow(
@@ -279,6 +284,7 @@ def apply_node_group_template_to_workflow(
     template_key: str,
     position_x: int,
     position_y: int,
+    owner_user_id: str | None = None,
 ) -> ProductWorkflow:
     applied = materialize_node_group_template_to_workflow(
         session,
@@ -286,10 +292,11 @@ def apply_node_group_template_to_workflow(
         template_key=template_key,
         position_x=position_x,
         position_y=position_y,
+        owner_user_id=owner_user_id,
     )
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, applied.workflow.id)
+    return product_workflow_graph.get_workflow_or_raise(session, applied.workflow.id, owner_user_id)
 
 
 def materialize_node_group_template_to_workflow(
@@ -299,11 +306,12 @@ def materialize_node_group_template_to_workflow(
     template_key: str,
     position_x: int,
     position_y: int,
+    owner_user_id: str | None = None,
 ) -> AppliedWorkflowTemplateGroup:
-    template = get_canvas_template(session, template_key.strip())
-    workflow = product_workflow_graph.get_active_workflow(session, product_id)
+    template = get_canvas_template(session, template_key.strip(), owner_user_id=owner_user_id)
+    workflow = product_workflow_graph.get_active_workflow(session, product_id, owner_user_id)
     if workflow is None:
-        product_workflow_graph.get_product_or_raise(session, product_id)
+        product_workflow_graph.get_product_or_raise(session, product_id, owner_user_id)
         raise BusinessValidationError("需要先创建或打开画布后才能添加模板")
     # 模板里的商品资料节点是占位符，落到已有画布时要映射到当前商品资料节点。
     needs_product_context = any(
@@ -344,7 +352,7 @@ def materialize_node_group_template_to_workflow(
     workflow.updated_at = now_utc()
     session.flush()
     session.expire(workflow, ["nodes", "edges"])
-    refreshed = product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    refreshed = product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
     try:
         product_workflow_graph.topological_nodes(refreshed)
     except BusinessError:
@@ -364,6 +372,7 @@ def duplicate_workflow_node_group(
     *,
     product_id: str,
     node_ids: list[str],
+    owner_user_id: str | None = None,
     position_x: int | None = None,
     position_y: int | None = None,
     offset_x: int = 48,
@@ -374,9 +383,9 @@ def duplicate_workflow_node_group(
     if len(set(node_ids)) != len(node_ids):
         raise BusinessValidationError("复制节点不能重复")
 
-    workflow = product_workflow_graph.get_active_workflow(session, product_id)
+    workflow = product_workflow_graph.get_active_workflow(session, product_id, owner_user_id)
     if workflow is None:
-        product_workflow_graph.get_product_or_raise(session, product_id)
+        product_workflow_graph.get_product_or_raise(session, product_id, owner_user_id)
         raise BusinessValidationError("需要先创建或打开画布后才能复制节点")
 
     workflow_nodes_by_id = {node.id: node for node in workflow.nodes}
@@ -429,7 +438,7 @@ def duplicate_workflow_node_group(
     workflow.updated_at = now_utc()
     session.flush()
     session.expire(workflow, ["nodes", "edges"])
-    refreshed = product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    refreshed = product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
     try:
         product_workflow_graph.topological_nodes(refreshed)
     except BusinessError:
@@ -440,19 +449,20 @@ def duplicate_workflow_node_group(
         raise BusinessValidationError(str(exc)) from exc
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
 
 
 def update_workflow_node(
     session: Session,
     *,
     node_id: str,
+    owner_user_id: str | None = None,
     title: str | None,
     position_x: int | None,
     position_y: int | None,
     config_json: dict[str, Any] | None,
 ) -> ProductWorkflow:
-    node = product_workflow_graph.get_node_or_raise(session, node_id)
+    node = product_workflow_graph.get_node_or_raise(session, node_id, owner_user_id)
     touched = title is not None or position_x is not None or position_y is not None or config_json is not None
     apply_workflow_node_patch(node, title=title, config_json=config_json)
     if position_x is not None:
@@ -463,7 +473,7 @@ def update_workflow_node(
         node.workflow.updated_at = now_utc()
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, node.workflow_id)
+    return product_workflow_graph.get_workflow_or_raise(session, node.workflow_id, owner_user_id)
 
 
 def update_workflow_copy_set(
@@ -471,12 +481,13 @@ def update_workflow_copy_set(
     *,
     node_id: str,
     structured_payload: dict[str, Any],
+    owner_user_id: str | None = None,
 ) -> ProductWorkflow:
-    node = product_workflow_graph.get_node_or_raise(session, node_id)
+    node = product_workflow_graph.get_node_or_raise(session, node_id, owner_user_id)
     if node.node_type != WorkflowNodeType.COPY_GENERATION:
         raise BusinessValidationError("只有文案节点可以编辑文案")
     workflow_id = node.workflow_id
-    workflow = product_workflow_graph.get_workflow_or_raise(session, workflow_id)
+    workflow = product_workflow_graph.get_workflow_or_raise(session, workflow_id, owner_user_id)
     copy_set_id = (node.output_json or {}).get("copy_set_id")
     if not isinstance(copy_set_id, str) or not copy_set_id:
         raise BusinessValidationError("文案节点还没有生成文案")
@@ -489,8 +500,9 @@ def update_workflow_copy_set(
         session,
         copy_set_id=copy_set.id,
         structured_payload=structured_payload,
+        owner_user_id=owner_user_id,
     )
-    node = product_workflow_graph.get_node_or_raise(session, node_id)
+    node = product_workflow_graph.get_node_or_raise(session, node_id, owner_user_id)
     output = dict(node.output_json or {})
     output.update(copy_node_output(copy_set, creative_brief_id=copy_set.creative_brief_id, manual_edit=True))
     node.output_json = output
@@ -498,13 +510,14 @@ def update_workflow_copy_set(
     node.workflow.product.updated_at = now_utc()
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow_id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow_id, owner_user_id)
 
 
 def upload_workflow_node_image(
     session: Session,
     *,
     node_id: str,
+    owner_user_id: str | None = None,
     image_bytes: bytes,
     filename: str,
     content_type: str,
@@ -513,10 +526,10 @@ def upload_workflow_node_image(
     storage: LocalStorage | None = None,
 ) -> ProductWorkflow:
     """把上传图存为商品参考图，并绑定到参考图节点输出。"""
-    node = product_workflow_graph.get_node_or_raise(session, node_id)
+    node = product_workflow_graph.get_node_or_raise(session, node_id, owner_user_id)
     if node.node_type != WorkflowNodeType.REFERENCE_IMAGE:
         raise BusinessValidationError("只有参考图节点可以上传图片")
-    workflow = product_workflow_graph.get_workflow_or_raise(session, node.workflow_id)
+    workflow = product_workflow_graph.get_workflow_or_raise(session, node.workflow_id, owner_user_id)
     storage = storage or LocalStorage()
     relative_path = storage.save_reference_upload(workflow.product_id, filename, image_bytes)
     asset = SourceAsset(
@@ -550,13 +563,14 @@ def upload_workflow_node_image(
     workflow.product.updated_at = now_utc()
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
 
 
 def bind_workflow_node_image(
     session: Session,
     *,
     node_id: str,
+    owner_user_id: str | None = None,
     source_asset_id: str | None = None,
     poster_variant_id: str | None = None,
     storage: LocalStorage | None = None,
@@ -569,10 +583,10 @@ def bind_workflow_node_image(
     if bool(source_asset_id) == bool(poster_variant_id):
         raise BusinessValidationError("请选择一张图片")
 
-    node = product_workflow_graph.get_node_or_raise(session, node_id)
+    node = product_workflow_graph.get_node_or_raise(session, node_id, owner_user_id)
     if node.node_type != WorkflowNodeType.REFERENCE_IMAGE:
         raise BusinessValidationError("只有参考图节点可以填充图片")
-    workflow = product_workflow_graph.get_workflow_or_raise(session, node.workflow_id)
+    workflow = product_workflow_graph.get_workflow_or_raise(session, node.workflow_id, owner_user_id)
 
     source_poster_variant_id: str | None = None
     if source_asset_id:
@@ -615,19 +629,20 @@ def bind_workflow_node_image(
     workflow.product.updated_at = now_utc()
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
 
 
 def create_workflow_edge(
     session: Session,
     *,
     product_id: str,
+    owner_user_id: str | None = None,
     source_node_id: str,
     target_node_id: str,
     source_handle: str | None = None,
     target_handle: str | None = None,
 ) -> ProductWorkflow:
-    workflow = get_or_create_product_workflow(session, product_id)
+    workflow = get_or_create_product_workflow(session, product_id, owner_user_id)
     nodes = {node.id for node in workflow.nodes}
     if source_node_id == target_node_id:
         raise BusinessValidationError("工作流连线不能连接到自身")
@@ -644,7 +659,7 @@ def create_workflow_edge(
     workflow.updated_at = now_utc()
     session.flush()
     session.expire(workflow, ["nodes", "edges"])
-    refreshed = product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    refreshed = product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
     try:
         product_workflow_graph.topological_nodes(refreshed)
     except BusinessError:
@@ -655,22 +670,32 @@ def create_workflow_edge(
         raise BusinessValidationError(str(exc)) from exc
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
 
 
-def delete_workflow_edge(session: Session, *, edge_id: str) -> ProductWorkflow:
-    edge = product_workflow_graph.get_edge_or_raise(session, edge_id)
+def delete_workflow_edge(
+    session: Session,
+    *,
+    edge_id: str,
+    owner_user_id: str | None = None,
+) -> ProductWorkflow:
+    edge = product_workflow_graph.get_edge_or_raise(session, edge_id, owner_user_id)
     workflow_id = edge.workflow_id
     edge.workflow.updated_at = now_utc()
     session.delete(edge)
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow_id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow_id, owner_user_id)
 
 
-def delete_workflow_node(session: Session, *, node_id: str) -> ProductWorkflow:
-    node = product_workflow_graph.get_node_or_raise(session, node_id)
-    workflow = product_workflow_graph.get_workflow_or_raise(session, node.workflow_id)
+def delete_workflow_node(
+    session: Session,
+    *,
+    node_id: str,
+    owner_user_id: str | None = None,
+) -> ProductWorkflow:
+    node = product_workflow_graph.get_node_or_raise(session, node_id, owner_user_id)
+    workflow = product_workflow_graph.get_workflow_or_raise(session, node.workflow_id, owner_user_id)
     if (
         _active_workflow_run(workflow) is not None
         or WORKFLOW_RUN_GENERATION_TASK_CONTRACT.execution_is_queued(node.status)
@@ -690,7 +715,7 @@ def delete_workflow_node(session: Session, *, node_id: str) -> ProductWorkflow:
     session.delete(node)
     session.commit()
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow_id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow_id, owner_user_id)
 
 
 def _normalize_product_context_singleton(session: Session, workflow: ProductWorkflow) -> bool:

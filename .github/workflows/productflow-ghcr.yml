@@ -1,0 +1,73 @@
+name: Build ProductFlow GHCR images
+
+on:
+  push:
+    branches:
+      - dev
+      - productflow-sso
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and publish images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image names
+        id: image
+        shell: bash
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          short_sha="${GITHUB_SHA::7}"
+          echo "backend=ghcr.io/${owner}/productflow-backend" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/${owner}/productflow-web" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=new-api-sso-${short_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.backend }}:new-api-sso
+            ${{ steps.image.outputs.backend }}:${{ steps.image.outputs.sha_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=productflow-backend
+          cache-to: type=gha,mode=max,scope=productflow-backend
+
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: web/Dockerfile
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=
+          tags: |
+            ${{ steps.image.outputs.web }}:new-api-sso
+            ${{ steps.image.outputs.web }}:${{ steps.image.outputs.sha_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=productflow-web
+          cache-to: type=gha,mode=max,scope=productflow-web

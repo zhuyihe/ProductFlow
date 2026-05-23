@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from productflow_backend.application.admission import ensure_generation_capacity
+from productflow_backend.application.auth_sessions import Principal
 from productflow_backend.application.contracts import ProductInput
 from productflow_backend.application.copy_payloads import (
     normalize_copy_node_config,
@@ -51,6 +52,13 @@ from productflow_backend.application.product_workflow.run_state import (
 from productflow_backend.application.product_workflow_dependencies import (
     WorkflowExecutionDependencies,
     default_workflow_execution_dependencies,
+)
+from productflow_backend.application.provider_runtime import (
+    ProviderExecutionContext,
+    provider_credential_override_from_context,
+    provider_execution_context_from_principal,
+    provider_execution_context_from_workflow_run,
+    provider_execution_context_values,
 )
 from productflow_backend.application.queue_submission import enqueue_or_mark_failed
 from productflow_backend.application.time import now_utc
@@ -164,11 +172,14 @@ def start_product_workflow_run(
     session: Session,
     *,
     product_id: str,
+    owner_user_id: str | None = None,
     start_node_id: str | None = None,
     progress_metadata: dict[str, Any] | None = None,
     node_ids_to_run_override: set[str] | None = None,
+    principal: Principal | None = None,
+    provider_execution_context: ProviderExecutionContext | None = None,
 ) -> WorkflowRunKickoff:
-    workflow = get_or_create_product_workflow(session, product_id)
+    workflow = get_or_create_product_workflow(session, product_id, owner_user_id)
     session.expire(workflow, ["nodes", "edges", "runs"])
     ordered_nodes = product_workflow_graph.topological_nodes(workflow)
     if start_node_id is not None:
@@ -198,9 +209,11 @@ def start_product_workflow_run(
         )
 
     ensure_generation_capacity(session)
+    provider_context = provider_execution_context or provider_execution_context_from_principal(principal)
     run = WorkflowRun(
         workflow_id=workflow.id,
         status=WorkflowRunStatus.RUNNING,
+        **provider_execution_context_values(provider_context),
         progress_metadata=progress_metadata,
     )
     logger.info(
@@ -229,7 +242,7 @@ def start_product_workflow_run(
         session.commit()
     except IntegrityError:
         session.rollback()
-        workflow = product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+        workflow = product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
         active_run = _active_workflow_run_for_nodes(workflow, node_ids_to_run)
         if active_run is not None:
             return WorkflowRunKickoff(
@@ -241,7 +254,7 @@ def start_product_workflow_run(
         raise
     session.expire_all()
     return WorkflowRunKickoff(
-        workflow=product_workflow_graph.get_workflow_or_raise(session, workflow.id),
+        workflow=product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id),
         run_id=run.id,
         created=True,
         should_enqueue=True,
@@ -254,8 +267,10 @@ def retry_product_workflow_run(
     product_id: str,
     run_id: str | None = None,
     enqueue: Callable[[str], None] | None = None,
+    owner_user_id: str | None = None,
+    principal: Principal | None = None,
 ) -> ProductWorkflow:
-    workflow = get_or_create_product_workflow(session, product_id)
+    workflow = get_or_create_product_workflow(session, product_id, owner_user_id)
     run = session.get(WorkflowRun, run_id) if run_id else _latest_failed_workflow_run(workflow)
     if run is None or run.workflow_id != workflow.id:
         raise NotFoundError("工作流运行不存在")
@@ -270,8 +285,13 @@ def retry_product_workflow_run(
     kickoff = start_product_workflow_run(
         session,
         product_id=product_id,
+        owner_user_id=owner_user_id,
         progress_metadata=_workflow_run_retry_progress_metadata(run),
         node_ids_to_run_override=retry_node_ids,
+        principal=principal,
+        provider_execution_context=(
+            None if principal is not None else provider_execution_context_from_workflow_run(run)
+        ),
     )
     if kickoff.should_enqueue:
         enqueue_or_mark_failed(
@@ -284,7 +304,7 @@ def retry_product_workflow_run(
             ),
         )
         session.expire_all()
-        return product_workflow_graph.get_workflow_or_raise(session, kickoff.workflow.id)
+        return product_workflow_graph.get_workflow_or_raise(session, kickoff.workflow.id, owner_user_id)
     return kickoff.workflow
 
 
@@ -293,28 +313,35 @@ def cancel_product_workflow_run(
     *,
     product_id: str,
     run_id: str | None = None,
+    owner_user_id: str | None = None,
 ) -> ProductWorkflow:
-    workflow = get_or_create_product_workflow(session, product_id)
+    workflow = get_or_create_product_workflow(session, product_id, owner_user_id)
     run = session.get(WorkflowRun, run_id) if run_id else _active_workflow_run(workflow)
     if run is None or run.workflow_id != workflow.id:
         raise NotFoundError("工作流运行不存在")
     if run.status == WorkflowRunStatus.CANCELLED:
-        return product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+        return product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
     if run.status in {WorkflowRunStatus.SUCCEEDED, WorkflowRunStatus.FAILED}:
         raise BusinessValidationError("已结束的工作流运行不能取消")
     mark_workflow_run_cancelled(session, run_id=run.id)
     session.expire_all()
-    return product_workflow_graph.get_workflow_or_raise(session, workflow.id)
+    return product_workflow_graph.get_workflow_or_raise(session, workflow.id, owner_user_id)
 
 
 def run_product_workflow(
     session: Session,
     *,
     product_id: str,
+    owner_user_id: str | None = None,
     start_node_id: str | None = None,
     dependencies: WorkflowExecutionDependencies | None = None,
 ) -> ProductWorkflow:
-    kickoff = start_product_workflow_run(session, product_id=product_id, start_node_id=start_node_id)
+    kickoff = start_product_workflow_run(
+        session,
+        product_id=product_id,
+        owner_user_id=owner_user_id,
+        start_node_id=start_node_id,
+    )
     if kickoff.created:
         _execute_product_workflow_run(
             session,
@@ -329,7 +356,7 @@ def run_product_workflow(
             return_after_dispatch=False,
         )
         session.expire_all()
-        return product_workflow_graph.get_workflow_or_raise(session, kickoff.workflow.id)
+        return product_workflow_graph.get_workflow_or_raise(session, kickoff.workflow.id, owner_user_id)
     return kickoff.workflow
 
 
@@ -337,15 +364,19 @@ def submit_product_workflow_run(
     session: Session,
     *,
     product_id: str,
+    owner_user_id: str | None = None,
     start_node_id: str | None = None,
     enqueue: Callable[[str], None] | None = None,
     progress_metadata: dict[str, Any] | None = None,
+    principal: Principal | None = None,
 ) -> ProductWorkflow:
     kickoff = start_product_workflow_run(
         session,
         product_id=product_id,
+        owner_user_id=owner_user_id,
         start_node_id=start_node_id,
         progress_metadata=progress_metadata,
+        principal=principal,
     )
     if kickoff.should_enqueue:
         enqueue_or_mark_failed(
@@ -529,6 +560,10 @@ def _execute_workflow_node_run(
         return
     if not WORKFLOW_RUN_GENERATION_TASK_CONTRACT.execution_is_queued(node_run.status):
         return
+    if dependencies is None:
+        dependencies = default_workflow_execution_dependencies(
+            provider_credential_override_from_context(provider_execution_context_from_workflow_run(run))
+        )
     workflow = queries.get_workflow_or_raise(run.workflow_id)
     node = queries.get_node_or_raise(node_run.node_id)
     claim = claim_workflow_node_run(session, node_run_id=node_run.id, node_id=node.id)

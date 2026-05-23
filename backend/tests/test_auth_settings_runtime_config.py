@@ -49,6 +49,9 @@ def test_auth_session_required(configured_env: Path) -> None:
     assert authorized.status_code == 200
     assert authorized.json()["items"] == []
 
+    runtime = client.get("/api/settings/runtime")
+    assert runtime.status_code == 200
+
 
 def test_auth_session_survives_small_wall_clock_rollback(
     configured_env: Path,
@@ -130,7 +133,7 @@ def test_admin_access_can_be_disabled_and_re_enabled(configured_env: Path) -> No
     re_enabled = public_client.patch("/api/settings", json={"values": {"admin_access_required": True}})
     assert re_enabled.status_code == 200
     assert get_runtime_settings().admin_access_required is True
-    assert public_client.get("/api/products").status_code == 200
+    assert public_client.get("/api/products").status_code == 401
 
     new_client = TestClient(app)
     private_products = new_client.get("/api/products")
@@ -1053,6 +1056,94 @@ def test_resolvers_ignore_legacy_rows_after_provider_bindings_exist(configured_e
     assert image_config.images_quality == "high"
     assert image_config.images_style == "natural"
     assert image_config.responses_background_enabled is False
+
+
+def test_resolvers_override_real_provider_credentials_with_current_user_token(
+    configured_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("NEW_API_BASE_URL", "https://relay.example")
+    get_settings.cache_clear()
+
+    from productflow_backend.application.auth_sessions import Principal
+    from productflow_backend.application.provider_runtime import (
+        provider_credential_override_from_context,
+        provider_execution_context_from_principal,
+    )
+    from productflow_backend.infrastructure.provider_config import (
+        resolve_image_provider_config,
+        resolve_text_provider_config,
+    )
+
+    session = get_session_factory()()
+    try:
+        profile = ProviderProfile(
+            name="上游配置",
+            provider_type="openai_compatible",
+            base_url="https://upstream.example/v1",
+            api_key="shared-admin-key",
+            capabilities_json=["text_responses", "image_images"],
+            default_models_json={},
+            config_json={},
+            enabled=True,
+        )
+        session.add(profile)
+        session.flush()
+        session.add_all(
+            [
+                ProviderBinding(
+                    purpose="text",
+                    provider_kind="openai",
+                    provider_profile_id=profile.id,
+                    model_settings_json={"brief_model": "brief-model", "copy_model": "copy-model"},
+                    config_json={},
+                ),
+                ProviderBinding(
+                    purpose="image",
+                    provider_kind="openai_images",
+                    provider_profile_id=profile.id,
+                    model_settings_json={"model": "gpt-image-2"},
+                    config_json={"images_quality": "high", "images_style": "natural"},
+                ),
+            ]
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    principal = Principal(
+        session_id="auth-session-1",
+        kind="user",
+        new_api_user_id="42",
+        username="alice",
+        email=None,
+        group="default",
+        role="user",
+        new_api_token_id="77",
+        new_api_token_name="ProductFlow",
+        new_api_token="sk-user-token",
+    )
+    credential_override = provider_credential_override_from_context(
+        provider_execution_context_from_principal(principal)
+    )
+
+    assert credential_override is not None
+    assert credential_override.api_key == "sk-user-token"
+    assert credential_override.base_url == "https://relay.example/v1"
+
+    text_config = resolve_text_provider_config(credential_override)
+    assert text_config.api_key == "sk-user-token"
+    assert text_config.base_url == "https://relay.example/v1"
+    assert text_config.brief_model == "brief-model"
+    assert text_config.copy_model == "copy-model"
+
+    image_config = resolve_image_provider_config(credential_override)
+    assert image_config.api_key == "sk-user-token"
+    assert image_config.base_url == "https://relay.example/v1"
+    assert image_config.model == "gpt-image-2"
+    assert image_config.images_quality == "high"
+    assert image_config.images_style == "natural"
+    get_settings.cache_clear()
 
 
 def test_resolvers_reject_missing_models_instead_of_using_legacy_defaults(

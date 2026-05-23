@@ -7,6 +7,7 @@ from pathlib import Path
 from productflow_backend.infrastructure.image.base import ImageProvider
 from productflow_backend.infrastructure.image.factory import get_image_provider
 from productflow_backend.infrastructure.poster.renderer import PosterRenderer
+from productflow_backend.infrastructure.provider_config import ProviderCredentialOverride
 from productflow_backend.infrastructure.text.base import TextProvider
 from productflow_backend.infrastructure.text.factory import get_text_provider
 
@@ -41,5 +42,12 @@ class WorkflowExecutionDependencies:
         return self.poster_renderer_factory(font_path)
 
 
-def default_workflow_execution_dependencies() -> WorkflowExecutionDependencies:
-    return WorkflowExecutionDependencies()
+def default_workflow_execution_dependencies(
+    credential_override: ProviderCredentialOverride | None = None,
+) -> WorkflowExecutionDependencies:
+    if credential_override is None:
+        return WorkflowExecutionDependencies()
+    return WorkflowExecutionDependencies(
+        text_provider_resolver=lambda: get_text_provider(credential_override),
+        image_provider_resolver=lambda: get_image_provider(credential_override),
+    )

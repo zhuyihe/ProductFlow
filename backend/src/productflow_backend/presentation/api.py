@@ -24,6 +24,7 @@ from productflow_backend.infrastructure.queue import (
     recover_unfinished_workflow_runs,
 )
 from productflow_backend.presentation.errors import register_exception_handlers
+from productflow_backend.presentation.routes.auth import browser_router as auth_browser_router
 from productflow_backend.presentation.routes.auth import router as auth_router
 from productflow_backend.presentation.routes.gallery import router as gallery_router
 from productflow_backend.presentation.routes.generation_queue import router as generation_queue_router
@@ -31,6 +32,7 @@ from productflow_backend.presentation.routes.image_sessions import router as ima
 from productflow_backend.presentation.routes.product_workflows import router as product_workflows_router
 from productflow_backend.presentation.routes.products import router as products_router
 from productflow_backend.presentation.routes.settings import router as settings_router
+from productflow_backend.presentation.routes.settings import runtime_router as settings_runtime_router
 from productflow_backend.presentation.session import ClockStableSessionMiddleware
 
 REQUEST_ID_HEADER = b"x-request-id"
@@ -72,11 +74,13 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     app.include_router(auth_router)
+    app.include_router(auth_browser_router)
     app.include_router(generation_queue_router)
     app.include_router(gallery_router)
     app.include_router(products_router)
     app.include_router(product_workflows_router)
     app.include_router(image_sessions_router)
+    app.include_router(settings_runtime_router)
     app.include_router(settings_router)
     return app
 

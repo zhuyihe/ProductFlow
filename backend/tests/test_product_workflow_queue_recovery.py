@@ -91,6 +91,43 @@ class _PolicyRejectedWorkflowImageProvider:
         raise RuntimeError("Request blocked by content policy")
 
 
+def test_start_product_workflow_run_persists_new_api_token_context(db_session) -> None:
+    from productflow_backend.application.auth_sessions import Principal
+    from productflow_backend.application.product_workflows import start_product_workflow_run
+
+    product = create_product(
+        db_session,
+        name="relay workflow",
+        category="护肤",
+        price=None,
+        source_note="需要持久化 token 上下文",
+        image_bytes=_make_demo_image_bytes(),
+        filename="workflow.png",
+        content_type="image/png",
+    )
+    principal = Principal(
+        session_id="auth-session-1",
+        kind="user",
+        new_api_user_id="42",
+        username="alice",
+        email=None,
+        group="default",
+        role="user",
+        new_api_token_id="77",
+        new_api_token_name="ProductFlow",
+        new_api_token="sk-user-token",
+    )
+
+    kickoff = start_product_workflow_run(db_session, product_id=product.id, principal=principal)
+
+    run = db_session.get(WorkflowRun, kickoff.run_id)
+    assert run is not None
+    assert run.new_api_user_id == "42"
+    assert run.new_api_token_id == "77"
+    assert run.new_api_token_name == "ProductFlow"
+    assert run.new_api_token == "sk-user-token"
+
+
 def test_workflow_run_kickoff_reuses_overlapping_active_node_runs(db_session, configured_env: Path) -> None:
     from productflow_backend.application.product_workflows import delete_workflow_node, start_product_workflow_run
 

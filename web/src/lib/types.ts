@@ -36,6 +36,11 @@ export type CanvasTemplateScenario =
 export interface SessionState {
   authenticated: boolean;
   access_required: boolean;
+  principal_kind?: string | null;
+  username?: string | null;
+  new_api_user_id?: string | null;
+  new_api_token_id?: string | null;
+  sso_start_url?: string | null;
 }
 
 export interface SourceAsset {
