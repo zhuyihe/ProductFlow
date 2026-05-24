@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from productflow_backend.config import get_settings
@@ -28,6 +30,8 @@ from productflow_backend.presentation.routes.auth import browser_router as auth_
 from productflow_backend.presentation.routes.auth import router as auth_router
 from productflow_backend.presentation.routes.gallery import router as gallery_router
 from productflow_backend.presentation.routes.generation_queue import router as generation_queue_router
+from productflow_backend.presentation.routes.health import limiter as health_limiter
+from productflow_backend.presentation.routes.health import router as health_router
 from productflow_backend.presentation.routes.image_sessions import router as image_sessions_router
 from productflow_backend.presentation.routes.product_workflows import router as product_workflows_router
 from productflow_backend.presentation.routes.products import router as products_router
@@ -54,6 +58,10 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="ProductFlow API", version="0.1.0", lifespan=lifespan)
     register_exception_handlers(app)
+    # Share the health.py limiter so per-IP counters stay consistent and the
+    # rate-limit exception maps to slowapi's default 429 response shape.
+    app.state.limiter = health_limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -82,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(image_sessions_router)
     app.include_router(settings_runtime_router)
     app.include_router(settings_router)
+    app.include_router(health_router)
     return app
 
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_LOCALE, interpolate, resolveLocale, translate } from "./i18n";
+import { DEFAULT_LOCALE, enUS, interpolate, jaJP, resolveLocale, translate, zhCN } from "./i18n";
 import { resolveTheme, resolveThemePreference } from "./theme";
 
 describe("i18n helpers", () => {
@@ -19,6 +19,14 @@ describe("i18n helpers", () => {
       "Page 2 / 5 · 48 products",
     );
     expect(interpolate("Hello {name}, {missing}", { name: "Ada" })).toBe("Hello Ada, {missing}");
+  });
+
+  it("keeps auth login copy aligned with the real session contract", () => {
+    expect(Object.prototype.hasOwnProperty.call(zhCN, "auth.login.scope.quota")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(enUS, "auth.login.scope.quota")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(jaJP, "auth.login.scope.quota")).toBe(false);
+    expect(translate("zh-CN", "auth.login.sessionTtl")).not.toContain("14 天");
+    expect(translate("en-US", "auth.login.sessionTtl")).not.toContain("14 days");
   });
 });
 
