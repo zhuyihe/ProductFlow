@@ -44,7 +44,7 @@ def upgrade() -> None:
         ["forked_from_entry_id"],
     )
     with op.batch_alter_table("user_canvas_templates") as batch_op:
-        batch_op.add_column(sa.Column("is_public", sa.Boolean(), nullable=False, server_default=sa.text("0")))
+        batch_op.add_column(sa.Column("is_public", sa.Boolean(), nullable=False, server_default=sa.false()))
         batch_op.add_column(sa.Column("shared_at", sa.DateTime(timezone=True), nullable=True))
         batch_op.add_column(sa.Column("shared_by_username", sa.String(length=255), nullable=True))
         batch_op.add_column(
