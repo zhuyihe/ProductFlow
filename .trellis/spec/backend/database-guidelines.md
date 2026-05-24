@@ -125,9 +125,10 @@ status filter together, then add a query behavior test. Do not reintroduce full-
 ### Runtime settings registry
 
 `config.py::CONFIG_DEFINITIONS` is the owner registry for settings that may be stored in `app_settings`.
-`RUNTIME_CONFIG_KEYS` must equal the keys in that registry. Env-only settings such as `ADMIN_ACCESS_KEY`,
-`SETTINGS_ACCESS_TOKEN`, `SESSION_SECRET`, `DATABASE_URL`, and `REDIS_URL` are required before database access or are
-secrets with separate lifecycle rules, so they must not be added to `CONFIG_DEFINITIONS` or persisted in `app_settings`.
+`RUNTIME_CONFIG_KEYS` must equal the keys in that registry. Env-only settings such as `SETTINGS_ACCESS_TOKEN`,
+`SESSION_SECRET`, `DATABASE_URL`, and `REDIS_URL` are required before database access or are secrets with separate
+lifecycle rules, so they must not be added to `CONFIG_DEFINITIONS` or persisted in `app_settings`. The legacy
+password-admin path is removed; session auth now comes from new-api SSO plus the CLI bootstrap path.
 
 For runtime settings:
 
@@ -301,83 +302,99 @@ client = genai.Client(
 )
 ```
 
-## Scenario: Runtime admin access toggle
+## Scenario: SSO session state and break-glass bootstrap
 
 ### 1. Scope / Trigger
 
-- Trigger: changing login/session auth, settings persistence, `/api/auth/session`, `/api/settings/runtime`, or the
-  settings page security section.
+- Trigger: changing login/session auth, SSO role mapping, `GET /api/auth/session`, `DELETE /api/auth/session`,
+  `/auth/new-api/callback`, the CLI bootstrap command, or the settings page auth/session display.
 - This is a cross-layer contract because `Settings`, config serialization, route dependencies, session responses,
-  frontend DTOs, and route gating must agree on the same field and security boundary.
+  frontend DTOs, audit logs, and the break-glass bootstrap path must agree on the same field and security boundary.
 
 ### 2. Signatures
 
-- Env-only secret: `Settings.admin_access_key: str` remains required and must not be stored in `app_settings`.
-- Runtime setting: `Settings.admin_access_required: bool = True`.
-- Config definition key: `admin_access_required`, non-secret, boolean, category `安全与运维`.
-- Runtime API response: `GET /api/settings/runtime` includes `admin_access_required`.
-- Session state response: `GET /api/auth/session` returns `authenticated: bool` and `access_required: bool`.
+- DB table: `auth_sessions`
+  - `principal_kind: "admin" | "user"`
+  - `new_api_user_id: String(64) | null`
+  - `username: String(255) | null`
+  - `email: String(255) | null`
+  - `group: String(120) | null`
+  - `role: String(80) | null`
+  - `new_api_token_id: String(64) | null`
+  - `new_api_token_name: String(120) | null`
+  - `new_api_token: Text | null`
+  - `revoked_at: datetime | null`
+  - `expires_at: datetime | null`
+- Routes:
+  - `GET /api/auth/session`
+  - `DELETE /api/auth/session`
+  - `POST /api/auth/session` -> removed path; keep returning 404 if hit
+  - `GET /api/auth/sso/new-api/start`
+  - `GET /auth/new-api/callback`
+- CLI bootstrap:
+  - `python -m productflow_backend.cli bootstrap-admin --new-api-user-id=<id> --new-api-username=<name> --ttl-hours=24`
 - Guard helper: `presentation.deps.require_admin(request: Request) -> None`.
 
 ### 3. Contracts
 
-- Default behavior is secure: `admin_access_required` is `True` unless explicitly set through env/defaults or
-  `app_settings`.
-- When `admin_access_required` is true, private workspace routes require a signed Cookie session with
-  `is_authenticated == True`.
-- When `admin_access_required` is false, private workspace routes guarded by `require_admin` are open without a login
-  cookie.
-- Disabling admin access must not bypass the independent settings lock. Full settings reads/writes still require
-  `SETTINGS_ACCESS_TOKEN` through `require_settings_unlocked`.
-- `POST /api/auth/session` is a no-op success when login is disabled and must leave the existing session untouched,
-  including any `settings_unlocked` flag.
-- `DELETE /api/auth/session` still clears the browser session; if login is disabled, the next session-state response is
-  authenticated again because access is no longer required.
+- `GET /api/auth/session` returns `authenticated`, `principal_kind`, `username`, `new_api_user_id`,
+  `new_api_token_id`, and `sso_start_url` when configured.
+- SSO ticket role parsing is frozen at session creation:
+  - missing/blank/invalid role -> ordinary user fallback
+  - `0` -> reject with 401 / `"当前账号没有 ProductFlow 访问权限"`
+  - `1` -> user session
+  - `>= 10` -> admin session
+  - other positive integers -> user session plus a warning
+- Session kind is stored in `auth_sessions.principal_kind` and remains frozen until expiry or revocation; requests do not
+  call back to new-api to re-check the role on every request.
+- `DELETE /api/auth/session` revokes the stored session row and clears the browser cookie.
+- CLI bootstrap writes a temporary admin session directly in the database and prints a signed session cookie value; it is
+  the only break-glass replacement for the deleted password-admin path.
+- Private workspace routes are gated only by authenticated session presence and principal kind; there is no
+  `admin_access_required` toggle any more.
 
 ### 4. Validation & Error Matrix
 
-- `admin_access_required == True` and no login cookie -> private route returns `401`, `{"detail": "请先登录"}`.
-- `admin_access_required == True` and wrong admin key -> `POST /api/auth/session` returns `401`,
-  `{"detail": "管理员密钥不正确"}`.
-- `admin_access_required == False` and no login cookie -> private workspace route follows normal application behavior.
-- `admin_access_required == False` and no settings unlock -> `GET /api/settings` returns `403`,
-  `{"detail": "请先解锁系统配置"}`.
-- Re-enabling `admin_access_required` immediately restores the login requirement for unauthenticated clients.
+- No authenticated session -> private route returns `401`, `{"detail": "请先登录"}`.
+- Guest/new-api role `0` -> `401`, `{"detail": "当前账号没有 ProductFlow 访问权限"}`.
+- Invalid or removed `POST /api/auth/session` -> `404`.
+- Revoked/expired session -> `GET /api/auth/session` returns `{"authenticated": false}`.
+- `GET /api/settings` without login -> `401`; after login but without unlock -> `403`, `{"detail": "请先解锁系统配置"}`.
+- CLI bootstrap TTL expires -> the signed cookie stops authenticating and the session row no longer authorizes.
 
 ### 5. Good/Base/Bad Cases
 
-- Good: a trusted LAN deployment disables the login gate for normal product workflows while keeping settings protected.
-- Base: the default deployment keeps `admin_access_required=True` and requires `ADMIN_ACCESS_KEY` login.
-- Bad: storing `ADMIN_ACCESS_KEY` in DB settings; it is an env-only secret.
-- Bad: treating disabled login as permission to skip `SETTINGS_ACCESS_TOKEN`; settings protection is a separate boundary.
-- Bad: clearing `settings_unlocked` from `POST /api/auth/session` while login is disabled; that couples unrelated session
-  concerns.
+- Good: a role-10 new-api user signs in through SSO and gets an admin ProductFlow session with a short TTL.
+- Good: break-glass bootstrap creates a temporary admin session directly in the DB for containerized recovery.
+- Base: a role-1 new-api user gets a normal workspace session and can browse the public gallery.
+- Bad: keeping a password-admin HTTP login path around "for convenience".
+- Bad: re-checking new-api on every request instead of freezing the session principal until expiry.
+- Bad: storing a login toggle in `app_settings`; the auth boundary is session-based now.
 
 ### 6. Tests Required
 
-- Default-required route test: unauthenticated private route returns 401.
-- Default-required login test: wrong admin key returns 401 with the documented detail.
-- Disabled-login route test: a fresh client can access a private workspace route without logging in.
-- Disabled-login session-state test: response is `{"authenticated": true, "access_required": false}`.
-- Settings-boundary test: disabled login still requires `SETTINGS_ACCESS_TOKEN` before full settings reads/writes.
-- No-op login test: disabled-login `POST /api/auth/session` does not clear an already unlocked settings session.
-- Re-enable test: setting `admin_access_required=True` makes a fresh unauthenticated client receive 401 again.
+- Session callback test: SSO callback creates a server-side session and persists the expected role/kind fields.
+- Guest rejection test: role `0` returns 401.
+- Invalid-role fallback test: invalid/non-integer role falls back to user and logs a warning.
+- Removed-login-route test: `POST /api/auth/session` returns 404.
+- Revocation test: a revoked session no longer authorizes private routes.
+- Settings-boundary test: login does not bypass `SETTINGS_ACCESS_TOKEN`.
+- Clock rollback regression: session signer remains monotonic across small wall-clock rollback.
 
 ### 7. Wrong vs Correct
 
 Wrong:
 
 ```python
-if not get_runtime_settings().admin_access_required:
-    request.session.clear()
+if not principal.is_admin:
     return SessionResponse()
 ```
 
 Correct:
 
 ```python
-if not get_runtime_settings().admin_access_required:
-    return SessionResponse()
+revoke_auth_session(session, request.session.get(AUTH_SESSION_COOKIE_KEY))
+request.session.clear()
 ```
 
 ## Scenario: Runtime deletion toggle for traceability
@@ -651,19 +668,27 @@ The current pattern commits database changes before performing non-transactional
 For create/update operations, file writes happen before adding the final DB asset rows. Keep storage paths relative to the
 storage root; `LocalStorage.resolve()` guards against path traversal.
 
-## Scenario: Global generated-image gallery entries
+## Scenario: User-shared gallery entries
 
 ### 1. Scope / Trigger
 
 - Trigger: changing gallery persistence, gallery API response fields, or continuous image-session "save to gallery"
   behavior.
-- Gallery is a global display surface over generated image-session assets. It is not a product library replacement and not
-  a file-copying workflow.
+- Gallery is a user-shared social surface over generated image-session assets. It is not a product library replacement and
+  not a file-copying workflow.
 
 ### 2. Signatures
 
-- DB table: `image_gallery_entries(id, image_session_asset_id, image_session_round_id, created_at)`.
+- DB table: `image_gallery_entries(id, image_session_asset_id, image_session_round_id, shared_by_user_id,
+  shared_by_username, forked_from_entry_id, created_at)`.
 - Unique index: `uq_image_gallery_entries_asset_id` on `image_session_asset_id`.
+- Author/lineage indexes:
+  - `ix_image_gallery_entries_shared_by_user_id`
+  - `ix_image_gallery_entries_forked_from_entry_id`
+- Future report table: `gallery_entry_reports(id, entry_id, reporter_user_id, reason_code, reason_text, status,
+  resolved_by_admin_id, resolved_at, created_at, updated_at)`.
+- Future template sharing fields: `user_canvas_templates.is_public`, `shared_at`, `shared_by_username`, and
+  `forked_from_template_id`.
 - API:
   - `GET /api/gallery` -> `{items: GalleryEntryResponse[]}`.
   - `POST /api/gallery` with `{image_session_asset_id: string}` -> `GalleryEntryResponse`.
@@ -672,31 +697,42 @@ storage root; `LocalStorage.resolve()` guards against path traversal.
 
 - `image_session_asset_id` must point to an `image_session_assets.kind == generated_image` row.
 - `image_session_round_id` references the round that generated the asset and may be set null by database delete behavior.
+- `shared_by_user_id` stores the SSO user id that shared the entry. It may be null only for legacy/admin-created rows that
+  predate the user-shared gallery migration.
+- `shared_by_username` stores the display-name snapshot shown in gallery cards. It is not updated when the user renames
+  themselves in New API.
+- `forked_from_entry_id` is a nullable self-reference used by M2 import/re-share provenance; deleting the parent entry sets
+  this field to null.
 - Gallery entries reference existing generated files through `/api/image-session-assets/{asset_id}/download` URLs; they
   must not duplicate image bytes into product storage or a gallery-specific storage tree.
 - Repeated saves for the same generated asset are idempotent and return the existing gallery entry.
 - Response metadata should include prompt, requested size, actual size, provider/model, candidate metadata, session ID/title,
-  product ID/name when available, and `created_at`.
+  product ID/name when available, author snapshot fields, fork lineage, and `created_at`.
 
 ### 4. Validation & Error Matrix
 
 - Missing image-session asset -> `404`, `{"detail": "会话图片不存在"}`.
 - Reference upload asset -> `400`, `{"detail": "只有生成结果可以保存到画廊"}`.
+- Generated asset owned by another SSO user -> `400`, `{"detail": "只能保存自己的生成结果到画廊"}`.
 - Generated asset without a generating round -> `404`, `{"detail": "生成记录不存在"}`.
 - Duplicate generated asset save -> existing gallery entry, no duplicate database row.
 
 ### 5. Good/Base/Bad Cases
 
 - Good: a continuous image candidate can be saved once, then repeated clicks keep one gallery row.
-- Base: product-scoped and standalone image sessions both appear in the same global gallery list.
+- Good: a normal SSO user can share only generated assets from their own image sessions; the gallery row stores their user
+  id and username snapshot.
+- Base: product-scoped and standalone image sessions both appear in the same authenticated gallery list.
 - Bad: copying generated image bytes into `source_assets` or product storage when the user only chose "save to gallery".
-- Bad: adding product-level grouping, bulk management, tags, or search inside this global display-only gallery task.
+- Bad: accepting an asset id directly from another user's session and sharing it without an owner check.
+- Bad: adding product-level grouping, bulk management, tags, or search inside this gallery base task.
 
 ### 6. Tests Required
 
 - Backend route test saves a generated image and verifies prompt, image URLs, size/actual size, provider/model, candidate,
-  session, product, and creation metadata.
+  session, product, author snapshot, fork lineage, and creation metadata.
 - Backend route test repeats the same save and asserts one database row.
+- Backend test asserts cross-user sharing is rejected while authenticated users can still list public gallery rows.
 - Backend route test rejects reference-upload assets.
 - Migration test path must keep Alembic upgrade-to-head green on SQLite and PostgreSQL-compatible schema definitions.
 
@@ -713,10 +749,16 @@ This writes to the product library and changes product state.
 #### Correct
 
 ```python
-ImageGalleryEntry(image_session_asset_id=asset.id, image_session_round_id=round_item.id)
+ImageGalleryEntry(
+    image_session_asset_id=asset.id,
+    image_session_round_id=round_item.id,
+    shared_by_user_id=viewer.user_id,
+    shared_by_username=viewer.principal.username,
+)
 ```
 
-The gallery keeps a curated pointer to the generated asset and reuses existing download URLs.
+The gallery keeps a user-shared pointer to the generated asset, stores the author snapshot, and reuses existing download
+URLs.
 
 ---
 
@@ -759,7 +801,7 @@ class AppSetting(Base, TimestampMixin):
 ```
 
 `backend/src/productflow_backend/config.py` keeps infrastructure secrets and bootstrap settings env-only
-(`DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET`, `ADMIN_ACCESS_KEY`, `SETTINGS_ACCESS_TOKEN`) while allowing business
+(`DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET`, `SETTINGS_ACCESS_TOKEN`) while allowing business
 settings listed in `CONFIG_DEFINITIONS` to be overridden from `app_settings`. The settings/config token is a secondary
 unlock secret for `/api/settings`; only a signed-session `settings_unlocked` flag may be persisted, never the token.
 
@@ -1072,7 +1114,7 @@ system_prompt = settings.prompt_copy_system
 - Export must include provider API keys because the migration file is meant to let another machine use the same configured
   providers. Normal non-export settings reads still must not echo secret values.
 - Export must not include deployment/infrastructure environment settings such as `DATABASE_URL`, `REDIS_URL`,
-  `SESSION_SECRET`, `ADMIN_ACCESS_KEY`, `SETTINGS_ACCESS_TOKEN`, CORS origins, ports, or storage paths.
+  `SESSION_SECRET`, `SETTINGS_ACCESS_TOKEN`, CORS origins, ports, or storage paths.
 - `runtime_config` must contain the current effective value, not only database override rows, so a clean target machine can
   import the same frontend-visible behavior.
 - Import preview must validate the whole document and return counts/names/flags for confirmation without mutating the
@@ -1098,7 +1140,7 @@ system_prompt = settings.prompt_copy_system
   provider profiles, bindings, and provider API keys.
 - Good: preview an import file and show counts plus whether API keys are present before commit.
 - Base: importing a `mock` text/image binding uses no provider profile id.
-- Bad: exporting `ADMIN_ACCESS_KEY` or `SETTINGS_ACCESS_TOKEN`; these protect access and belong to deployment setup.
+- Bad: exporting `SETTINGS_ACCESS_TOKEN`; it protects access and belongs to deployment setup.
 - Bad: writing runtime rows before discovering a broken provider binding, leaving a half-imported state.
 
 ### 6. Tests Required

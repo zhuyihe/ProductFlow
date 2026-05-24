@@ -168,29 +168,31 @@ if product is None:
 
 ## Authentication and Session Errors
 
-`presentation/deps.py::require_admin` protects private API routes with a session flag when
-`get_runtime_settings().admin_access_required` is true. It raises:
+`presentation.deps.py::require_admin` protects private API routes by loading the server-side session and requiring an
+authenticated principal. It raises:
 
-- `401` with detail `"请先登录"` when the session is not authenticated.
+- `401` with detail `"请先登录"` when the session is missing, revoked, or expired.
+- `403` with detail `"需要管理员权限"` when the session is authenticated but not an admin principal.
 
-When `admin_access_required` is false, `require_admin` allows private workspace routes without the admin login session.
-This does not bypass `presentation/routes/settings.py::require_settings_unlocked`; full settings reads/writes still require
-the independent `SETTINGS_ACCESS_TOKEN` unlock.
+There is no runtime `admin_access_required` toggle any more. Private workspace access is always session-based and the
+deleted password-admin path does not come back as a disabled-login mode.
 
-`presentation/routes/auth.py::create_session` compares the submitted admin key with `Settings.admin_access_key` while
-login is required and raises:
+`presentation/routes/auth.py` now keeps only the SSO and session endpoints:
 
-- `401` with detail `"管理员密钥不正确"` for an invalid key.
+- `GET /api/auth/session` returns the current session snapshot.
+- `DELETE /api/auth/session` revokes the stored session and clears the browser cookie.
+- `POST /api/auth/session` is removed and should return `404` if hit.
+- `GET /api/auth/sso/new-api/start` returns `404` when SSO is not configured.
+- `GET /auth/new-api/callback` returns `401` for invalid/expired tickets and `303` on success.
 
-When login is disabled, `POST /api/auth/session` is a harmless no-op success and leaves the current session untouched. `GET
-/api/auth/session` returns `authenticated=true` and `access_required=false`; after login is re-enabled, an unauthenticated
-session again returns `authenticated=false` and `access_required=true`.
+`GET /api/auth/session` is the only supported session-state read. It returns `authenticated=true` plus `principal_kind`,
+`username`, `new_api_user_id`, `new_api_token_id`, and `sso_start_url` when available. There is no
+`access_required` field any more.
 
-Routes that require auth use `dependencies=[Depends(require_admin)]` on the router, for example
-`presentation/routes/products.py`, `presentation/routes/image_sessions.py`, `presentation/routes/product_workflows.py`,
-and `presentation/routes/settings.py`.
+`presentation.routes.settings.py::require_settings_unlocked` remains independent; full settings reads/writes still require
+`SETTINGS_ACCESS_TOKEN` even when the caller is already authenticated.
 
-`presentation/api.py` registers `presentation/session.py::ClockStableSessionMiddleware` for signed cookie sessions. It is
+`presentation.api.py` registers `presentation/session.py::ClockStableSessionMiddleware` for signed cookie sessions. It is
 a thin wrapper around Starlette's session middleware that keeps the timestamp signer monotonic within the process. This
 preserves normal `max_age` expiry while preventing a brief wall-clock rollback from making a freshly issued session cookie
 look future-dated and unauthenticated. Large clock jumps are not retained after the wall clock recovers, so the middleware

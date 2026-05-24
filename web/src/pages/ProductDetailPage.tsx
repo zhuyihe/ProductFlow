@@ -1028,6 +1028,19 @@ export function ProductDetailPage() {
     },
   });
 
+  const shareUserTemplateGroupMutation = useMutation({
+    mutationFn: ({ templateId, isPublic }: { templateId: string; isPublic: boolean }) =>
+      isPublic ? api.unshareGalleryTemplate(templateId) : api.shareGalleryTemplate(templateId),
+    onSuccess: async () => {
+      setError("");
+      await queryClient.invalidateQueries({ queryKey: ["canvas-templates"] });
+      await queryClient.invalidateQueries({ queryKey: ["gallery", "templates"] });
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof ApiError ? mutationError.detail : t("detail.error.shareTemplate"));
+    },
+  });
+
   const updateNodeConfigMutation = useMutation({
     mutationFn: (node: WorkflowNode) =>
       api.updateWorkflowNode(node.id, {
@@ -1776,7 +1789,8 @@ export function ProductDetailPage() {
   const userTemplateMutationBusy =
     createUserTemplateGroupMutation.isPending ||
     updateUserTemplateGroupMutation.isPending ||
-    archiveUserTemplateGroupMutation.isPending;
+    archiveUserTemplateGroupMutation.isPending ||
+    shareUserTemplateGroupMutation.isPending;
   const autoLayoutBusy = structureBusy || !workflow || workflow.nodes.length === 0;
 
   const renderWorkflowToolbarButtons = () => (
@@ -2021,6 +2035,17 @@ export function ProductDetailPage() {
               });
             }
           }}
+          onToggleUserTemplateShare={(template) => {
+            if (template.user_template_id) {
+              shareUserTemplateGroupMutation.mutate({
+                templateId: template.user_template_id,
+                isPublic: template.is_public === true,
+              });
+            }
+          }}
+          sharingTemplateId={
+            shareUserTemplateGroupMutation.isPending ? (shareUserTemplateGroupMutation.variables?.templateId ?? null) : null
+          }
         />
       ) : null}
     </>

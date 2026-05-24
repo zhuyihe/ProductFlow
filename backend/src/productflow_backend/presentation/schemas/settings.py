@@ -37,7 +37,6 @@ class ConfigResponse(BaseModel):
 class RuntimeConfigResponse(BaseModel):
     image_generation_max_dimension: int
     image_tool_allowed_fields: list[str]
-    admin_access_required: bool
     deletion_enabled: bool
 
 

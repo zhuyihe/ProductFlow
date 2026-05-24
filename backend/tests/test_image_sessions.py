@@ -27,6 +27,7 @@ from productflow_backend.infrastructure.db.models import (
     ProviderBinding,
     ProviderProfile,
 )
+from productflow_backend.infrastructure.db.session import get_session_factory
 
 
 @pytest.fixture(autouse=True)
@@ -981,7 +982,14 @@ def test_image_session_generation_task_uses_current_user_new_api_token(
     db_session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("NEW_API_BASE_URL", "https://relay.example")
+    settings_session = get_session_factory()()
+    try:
+        settings_session.merge(AppSetting(key="new_api_base_url", value="https://relay.example"))
+        settings_session.commit()
+    finally:
+        settings_session.close()
+    get_settings.cache_clear()
+
     monkeypatch.setenv("IMAGE_PROVIDER_KIND", "openai_images")
     monkeypatch.setenv("IMAGE_API_KEY", "shared-admin-key")
     monkeypatch.setenv("IMAGE_BASE_URL", "https://upstream.example/v1")

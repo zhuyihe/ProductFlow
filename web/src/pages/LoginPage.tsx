@@ -44,9 +44,6 @@ export function LoginPage({ authenticated, ssoStartUrl }: LoginPageProps) {
               <span>{t("auth.login.scope.accountInfo")}</span>
             </li>
           </ul>
-          <p className="mt-2.5 text-xs leading-5 text-zinc-500 dark:text-slate-500">
-            {t("auth.login.scope.passwordRedline")}
-          </p>
         </div>
 
         <button

@@ -6,28 +6,30 @@ actions must comply.
 ## Why
 
 Administrators can access user-owned business data for support and risk review.
-Every such access must be auditable. Equally, the emergency admin login path
-must be auditable: a single shared key combined with no audit equals zero
-forensic visibility when something goes wrong.
+Every such access must be auditable. Session revocation and destructive
+moderation actions must remain attributable so support actions do not become
+silent data loss.
 
 ## What Must Be Audited
 
 1. **Admin user-content access.** Any time a principal whose `kind == "admin"`
    reads or mutates a row that has an `owner_user_id` belonging to a real
    end-user.
-2. **Admin login attempts.** Both successful and failed emergency admin
-   login attempts.
-3. **Admin gallery and global resource access.** Same rule as (1); the
-   `gallery` endpoints qualify.
+2. **Admin gallery moderation.** Public gallery reads are not audited, but
+   admin destructive/moderation actions on another user's gallery content are.
+3. **Admin session revocation.** Revoke/demote operations that immediately
+   remove access are audited like other cross-user destructive actions.
 4. **Future: tenant-scoping mutations.** When admins re-attribute resources
    (move products to a different owner), that mutation is auditable per (1).
 
 What is **not** audited:
 
 - Normal user actions on their own data. Use business event logs for those.
+- Admin `GET /api/gallery` and `GET /api/gallery/{id}` reads. Gallery rows are
+  public to authenticated users once shared.
+- Admin deleting their own gallery entry. Treat it like a normal owner action.
 - Health checks and unauthenticated requests.
-- Public demo mode (`admin_access_required=False`); audit is skipped because
-  there is no true admin actor to attribute.
+- Password-admin login is gone; there is no HTTP login attempt to audit.
 
 ## The Audit Helpers
 
@@ -39,20 +41,16 @@ def record_admin_user_content_access(
     resource_type, resource_id, request_context,
 ) -> None:
     ...
-
-def record_admin_login_attempt(
-    session, *, success: bool, principal_username: str | None,
-    request_context,
-) -> None:
-    ...
 ```
 
-Both helpers:
+That helper:
 
-- No-op when `admin_access_required=False`.
-- Commit independently of the surrounding business transaction so a business
+- Commits independently of the surrounding business transaction so a business
   rollback does not erase the audit trail.
-- Truncate over-long fields to fit column widths.
+- Truncates over-long fields to fit column widths.
+- Uses the authenticated principal's `new_api_user_id` when present and
+  falls back to `emergency-admin` only for CLI/bootstrap-style admin actors
+  that do not have a user id.
 
 ## Action Naming
 
@@ -61,8 +59,7 @@ Stable, lowercase, underscore-separated. The contract: `<verb>_<noun>` or
 
 - `read_product`, `update_product`, `delete_product`
 - `read_image_session`, `retry_image_generation_task`
-- `list_gallery`, `share_gallery_entry`
-- `admin_login_success`, `admin_login_failure`
+- `delete_gallery_entry`, `resolve_gallery_report`, `revoke_auth_session`
 
 Do not embed dynamic data in the action string (no `delete_product_42`); put
 the id in `resource_id`.
@@ -112,9 +109,12 @@ When reviewing a route change:
    admin's id?
 4. Are `client_address` and `user_agent` passed via `AuditRequestContext`?
 
-For a login or session route:
+Gallery-specific review rule:
 
-1. Does it call `record_admin_login_attempt` on both success and failure?
+- Do not audit admin `GET` reads of public gallery content.
+- Do audit admin deleting another user's gallery entry, resolving/dismissing a
+  report, or revoking a session for immediate demotion.
+- Do not audit an admin deleting a gallery entry they authored themselves.
 
 ## Anti-Patterns (Do Not Reintroduce)
 

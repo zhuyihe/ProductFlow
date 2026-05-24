@@ -21,6 +21,9 @@ class GalleryEntryResponse(BaseModel):
     id: str
     image_session_asset_id: str
     image_session_round_id: str | None = None
+    shared_by_user_id: str | None = None
+    shared_by_username: str | None = None
+    forked_from_entry_id: str | None = None
     image_session_id: str
     image_session_title: str
     product_id: str | None = None
@@ -47,6 +50,21 @@ class GalleryEntryListResponse(BaseModel):
     items: list[GalleryEntryResponse]
 
 
+class ReportGalleryEntryRequest(BaseModel):
+    reason_code: str
+    reason_text: str | None = None
+
+
+class GalleryEntryReportResponse(BaseModel):
+    id: str
+    entry_id: str
+    reporter_user_id: str
+    reason_code: str
+    reason_text: str | None = None
+    status: str
+    created_at: datetime
+
+
 def serialize_gallery_entry(entry: ImageGalleryEntry) -> GalleryEntryResponse:
     round_item = entry.round
     image_session = entry.asset.session
@@ -55,6 +73,9 @@ def serialize_gallery_entry(entry: ImageGalleryEntry) -> GalleryEntryResponse:
         id=entry.id,
         image_session_asset_id=entry.image_session_asset_id,
         image_session_round_id=entry.image_session_round_id,
+        shared_by_user_id=entry.shared_by_user_id,
+        shared_by_username=entry.shared_by_username,
+        forked_from_entry_id=entry.forked_from_entry_id,
         image_session_id=image_session.id,
         image_session_title=image_session.title,
         product_id=image_session.product_id,

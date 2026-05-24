@@ -23,6 +23,7 @@ class ImageSessionAssetResponse(BaseModel):
     kind: ImageSessionAssetKind
     original_filename: str
     mime_type: str
+    imported_from_gallery_entry_id: str | None = None
     download_url: str
     preview_url: str
     thumbnail_url: str
@@ -184,6 +185,7 @@ def serialize_image_session_asset(asset: ImageSessionAsset) -> ImageSessionAsset
         kind=asset.kind,
         original_filename=asset.original_filename,
         mime_type=asset.mime_type,
+        imported_from_gallery_entry_id=asset.imported_from_gallery_entry_id,
         **urls,
         created_at=asset.created_at,
     )

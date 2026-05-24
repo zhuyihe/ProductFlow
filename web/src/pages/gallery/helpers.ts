@@ -1,5 +1,5 @@
 import { DEFAULT_LOCALE, translate, type Locale } from "../../lib/i18n";
-import type { GalleryEntry } from "../../lib/types";
+import type { CanvasTemplateSummary, GalleryEntry } from "../../lib/types";
 
 const DEFAULT_TILE_ASPECT_RATIO = 4 / 5;
 const MIN_TILE_ASPECT_RATIO = 0.72;
@@ -23,11 +23,39 @@ export function galleryEntrySizeLabel(entry: GalleryEntry, locale: Locale = DEFA
   return entry.actual_size ?? entry.size ?? translate(locale, "gallery.sizeUnknown");
 }
 
+export function galleryEntryAuthorLabel(entry: Pick<GalleryEntry, "shared_by_username" | "shared_by_user_id">): string {
+  return entry.shared_by_username ?? entry.shared_by_user_id ?? translate(DEFAULT_LOCALE, "gallery.authorUnknown");
+}
+
+export function galleryEntryAuthorLabelForLocale(
+  entry: Pick<GalleryEntry, "shared_by_username" | "shared_by_user_id">,
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  return entry.shared_by_username ?? entry.shared_by_user_id ?? translate(locale, "gallery.authorUnknown");
+}
+
 export function selectGalleryEntry(entries: GalleryEntry[], selectedId: string | null): GalleryEntry | null {
   if (!entries.length) {
     return null;
   }
   return entries.find((entry) => entry.id === selectedId) ?? entries[0];
+}
+
+export function selectGalleryTemplate(
+  templates: CanvasTemplateSummary[],
+  selectedId: string | null,
+): CanvasTemplateSummary | null {
+  if (!templates.length) {
+    return null;
+  }
+  return templates.find((template) => template.user_template_id === selectedId || template.key === selectedId) ?? templates[0];
+}
+
+export function galleryTemplateAuthorLabelForLocale(
+  template: Pick<CanvasTemplateSummary, "shared_by_username" | "user_template_id">,
+  locale: Locale = DEFAULT_LOCALE,
+): string {
+  return template.shared_by_username ?? template.user_template_id ?? translate(locale, "gallery.authorUnknown");
 }
 
 function parseImageSize(value: string | null): { width: number; height: number } | null {

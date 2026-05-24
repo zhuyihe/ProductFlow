@@ -5,7 +5,6 @@ import { Drawer } from "vaul";
 import {
   ChevronRight,
   Download,
-  GalleryHorizontalEnd,
   History,
   Layers3,
   Loader2,
@@ -14,6 +13,7 @@ import {
   Plus,
   Save,
   Settings,
+  Share2,
   Sparkles,
   X,
 } from "lucide-react";
@@ -190,6 +190,7 @@ export function ImageChatPage() {
   );
   const [promptPreview, setPromptPreview] = useState<PromptPreview | null>(null);
   const [previewRound, setPreviewRound] = useState<ImageSessionRound | null>(null);
+  const [pendingGalleryShareAssetId, setPendingGalleryShareAssetId] = useState<string | null>(null);
   const [pendingDeleteAction, setPendingDeleteAction] =
     useState<PendingDeleteAction | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -697,11 +698,13 @@ export function ImageChatPage() {
   const saveGalleryMutation = useMutation({
     mutationFn: (assetId: string) => api.saveGalleryEntry(assetId),
     onSuccess: async () => {
+      setPendingGalleryShareAssetId(null);
       setSuccessMessage(t("chat.savedGallery"));
       setErrorMessage("");
       await queryClient.invalidateQueries({ queryKey: ["gallery"] });
     },
     onError: (error) => {
+      setPendingGalleryShareAssetId(null);
       setErrorMessage(error instanceof ApiError ? error.detail : t("chat.saveGalleryFailed"));
     },
   });
@@ -824,7 +827,7 @@ export function ImageChatPage() {
     if (!selectedRound || saveGalleryMutation.isPending) {
       return;
     }
-    saveGalleryMutation.mutate(selectedRound.generated_asset.id);
+    setPendingGalleryShareAssetId(selectedRound.generated_asset.id);
   }
 
   function handleSelectHistoryRound(assetId: string) {
@@ -1215,7 +1218,7 @@ export function ImageChatPage() {
                       {saveGalleryMutation.isPending ? (
                         <Loader2 size={16} className="mr-2 animate-spin" />
                       ) : (
-                        <GalleryHorizontalEnd size={16} className="mr-2" />
+                        <Share2 size={16} className="mr-2" />
                       )}
                       {t("chat.sendGallery")}
                     </button>
@@ -1565,7 +1568,7 @@ export function ImageChatPage() {
                 aria-label={t("chat.saveSelectedGallery")}
                 className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-700 shadow-sm transition-colors active:scale-[0.98] hover:border-indigo-300 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-60 dark:border-violet-400/35 dark:bg-violet-500/15 dark:text-violet-100 dark:hover:border-violet-300/55 dark:hover:bg-violet-500/25 dark:focus-visible:ring-violet-400"
               >
-                {saveGalleryMutation.isPending ? <Loader2 size={15} className="shrink-0 animate-spin" /> : <GalleryHorizontalEnd size={15} className="shrink-0" />}
+                {saveGalleryMutation.isPending ? <Loader2 size={15} className="shrink-0 animate-spin" /> : <Share2 size={15} className="shrink-0" />}
                 <span>{t("chat.sendGalleryShort")}</span>
               </button>
             </div>
@@ -1749,6 +1752,20 @@ export function ImageChatPage() {
           onClose={() => setPreviewRound(null)}
         />
       ) : null}
+      <ConfirmDialog
+        open={Boolean(pendingGalleryShareAssetId)}
+        title={t("chat.confirmShareGalleryTitle")}
+        description={t("chat.confirmShareGallery")}
+        confirmLabel={t("chat.confirmShareGalleryLabel")}
+        cancelLabel={t("common.cancel")}
+        busy={saveGalleryMutation.isPending}
+        onClose={() => setPendingGalleryShareAssetId(null)}
+        onConfirm={() => {
+          if (pendingGalleryShareAssetId) {
+            saveGalleryMutation.mutate(pendingGalleryShareAssetId);
+          }
+        }}
+      />
       <ConfirmDialog
         open={Boolean(pendingDeleteDialog)}
         title={pendingDeleteDialog?.title ?? ""}

@@ -8,7 +8,11 @@ import type {
   CopySetUpdateRequest,
   DuplicateWorkflowNodeGroupInput,
   GalleryEntry,
+  GalleryEntryDetail,
   GalleryEntryListResponse,
+  GalleryEntryReport,
+  GalleryTemplate,
+  GalleryTemplateDetail,
   GenerationQueueOverview,
   CreateUserTemplateGroupInput,
   CreateProductInput,
@@ -288,11 +292,44 @@ export const api = {
   listGalleryEntries(): Promise<GalleryEntryListResponse> {
     return request("/api/gallery");
   },
+  getGalleryEntry(entryId: string): Promise<GalleryEntryDetail> {
+    return request(`/api/gallery/${entryId}`);
+  },
   saveGalleryEntry(imageSessionAssetId: string): Promise<GalleryEntry> {
     return request("/api/gallery", {
       method: "POST",
       body: JSON.stringify({ image_session_asset_id: imageSessionAssetId }),
     });
+  },
+  deleteGalleryEntry(entryId: string): Promise<void> {
+    return request(`/api/gallery/${entryId}`, { method: "DELETE" });
+  },
+  importGalleryEntry(entryId: string): Promise<ImageSessionDetail> {
+    return request(`/api/gallery/${entryId}/import`, { method: "POST" });
+  },
+  reportGalleryEntry(
+    entryId: string,
+    payload: { reason_code: string; reason_text?: string | null },
+  ): Promise<GalleryEntryReport> {
+    return request(`/api/gallery/${entryId}/report`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  listGalleryTemplates(): Promise<CanvasTemplateListResponse> {
+    return request("/api/gallery/templates");
+  },
+  getGalleryTemplate(templateId: string): Promise<GalleryTemplateDetail> {
+    return request(`/api/gallery/templates/${templateId}`);
+  },
+  shareGalleryTemplate(templateId: string): Promise<GalleryTemplate> {
+    return request(`/api/gallery/templates/${templateId}/share`, { method: "POST" });
+  },
+  unshareGalleryTemplate(templateId: string): Promise<GalleryTemplate> {
+    return request(`/api/gallery/templates/${templateId}/share`, { method: "DELETE" });
+  },
+  importGalleryTemplate(templateId: string): Promise<GalleryTemplate> {
+    return request(`/api/gallery/templates/${templateId}/import`, { method: "POST" });
   },
   getProductWorkflow(productId: string): Promise<ProductWorkflow> {
     return request(`/api/products/${productId}/workflow`);

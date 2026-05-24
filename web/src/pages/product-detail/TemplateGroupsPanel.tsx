@@ -9,7 +9,9 @@ import {
   Maximize2,
   Pencil,
   Plus,
+  Share2,
   Trash2,
+  Unlink,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -76,6 +78,8 @@ interface TemplateGroupsPanelProps {
   userTemplateBusy: boolean;
   onRenameUserTemplate: (template: CanvasTemplateSummary, title: string) => void;
   onArchiveUserTemplate: (template: CanvasTemplateSummary) => void;
+  onToggleUserTemplateShare: (template: CanvasTemplateSummary) => void;
+  sharingTemplateId: string | null;
 }
 
 function summarizeOutput(template: CanvasTemplateSummary, t: TFunction): string {
@@ -656,6 +660,8 @@ export function TemplateGroupsPanel({
   userTemplateBusy,
   onRenameUserTemplate,
   onArchiveUserTemplate,
+  onToggleUserTemplateShare,
+  sharingTemplateId,
 }: TemplateGroupsPanelProps) {
   const { locale, t } = useI18n();
   const [editingTemplateKey, setEditingTemplateKey] = useState<string | null>(null);
@@ -759,6 +765,8 @@ export function TemplateGroupsPanel({
         const referenceLabel = summarizeReferenceInput(displayTemplate);
         const externalLabels = externalConnectionLabels(displayTemplate);
         const isUserTemplate = template.source === "user" && Boolean(template.user_template_id);
+        const templateShared = template.is_public === true;
+        const templateShareBusy = Boolean(template.user_template_id && sharingTemplateId === template.user_template_id);
         const editing = editingTemplateKey === template.key;
         const expanded = expandedTemplateKey === template.key;
         return (
@@ -788,6 +796,11 @@ export function TemplateGroupsPanel({
                       {t("detail.template.custom")}
                     </span>
                   ) : null}
+                  {templateShared ? (
+                    <span className="rounded-sm border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-200">
+                      {t("detail.template.shared")}
+                    </span>
+                  ) : null}
                   <span className="max-w-full truncate rounded-sm border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/12 dark:text-emerald-200">
                     {summarizeOutput(displayTemplate, t)}
                   </span>
@@ -809,6 +822,22 @@ export function TemplateGroupsPanel({
               <div className="flex shrink-0 items-center gap-1.5">
                 {isUserTemplate ? (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => onToggleUserTemplateShare(template)}
+                      disabled={userTemplateBusy || templateShareBusy}
+                      className="btn-secondary-spring inline-flex h-8 w-8 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label={templateShared ? t("detail.template.unshare") : t("detail.template.share")}
+                      title={templateShared ? t("detail.template.unshare") : t("detail.template.share")}
+                    >
+                      {templateShareBusy ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : templateShared ? (
+                        <Unlink size={13} />
+                      ) : (
+                        <Share2 size={13} />
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() => {

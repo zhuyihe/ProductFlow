@@ -31,8 +31,11 @@ including `snake_case`:
 - `CopySet.creative_brief_id`
 - `ImageSessionGenerationTask.failure_reason`
 - `ImageSessionRound.provider_response_id`
-- `SessionState.access_required`
-- `RuntimeConfig.admin_access_required`
+- `SessionState.principal_kind`
+- `SessionState.username`
+- `SessionState.new_api_user_id`
+- `SessionState.new_api_token_id`
+- `SessionState.sso_start_url`
 - `ConfigUpdateRequest.reset_keys`
 
 Do not silently convert these to camelCase in frontend types unless the API layer also performs explicit mapping.

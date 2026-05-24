@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,8 @@ from productflow_backend.infrastructure.db.models import AuthSession, new_id
 
 AUTH_SESSION_COOKIE_KEY = "auth_session_id"
 DEFAULT_AUTH_SESSION_TTL_DAYS = 14
+GUEST_ACCOUNT_DISABLED_CODE = "guest_account_disabled"
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +45,27 @@ def principal_owner_user_id(principal: Principal | None) -> str | None:
 
 
 @dataclass(frozen=True, slots=True)
+class Viewer:
+    kind: Literal["admin", "user"]
+    user_id: str
+    principal: Principal
+
+
+class PrincipalIntegrityError(RuntimeError):
+    pass
+
+
+def build_viewer(principal: Principal) -> Viewer:
+    if principal.kind == "admin":
+        return Viewer(kind="admin", user_id=principal.session_id, principal=principal)
+    if principal.kind == "user":
+        user_id = (principal.new_api_user_id or "").strip()
+        if user_id:
+            return Viewer(kind="user", user_id=user_id, principal=principal)
+    raise PrincipalIntegrityError("Invalid authenticated principal")
+
+
+@dataclass(frozen=True, slots=True)
 class NewApiSessionClaims:
     user_id: str
     username: str | None = None
@@ -53,6 +78,10 @@ class NewApiSessionClaims:
     expires_in_seconds: int | None = None
 
 
+class InvalidNewApiRoleError(ValueError):
+    pass
+
+
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -63,25 +92,35 @@ def _as_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
-def create_admin_session(session: Session) -> AuthSession:
-    auth_session = AuthSession(
-        id=new_id(),
-        principal_kind="admin",
-        username="admin",
-        role="admin",
-        expires_at=utc_now() + timedelta(days=DEFAULT_AUTH_SESSION_TTL_DAYS),
-    )
-    session.add(auth_session)
-    session.commit()
-    session.refresh(auth_session)
-    return auth_session
+def principal_kind_from_new_api_role(role: str | None) -> str:
+    normalized_role = (role or "").strip()
+    if not normalized_role:
+        logger.warning("Missing ProductFlow SSO role; treating session as ordinary user")
+        return "user"
+    try:
+        role_value = int(normalized_role)
+    except ValueError:
+        logger.warning("Invalid ProductFlow SSO role %s; treating session as ordinary user", normalized_role)
+        return "user"
+    if role_value == 0:
+        raise InvalidNewApiRoleError(GUEST_ACCOUNT_DISABLED_CODE)
+    if role_value == 1:
+        return "user"
+    if role_value >= 10:
+        return "admin"
+    logger.warning("Unexpected ProductFlow SSO role %s; treating session as ordinary user", normalized_role)
+    return "user"
 
 
 def create_new_api_user_session(session: Session, claims: NewApiSessionClaims) -> AuthSession:
-    ttl = claims.expires_in_seconds or DEFAULT_AUTH_SESSION_TTL_DAYS * 24 * 60 * 60
+    ttl = (
+        claims.expires_in_seconds
+        if claims.expires_in_seconds is not None
+        else DEFAULT_AUTH_SESSION_TTL_DAYS * 24 * 60 * 60
+    )
     auth_session = AuthSession(
         id=new_id(),
-        principal_kind="user",
+        principal_kind=principal_kind_from_new_api_role(claims.role),
         new_api_user_id=claims.user_id,
         username=claims.username,
         email=claims.email,

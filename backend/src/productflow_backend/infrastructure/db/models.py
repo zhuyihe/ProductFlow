@@ -154,11 +154,21 @@ class UserCanvasTemplate(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_user_canvas_templates_archived_at", "archived_at"),
         Index("ix_user_canvas_templates_owner_user_id", "owner_user_id"),
+        Index("ix_user_canvas_templates_is_public_shared_at", "is_public", "shared_at"),
+        Index("ix_user_canvas_templates_forked_from_template_id", "forked_from_template_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     key: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    shared_by_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    forked_from_template_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("user_canvas_templates.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     kind: Mapped[str] = mapped_column(String(40), default="node_group")
@@ -508,6 +518,9 @@ class ImageSession(Base, TimestampMixin):
 
 class ImageSessionAsset(Base):
     __tablename__ = "image_session_assets"
+    __table_args__ = (
+        Index("ix_image_session_assets_imported_from_gallery_entry_id", "imported_from_gallery_entry_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     session_id: Mapped[str] = mapped_column(String(36), ForeignKey("image_sessions.id", ondelete="CASCADE"))
@@ -515,6 +528,15 @@ class ImageSessionAsset(Base):
     original_filename: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(100))
     storage_path: Mapped[str] = mapped_column(String(500))
+    imported_from_gallery_entry_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey(
+            "image_gallery_entries.id",
+            ondelete="SET NULL",
+            name="fk_image_session_assets_imported_from_gallery_entry_id",
+        ),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped[ImageSession] = relationship(back_populates="assets")
@@ -619,11 +641,13 @@ class ImageSessionGenerationTask(Base):
 
 
 class ImageGalleryEntry(Base):
-    """全局精选画廊条目，引用连续生图生成资产，不复制图片文件。"""
+    """用户共享画廊条目，引用连续生图生成资产，不复制图片文件。"""
 
     __tablename__ = "image_gallery_entries"
     __table_args__ = (
         Index("uq_image_gallery_entries_asset_id", "image_session_asset_id", unique=True),
+        Index("ix_image_gallery_entries_shared_by_user_id", "shared_by_user_id"),
+        Index("ix_image_gallery_entries_forked_from_entry_id", "forked_from_entry_id"),
         Index("ix_image_gallery_entries_round_id", "image_session_round_id"),
         Index("ix_image_gallery_entries_created_at", "created_at"),
     )
@@ -646,7 +670,44 @@ class ImageGalleryEntry(Base):
         ),
         nullable=True,
     )
+    shared_by_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    shared_by_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    forked_from_entry_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey(
+            "image_gallery_entries.id",
+            ondelete="SET NULL",
+            name="fk_image_gallery_entries_forked_from_entry_id",
+        ),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     asset: Mapped[ImageSessionAsset] = relationship(foreign_keys=[image_session_asset_id])
     round: Mapped[ImageSessionRound | None] = relationship(foreign_keys=[image_session_round_id])
+
+
+class GalleryEntryReport(Base, TimestampMixin):
+    """画廊条目举报记录。"""
+
+    __tablename__ = "gallery_entry_reports"
+    __table_args__ = (
+        Index("ix_gallery_entry_reports_status_created_at", "status", "created_at"),
+        Index("ix_gallery_entry_reports_entry_id", "entry_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    entry_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey(
+            "image_gallery_entries.id",
+            ondelete="CASCADE",
+            name="fk_gallery_entry_reports_entry_id",
+        ),
+    )
+    reporter_user_id: Mapped[str] = mapped_column(String(64))
+    reason_code: Mapped[str] = mapped_column(String(32))
+    reason_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open")
+    resolved_by_admin_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

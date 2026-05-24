@@ -749,9 +749,9 @@ const DOC_PAGES: DocPage[] = [
           {
             type: "list",
             items: [
-              "`DATABASE_URL`、`REDIS_URL`、`SESSION_SECRET`、`ADMIN_ACCESS_KEY` 等基础设施配置不支持设置页覆盖。",
+              "`DATABASE_URL`、`REDIS_URL`、`SESSION_SECRET` 等基础设施配置不支持设置页覆盖；登录由 new-api SSO 管理。",
               "设置页二次解锁由 `SETTINGS_ACCESS_TOKEN` 保护。",
-              "关闭登录门禁不会关闭设置页二次解锁。",
+              "设置页二次解锁仍由 `SETTINGS_ACCESS_TOKEN` 保护，与 SSO 会话无关。",
             ],
           },
         ],
@@ -920,7 +920,7 @@ const DOC_PAGES: DocPage[] = [
             type: "table",
             headers: ["字段", "说明"],
             rows: [
-              ["要求登录访问密钥", "默认开启。普通工作台和私有 API 需要 `ADMIN_ACCESS_KEY` 登录；关闭后仍需 `SETTINGS_ACCESS_TOKEN` 才能查看和修改系统配置。"],
+              ["需要 SSO 会话", "工作台和私有 API 需要有效的 SSO 会话；查看和修改系统配置仍需 `SETTINGS_ACCESS_TOKEN` 二次解锁。"],
               ["启用业务删除", "默认关闭。用于体验站禁止整条商品和文/图生图会话被删除，保留溯源证据。工作流节点/连线编辑和参考图删除不受该开关影响。"],
             ],
           },
@@ -1193,7 +1193,7 @@ const DOC_PAGES_EN: DocPage[] = [
     icon: Settings,
     sections: [
       { id: "settings-access", title: "Access and save rules", blocks: [{ type: "list", items: ["Settings require login. If the settings page requires secondary unlock, enter `SETTINGS_ACCESS_TOKEN` as well.", "Each setting shows its source. Database overrides are marked as database source; otherwise env/default is used.", "Only changed fields are submitted. Leaving secret fields blank does not overwrite existing values.", "Restore default removes the database override so the field falls back to env/default."] }] },
-      { id: "env-only", title: "Env-only settings", blocks: [{ type: "list", items: ["Infrastructure settings such as `DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET`, and `ADMIN_ACCESS_KEY` cannot be overridden in Settings.", "Settings secondary unlock is protected by `SETTINGS_ACCESS_TOKEN`.", "Disabling login protection does not disable the settings secondary unlock."] }] },
+      { id: "env-only", title: "Env-only settings", blocks: [{ type: "list", items: ["Infrastructure settings such as `DATABASE_URL`, `REDIS_URL`, and `SESSION_SECRET` cannot be overridden in Settings; SSO login is handled outside the settings page.", "Settings secondary unlock is protected by `SETTINGS_ACCESS_TOKEN`.", "SSO session state does not disable the settings secondary unlock."] }] },
     ],
   },
   {
@@ -1235,7 +1235,7 @@ const DOC_PAGES_EN: DocPage[] = [
     icon: Settings,
     sections: [
       { id: "upload-and-queue", title: "Upload, queue, and recovery", blocks: [{ type: "table", headers: ["Field", "Description"], rows: [["Max bytes per image", "Limits the size of one uploaded image."], ["Max reference images", "Limits reference image count. Image chat also has a 6-image context limit per round."], ["Max pixels", "Limits the pixel area of uploaded images."], ["Allowed image MIME", "Comma-separated list such as `image/png,image/jpeg,image/webp`."], ["Global generation concurrency", "Shared protection threshold for workflow and image chat generation. When reached, the page asks users to retry later."], ["Image chat progress stale recovery threshold", "During worker startup recovery, running image chat tasks are checked by recent progress heartbeat."], ["Workflow image provider timeout", "Project-level timeout ceiling for one workflow AI image generation provider call. Timeout safely fails the task and releases queue capacity."]] }] },
-      { id: "security-settings", title: "Security and operations", blocks: [{ type: "paragraph", text: "Secrets are not returned by API responses or shown in the page. Leaving a secret field blank keeps the existing secret; only entering a new value writes a database override." }, { type: "table", headers: ["Field", "Description"], rows: [["Require login access key", "Enabled by default. The normal workbench and private APIs require `ADMIN_ACCESS_KEY` login; when disabled, `SETTINGS_ACCESS_TOKEN` is still required for system settings."], ["Enable business deletion", "Disabled by default. Used by demo deployments to prevent deleting whole products and image chat sessions, preserving traceability. Workflow node/edge editing and reference deletion are not controlled by this switch."]] }] },
+      { id: "security-settings", title: "Security and operations", blocks: [{ type: "paragraph", text: "Secrets are not returned by API responses or shown in the page. Leaving a secret field blank keeps the existing secret; only entering a new value writes a database override." }, { type: "table", headers: ["Field", "Description"], rows: [["SSO session", "Authenticated users sign in through new-api SSO; there is no password-admin login key here. System settings still require `SETTINGS_ACCESS_TOKEN` for the secondary unlock."], ["Enable business deletion", "Disabled by default. Used by demo deployments to prevent deleting whole products and image chat sessions, preserving traceability. Workflow node/edge editing and reference deletion are not controlled by this switch."]] }] },
     ],
   },
   {
@@ -1719,10 +1719,11 @@ const HELP_DOC_JA_TRANSLATIONS: Record<string, string> = {
   "点击恢复默认会删除数据库覆盖值，让该字段回到 env/default。":
     "既定値へ戻すをクリックするとデータベース上書き値が削除され、その項目は env/default に戻ります。",
   "Env-only 配置": "Env-only 設定",
-  "`DATABASE_URL`、`REDIS_URL`、`SESSION_SECRET`、`ADMIN_ACCESS_KEY` 等基础设施配置不支持设置页覆盖。":
-    "`DATABASE_URL`、`REDIS_URL`、`SESSION_SECRET`、`ADMIN_ACCESS_KEY` などのインフラ設定は、設定ページでの上書きに対応していません。",
+  "`DATABASE_URL`、`REDIS_URL`、`SESSION_SECRET` 等基础设施配置不支持设置页覆盖；登录由 new-api SSO 管理。":
+    "`DATABASE_URL`、`REDIS_URL`、`SESSION_SECRET` などのインフラ設定は、設定ページでの上書きに対応していません。ログインは new-api SSO で管理されます。",
   "设置页二次解锁由 `SETTINGS_ACCESS_TOKEN` 保护。": "設定ページの二次ロック解除は `SETTINGS_ACCESS_TOKEN` で保護されます。",
-  "关闭登录门禁不会关闭设置页二次解锁。": "ログイン保護を無効にしても、設定ページの二次ロック解除は無効になりません。",
+  "设置页二次解锁仍由 `SETTINGS_ACCESS_TOKEN` 保护，与 SSO 会话无关。":
+    "設定ページの二次ロック解除は引き続き `SETTINGS_ACCESS_TOKEN` で保護され、SSO セッションとは独立しています。",
   "模型供应商": "モデルプロバイダー",
   "说明供应商档案、文案/图片用途绑定、模型和图片生成基础参数。":
     "プロバイダープロファイル、コピー/画像用途バインディング、モデル、画像生成の基本パラメータを説明します。",
@@ -1864,9 +1865,9 @@ const HELP_DOC_JA_TRANSLATIONS: Record<string, string> = {
   "安全与运维": "安全と運用",
   "密钥字段不会在 API 响应和页面中回显。留空保存不会覆盖已有密钥；只有输入新值才会写入数据库覆盖。":
     "シークレット項目は API レスポンスやページに表示されません。空欄で保存しても既存シークレットは上書きされず、新しい値を入力した場合だけデータベース上書きが書き込まれます。",
-  "要求登录访问密钥": "ログインアクセスキーを要求",
-  "默认开启。普通工作台和私有 API 需要 `ADMIN_ACCESS_KEY` 登录；关闭后仍需 `SETTINGS_ACCESS_TOKEN` 才能查看和修改系统配置。":
-    "既定で有効です。通常のワークベンチとプライベート API は `ADMIN_ACCESS_KEY` ログインが必要です。無効化しても、システム設定の閲覧・変更には `SETTINGS_ACCESS_TOKEN` が必要です。",
+  "需要 SSO 会话": "SSO セッションが必要",
+  "工作台和私有 API 需要有效的 SSO 会话；查看和修改系统配置仍需 `SETTINGS_ACCESS_TOKEN` 二次解锁。":
+    "ワークベンチとプライベート API には有効な SSO セッションが必要です。システム設定の閲覧・変更には引き続き `SETTINGS_ACCESS_TOKEN` の二次ロック解除が必要です。",
   "启用业务删除": "業務削除を有効化",
   "默认关闭。用于体验站禁止整条商品和文/图生图会话被删除，保留溯源证据。工作流节点/连线编辑和参考图删除不受该开关影响。":
     "既定で無効です。デモ環境で商品全体や画像生成チャットセッションの削除を禁止し、追跡証拠を残すために使います。ワークフローノード/接続線の編集や参考画像削除はこのスイッチの影響を受けません。",

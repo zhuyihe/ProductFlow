@@ -12,6 +12,14 @@ from PIL import Image
 if TYPE_CHECKING:
     from productflow_backend.application.product_workflow_dependencies import WorkflowExecutionDependencies
 
+from productflow_backend.application.auth_sessions import (
+    AUTH_SESSION_COOKIE_KEY,
+    NewApiSessionClaims,
+    create_new_api_user_session,
+)
+from productflow_backend.infrastructure.db.session import get_session_factory
+from productflow_backend.presentation.session import build_signed_session_cookie_value
+
 
 def _make_demo_image_bytes() -> bytes:
     return _make_demo_image_bytes_with_size(800, 800)
@@ -34,9 +42,32 @@ def _read_image_size(image_bytes: bytes) -> tuple[int, int]:
         return image.size
 
 
-def _login(client: TestClient) -> None:
-    login = client.post("/api/auth/session", json={"admin_key": "super-secret-admin-key"})
-    assert login.status_code == 200
+def _login(
+    client: TestClient,
+    *,
+    user_id: str | None = None,
+    username: str = "admin",
+    role: str = "10",
+) -> None:
+    session = get_session_factory()()
+    try:
+        auth_session = create_new_api_user_session(
+            session,
+            NewApiSessionClaims(
+                user_id=user_id,
+                username=username,
+                role=role,
+                expires_in_seconds=24 * 60 * 60,
+            ),
+        )
+    finally:
+        session.close()
+    cookie_value = build_signed_session_cookie_value(
+        {AUTH_SESSION_COOKIE_KEY: auth_session.id},
+        secret_key="super-secret-session-key-123",
+    )
+    client.cookies.clear()
+    client.cookies.set("session", cookie_value)
     assert "session" in client.cookies, "login did not persist session cookie"
     state = client.get("/api/auth/session")
     assert state.status_code == 200, f"session state failed after login: {state.status_code}: {state.text}"

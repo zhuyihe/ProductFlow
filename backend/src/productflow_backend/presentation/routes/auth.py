@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from productflow_backend.application.audit_logs import record_admin_user_content_access
 from productflow_backend.application.auth_sessions import (
     AUTH_SESSION_COOKIE_KEY,
-    create_admin_session,
+    InvalidNewApiRoleError,
+    Principal,
     create_new_api_user_session,
     load_principal,
     revoke_auth_session,
@@ -17,33 +19,18 @@ from productflow_backend.application.new_api_sso import (
     new_api_sso_start_url,
     verify_new_api_sso_ticket,
 )
-from productflow_backend.config import get_runtime_settings, get_settings
-from productflow_backend.presentation.deps import get_session
-from productflow_backend.presentation.schemas.auth import (
-    SessionCreateRequest,
-    SessionResponse,
-    SessionStateResponse,
+from productflow_backend.config import get_runtime_settings
+from productflow_backend.infrastructure.db.models import AuthSession
+from productflow_backend.presentation.deps import (
+    get_session,
+    request_audit_context,
+    require_admin_audit_principal,
 )
+from productflow_backend.presentation.schemas.auth import SessionResponse, SessionStateResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 browser_router = APIRouter(tags=["auth"])
-
-
-@router.post("/session", response_model=SessionResponse)
-def create_session(
-    payload: SessionCreateRequest,
-    request: Request,
-    session: Session = Depends(get_session),
-) -> SessionResponse:
-    if not get_runtime_settings().admin_access_required:
-        return SessionResponse()
-    settings = get_settings()
-    if payload.admin_key != settings.admin_access_key:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="管理员密钥不正确")
-    request.session.clear()
-    auth_session = create_admin_session(session)
-    request.session[AUTH_SESSION_COOKIE_KEY] = auth_session.id
-    return SessionResponse()
+admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 @router.get("/session", response_model=SessionStateResponse, response_model_exclude_none=True)
@@ -52,18 +39,21 @@ def get_session_state(
     session: Session = Depends(get_session),
 ) -> SessionStateResponse:
     runtime_settings = get_runtime_settings()
-    access_required = runtime_settings.admin_access_required
     auth_session_id = request.session.get(AUTH_SESSION_COOKIE_KEY)
     principal = load_principal(session, auth_session_id)
     return SessionStateResponse(
-        authenticated=not access_required or bool(principal) or _has_legacy_admin_session(request, auth_session_id),
-        access_required=access_required,
+        authenticated=bool(principal),
         principal_kind=principal.kind if principal is not None else None,
         username=principal.username if principal is not None else None,
         new_api_user_id=principal.new_api_user_id if principal is not None else None,
         new_api_token_id=principal.new_api_token_id if principal is not None else None,
         sso_start_url=_configured_sso_start_url(runtime_settings),
     )
+
+
+@router.post("/session", include_in_schema=False)
+def create_session_removed() -> None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
 
 @router.delete("/session", response_model=SessionResponse)
@@ -75,6 +65,31 @@ def destroy_session(
     revoke_auth_session(session, request.session.get(AUTH_SESSION_COOKIE_KEY))
     request.session.clear()
     response.delete_cookie("session")
+    return SessionResponse()
+
+
+@admin_router.post("/sessions/{auth_session_id}/revoke", response_model=SessionResponse)
+def revoke_auth_session_endpoint(
+    auth_session_id: str,
+    session: Session = Depends(get_session),
+    principal: Principal = Depends(require_admin_audit_principal),
+    audit_context=Depends(request_audit_context),
+) -> SessionResponse:
+    auth_session = session.get(AuthSession, auth_session_id)
+    if auth_session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="登录会话不存在")
+    target_user_id = auth_session.new_api_user_id
+    revoke_auth_session(session, auth_session_id)
+    if target_user_id:
+        record_admin_user_content_access(
+            session,
+            principal=principal,
+            target_user_id=target_user_id,
+            action="revoke_auth_session",
+            resource_type="auth_session",
+            resource_id=auth_session_id,
+            request_context=audit_context,
+        )
     return SessionResponse()
 
 
@@ -96,10 +111,11 @@ def new_api_sso_callback(
 ) -> RedirectResponse:
     try:
         claims = verify_new_api_sso_ticket(ticket, settings=get_runtime_settings())
+        auth_session = create_new_api_user_session(session, claims)
     except NewApiSsoError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
-
-    auth_session = create_new_api_user_session(session, claims)
+    except InvalidNewApiRoleError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     request.session.clear()
     request.session[AUTH_SESSION_COOKIE_KEY] = auth_session.id
     return RedirectResponse(url="/products", status_code=status.HTTP_303_SEE_OTHER)
@@ -109,7 +125,3 @@ def _configured_sso_start_url(settings) -> str | None:
     if not is_new_api_sso_configured(settings):
         return None
     return new_api_sso_start_url(settings)
-
-
-def _has_legacy_admin_session(request: Request, auth_session_id: str | None) -> bool:
-    return not auth_session_id and bool(request.session.get("is_authenticated"))

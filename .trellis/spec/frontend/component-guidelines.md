@@ -298,38 +298,52 @@ Correct:
 
 The shared nav itself exposes the settings/image-chat/product/gallery links; pages only add page-specific actions.
 
-## Scenario: Global gallery display page
+## Scenario: Gallery community surface
 
 ### 1. Scope / Trigger
 
-- Trigger: editing `GalleryPage`, gallery route registration, gallery API DTO consumption, or continuous image-chat save
-  to gallery affordances.
-- The gallery is a visual browsing surface for generated images, not a management dashboard.
+- Trigger: editing `GalleryPage`, gallery route registration, gallery API DTO consumption, or any share/import/report
+  affordance for the user-shared gallery community.
+- The gallery is an authenticated community surface for shared images and workflow templates, not an admin-only
+  management dashboard.
 
 ### 2. Signatures
 
 - Route: `/gallery` in `web/src/App.tsx`.
 - API client:
   - `api.listGalleryEntries()`.
+  - `api.getGalleryEntry(entryId)`.
   - `api.saveGalleryEntry(imageSessionAssetId)`.
+  - `api.deleteGalleryEntry(entryId)`.
+  - `api.reportGalleryEntry(entryId, payload)`.
+  - `api.listGalleryTemplates()`.
+  - `api.getGalleryTemplate(templateId)`.
+  - `api.shareGalleryTemplate(templateId)`.
+  - `api.unshareGalleryTemplate(templateId)`.
+  - `api.importGalleryEntry(entryId)`.
+  - `api.importGalleryTemplate(templateId)`.
 - Query key: `['gallery']`.
-- DTO: `GalleryEntry` in `web/src/lib/types.ts`.
+- DTOs: `GalleryEntry`, `GalleryEntryDetail`, `GalleryTemplate`, and `GalleryTemplateDetail` in
+  `web/src/lib/types.ts`.
 
 ### 3. Contracts
 
-- `GalleryPage` lists global gallery entries and uses `api.toApiUrl(...)` for `image.thumbnail_url`, `image.preview_url`,
-  and `image.download_url`.
-- Continuous image chat saves only the selected generated candidate to the gallery; existing save-to-product behavior must
-  remain separate.
-- Successful save invalidates `['gallery']` so the global page refreshes without a hard reload.
-- The page should emphasize image-led browsing: a strong selected/hero image, a responsive visual grid, and compact prompt
-  and metadata context. Do not turn it into product filters, bulk tools, or a table-first admin page.
-- Gallery feed cards should preserve the full generated image instead of cropping it. Derive card aspect from
+- `GalleryPage` uses a segmented control for image/template tabs, keeps the selected tab in the URL or durable local UI
+  state, and opens details in modals that sync with `?entry=` / `?template=` query params.
+- Cards stay image-led: preserve aspect ratio, show compact author/time metadata, and keep the action buttons inside the
+  detail modal or a small kebab menu instead of on the card face.
+- Gallery rows and template rows must use `api.toApiUrl(...)` for relative backend image URLs.
+- Successful share/import/delete/report invalidates the relevant gallery query keys so the page refreshes without a hard
+  reload.
+- The page should emphasize browsing and re-use. Do not turn it into a table-first admin dashboard or mix moderation
+  controls into the primary card chrome.
+- Workflow template detail should use read-only react-flow plus a side inspector panel for node metadata and copy actions.
+- Gallery image detail should preserve the full generated image instead of cropping it. Derive card aspect from
   `actual_size` first and `size` second, clamp extreme ratios, and use a stable id/index-based score for featured cards
   so the layout feels varied without changing on every render.
-- If the feed uses CSS Grid masonry behavior with `auto-rows-*` and `gridRowEnd: span N`, the span calculation must include
-  both the row unit and the grid gap. A span that ignores `gap-*` will produce oversized dark bars because CSS Grid adds
-  every inter-row gap inside the spanned area.
+- If the feed uses CSS Grid masonry behavior with `auto-rows-*` and `gridRowEnd: span N`, the span calculation must
+  include both the row unit and the grid gap. A span that ignores `gap-*` will produce oversized dark bars because CSS
+  Grid adds every inter-row gap inside the spanned area.
 - Desktop masonry row spans must be calculated from the measured grid width, not a fixed container width. Account for
   column gaps when deriving tile width: subtract `gap * (columns - 1)` before dividing into columns, then add the gaps
   inside the tile span back. Keep `auto-rows-*` and `gridRowEnd` scoped to the desktop grid; mobile and tablet layouts
@@ -339,22 +353,24 @@ The shared nav itself exposes the settings/image-chat/product/gallery links; pag
 
 - Empty gallery -> styled empty state, no broken image placeholders.
 - API load failure -> visible page-local error state.
-- Missing selected ID after refresh/list change -> fall back to the newest available entry.
-- Save-to-gallery API error from image chat -> show page-local mutation error near existing image-chat feedback.
+- Missing selected ID after refresh/list change -> fall back to the newest available entry or template.
+- Share/import/delete/report API error -> show page-local mutation error near the relevant modal or button.
 
 ### 5. Good/Base/Bad Cases
 
-- Good: the selected generated candidate appears in the gallery after saving and refreshes via `['gallery']`.
-- Base: if a gallery image has no product reference, show it as a global/standalone item without blocking preview.
+- Good: the selected generated candidate appears in the image tab after saving and refreshes via `['gallery']`.
+- Good: a public workflow template can be shared, viewed, unshared, and imported from the same gallery surface.
+- Base: if a gallery image has no product reference, show it as a standalone item without blocking preview.
 - Bad: raw `fetch('/api/gallery')` from a page.
-- Bad: adding gallery grouping/filtering/bulk controls under this display-only contract.
+- Bad: hiding gallery behind admin-only route guards or card-level permission checks.
+- Bad: adding grouping/filtering/bulk controls under this browsing-and-sharing contract.
 
 ### 6. Tests Required
 
-- Pure helper tests for selected-entry fallback, size/actual-size labels, aspect-ratio parsing/clamping, stable featured
-  tile placement, masonry row-span behavior, gap-aware tile width, and measured grid width changes.
-- Frontend build must type-check `GalleryEntry` DTOs and API methods.
-- When save behavior changes, run image-chat related helper tests and `pnpm --dir web test:run`.
+- Pure helper tests for selected-entry fallback, tab persistence, size/actual-size labels, aspect-ratio parsing/clamping,
+  stable featured tile placement, masonry row-span behavior, gap-aware tile width, and measured grid width changes.
+- Frontend build must type-check `GalleryEntry` / `GalleryTemplate` DTOs and gallery API methods.
+- When share/import behavior changes, run gallery helper tests and `pnpm --dir web test:run`.
 
 ### 7. Wrong vs Correct
 

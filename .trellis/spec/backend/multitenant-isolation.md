@@ -105,6 +105,24 @@ reachable through one:
 
 A "no" anywhere is a blocking review comment.
 
+## Gallery Scenario
+
+Gallery list/detail endpoints expose already-shared public rows to every
+authenticated SSO principal. `viewer.kind` does not add an owner filter for
+these reads because the share action is the publication boundary.
+
+Owner-sensitive gallery mutations still use `Viewer`:
+
+- sharing a generated asset owned by an SSO user must verify
+  `viewer.kind == "user"` and `viewer.user_id == image_session.owner_user_id`;
+- current legacy/admin-created unowned rows may keep `shared_by_user_id ==
+  NULL`, but new SSO user shares must store the SSO user id;
+- admin moderation delete/report-resolution endpoints must check
+  `viewer.kind == "admin"` explicitly and audit cross-user destructive
+  actions;
+- direct child-id lookups such as `image_session_asset_id` must resolve the
+  asset's parent image session before accepting the mutation.
+
 ## Anti-Patterns (Do Not Reintroduce)
 
 ```python

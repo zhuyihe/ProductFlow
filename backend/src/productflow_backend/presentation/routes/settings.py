@@ -641,7 +641,6 @@ def get_runtime_config_endpoint() -> RuntimeConfigResponse:
     return RuntimeConfigResponse(
         image_generation_max_dimension=settings.image_generation_max_dimension,
         image_tool_allowed_fields=list(parse_image_tool_allowed_fields(settings.image_tool_allowed_fields)),
-        admin_access_required=settings.admin_access_required,
         deletion_enabled=settings.deletion_enabled,
     )
 

@@ -202,6 +202,9 @@ class CanvasTemplatePreviewNodeResponse(BaseModel):
     title: str
     position_x: int
     position_y: int
+    config_json: dict[str, Any] = Field(default_factory=dict)
+    prompt_seed: str | None = None
+    instruction_seed: str | None = None
     size: str | None = None
 
 
@@ -225,6 +228,10 @@ class CanvasTemplateSummaryResponse(BaseModel):
     reference_input_hints: list[CanvasTemplateReferenceInputHintResponse]
     suggested_connections: list[CanvasTemplateSuggestedConnectionResponse]
     default_external_connections: list[CanvasTemplateDefaultExternalConnectionResponse]
+    is_public: bool = False
+    shared_at: datetime | None = None
+    shared_by_username: str | None = None
+    forked_from_template_id: str | None = None
 
 
 class CanvasTemplateListResponse(BaseModel):
@@ -539,6 +546,9 @@ def serialize_canvas_template_summary(template: CanvasTemplate) -> CanvasTemplat
                 title=item.title,
                 position_x=item.position_x,
                 position_y=item.position_y,
+                config_json=item.config_json,
+                prompt_seed=item.prompt_seed,
+                instruction_seed=item.instruction_seed,
                 size=item.size,
             )
             for item in template.nodes
@@ -590,7 +600,15 @@ def serialize_canvas_template_summary(template: CanvasTemplate) -> CanvasTemplat
 def serialize_user_canvas_template_summary(template: UserCanvasTemplate) -> CanvasTemplateSummaryResponse:
     from productflow_backend.application.product_workflow.user_templates import user_canvas_template_to_canvas_template
 
-    return serialize_canvas_template_summary(user_canvas_template_to_canvas_template(template))
+    summary = serialize_canvas_template_summary(user_canvas_template_to_canvas_template(template))
+    return summary.model_copy(
+        update={
+            "is_public": template.is_public,
+            "shared_at": template.shared_at,
+            "shared_by_username": template.shared_by_username,
+            "forked_from_template_id": template.forked_from_template_id,
+        }
+    )
 
 
 def serialize_product_workflow_status(snapshot: ProductWorkflowStatusSnapshot) -> ProductWorkflowStatusResponse:

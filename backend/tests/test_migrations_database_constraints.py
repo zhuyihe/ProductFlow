@@ -23,6 +23,7 @@ from productflow_backend.infrastructure.db.models import (
     AuditLog,
     AuthSession,
     CopySet,
+    GalleryEntryReport,
     ImageGalleryEntry,
     ImageSession,
     ImageSessionAsset,
@@ -75,6 +76,12 @@ def test_gallery_entry_model_matches_migration_contract() -> None:
     assert table.c.image_session_asset_id.type.length == 36
     assert not table.c.image_session_asset_id.nullable
     assert table.c.image_session_round_id.nullable
+    assert table.c.shared_by_user_id.type.length == 64
+    assert table.c.shared_by_user_id.nullable
+    assert table.c.shared_by_username.type.length == 255
+    assert table.c.shared_by_username.nullable
+    assert table.c.forked_from_entry_id.type.length == 36
+    assert table.c.forked_from_entry_id.nullable
     assert not table.c.created_at.nullable
     assert table.c.created_at.default is not None
     assert table.c.created_at.default.arg.__name__ == utcnow.__name__
@@ -82,12 +89,41 @@ def test_gallery_entry_model_matches_migration_contract() -> None:
         "uq_image_gallery_entries_asset_id",
         "ix_image_gallery_entries_round_id",
         "ix_image_gallery_entries_created_at",
+        "ix_image_gallery_entries_shared_by_user_id",
+        "ix_image_gallery_entries_forked_from_entry_id",
     }
     foreign_keys = {fk.parent.name: fk for fk in table.foreign_keys}
     assert foreign_keys["image_session_asset_id"].constraint.name == "fk_image_gallery_entries_image_session_asset_id"
     assert foreign_keys["image_session_asset_id"].ondelete == "CASCADE"
     assert foreign_keys["image_session_round_id"].constraint.name == "fk_image_gallery_entries_image_session_round_id"
     assert foreign_keys["image_session_round_id"].ondelete == "SET NULL"
+    assert foreign_keys["forked_from_entry_id"].constraint.name == "fk_image_gallery_entries_forked_from_entry_id"
+    assert foreign_keys["forked_from_entry_id"].ondelete == "SET NULL"
+
+
+def test_gallery_entry_report_model_matches_migration_contract() -> None:
+    table = GalleryEntryReport.__table__
+    assert table.c.id.type.length == 36
+    assert not table.c.id.nullable
+    assert table.c.entry_id.type.length == 36
+    assert not table.c.entry_id.nullable
+    assert table.c.reporter_user_id.type.length == 64
+    assert not table.c.reporter_user_id.nullable
+    assert table.c.reason_code.type.length == 32
+    assert not table.c.reason_code.nullable
+    assert table.c.reason_text.nullable
+    assert table.c.status.type.length == 16
+    assert not table.c.status.nullable
+    assert table.c.resolved_by_admin_id.type.length == 64
+    assert table.c.resolved_by_admin_id.nullable
+    assert table.c.resolved_at.nullable
+    assert {index.name for index in table.indexes} == {
+        "ix_gallery_entry_reports_status_created_at",
+        "ix_gallery_entry_reports_entry_id",
+    }
+    foreign_keys = {fk.parent.name: fk for fk in table.foreign_keys}
+    assert foreign_keys["entry_id"].constraint.name == "fk_gallery_entry_reports_entry_id"
+    assert foreign_keys["entry_id"].ondelete == "CASCADE"
 
 
 def test_user_canvas_template_model_matches_migration_contract() -> None:
@@ -101,6 +137,13 @@ def test_user_canvas_template_model_matches_migration_contract() -> None:
     assert table.c.title.type.length == 255
     assert not table.c.title.nullable
     assert table.c.description.nullable
+    assert table.c.is_public.type.python_type is bool
+    assert not table.c.is_public.nullable
+    assert table.c.shared_at.nullable
+    assert table.c.shared_by_username.type.length == 255
+    assert table.c.shared_by_username.nullable
+    assert table.c.forked_from_template_id.type.length == 36
+    assert table.c.forked_from_template_id.nullable
     assert table.c.kind.type.length == 40
     assert not table.c.kind.nullable
     assert not table.c.schema_version.nullable
@@ -114,6 +157,8 @@ def test_user_canvas_template_model_matches_migration_contract() -> None:
     assert {index.name for index in table.indexes} == {
         "ix_user_canvas_templates_archived_at",
         "ix_user_canvas_templates_owner_user_id",
+        "ix_user_canvas_templates_is_public_shared_at",
+        "ix_user_canvas_templates_forked_from_template_id",
     }
 
 
@@ -738,23 +783,74 @@ def test_gallery_migration_schema_and_downgrade_support_sqlite(tmp_path: Path, m
     assert columns["id"]["nullable"] is False
     assert columns["image_session_asset_id"]["nullable"] is False
     assert columns["image_session_round_id"]["nullable"] is True
+    assert columns["shared_by_user_id"]["nullable"] is True
+    assert columns["shared_by_username"]["nullable"] is True
+    assert columns["forked_from_entry_id"]["nullable"] is True
     assert columns["created_at"]["nullable"] is False
     indexes = {index["name"]: index for index in inspector.get_indexes("image_gallery_entries")}
     assert bool(indexes["uq_image_gallery_entries_asset_id"]["unique"])
     assert indexes["uq_image_gallery_entries_asset_id"]["column_names"] == ["image_session_asset_id"]
     assert indexes["ix_image_gallery_entries_round_id"]["column_names"] == ["image_session_round_id"]
     assert indexes["ix_image_gallery_entries_created_at"]["column_names"] == ["created_at"]
+    assert indexes["ix_image_gallery_entries_shared_by_user_id"]["column_names"] == ["shared_by_user_id"]
+    assert indexes["ix_image_gallery_entries_forked_from_entry_id"]["column_names"] == ["forked_from_entry_id"]
     foreign_keys = {tuple(fk["constrained_columns"]): fk for fk in inspector.get_foreign_keys("image_gallery_entries")}
     assert foreign_keys[("image_session_asset_id",)]["referred_table"] == "image_session_assets"
     assert foreign_keys[("image_session_asset_id",)]["options"]["ondelete"] == "CASCADE"
     assert foreign_keys[("image_session_round_id",)]["referred_table"] == "image_session_rounds"
     assert foreign_keys[("image_session_round_id",)]["options"]["ondelete"] == "SET NULL"
+    assert foreign_keys[("forked_from_entry_id",)]["referred_table"] == "image_gallery_entries"
+    assert foreign_keys[("forked_from_entry_id",)]["options"]["ondelete"] == "SET NULL"
+    assert "gallery_entry_reports" in inspector.get_table_names()
+    template_columns = {column["name"]: column for column in inspector.get_columns("user_canvas_templates")}
+    assert template_columns["is_public"]["nullable"] is False
+    assert template_columns["shared_at"]["nullable"] is True
+    assert template_columns["shared_by_username"]["nullable"] is True
+    assert template_columns["forked_from_template_id"]["nullable"] is True
+    template_indexes = {index["name"]: index for index in inspector.get_indexes("user_canvas_templates")}
+    assert template_indexes["ix_user_canvas_templates_is_public_shared_at"]["column_names"] == [
+        "is_public",
+        "shared_at",
+    ]
+    assert template_indexes["ix_user_canvas_templates_forked_from_template_id"]["column_names"] == [
+        "forked_from_template_id"
+    ]
+    asset_columns = {column["name"]: column for column in inspector.get_columns("image_session_assets")}
+    assert asset_columns["imported_from_gallery_entry_id"]["nullable"] is True
+    asset_indexes = {index["name"]: index for index in inspector.get_indexes("image_session_assets")}
+    assert asset_indexes["ix_image_session_assets_imported_from_gallery_entry_id"]["column_names"] == [
+        "imported_from_gallery_entry_id"
+    ]
+    report_columns = {column["name"]: column for column in inspector.get_columns("gallery_entry_reports")}
+    assert report_columns["entry_id"]["nullable"] is False
+    assert report_columns["reporter_user_id"]["nullable"] is False
+    assert report_columns["reason_code"]["nullable"] is False
+    assert report_columns["reason_text"]["nullable"] is True
+    assert report_columns["status"]["nullable"] is False
+    report_indexes = {index["name"]: index for index in inspector.get_indexes("gallery_entry_reports")}
+    assert report_indexes["ix_gallery_entry_reports_entry_id"]["column_names"] == ["entry_id"]
+    assert report_indexes["ix_gallery_entry_reports_status_created_at"]["column_names"] == ["status", "created_at"]
+    report_foreign_keys = {
+        tuple(fk["constrained_columns"]): fk for fk in inspector.get_foreign_keys("gallery_entry_reports")
+    }
+    assert report_foreign_keys[("entry_id",)]["referred_table"] == "image_gallery_entries"
+    assert report_foreign_keys[("entry_id",)]["options"]["ondelete"] == "CASCADE"
 
     engine.dispose()
-    command.downgrade(config, "20260427_0015")
+    command.downgrade(config, "20260522_0032")
     engine = sa.create_engine(f"sqlite:///{database_path}")
     inspector = sa.inspect(engine)
-    assert "image_gallery_entries" not in inspector.get_table_names()
+    assert "image_gallery_entries" in inspector.get_table_names()
+    columns = {column["name"] for column in inspector.get_columns("image_gallery_entries")}
+    assert not {"shared_by_user_id", "shared_by_username", "forked_from_entry_id"} & columns
+    indexes = {index["name"] for index in inspector.get_indexes("image_gallery_entries")}
+    assert "ix_image_gallery_entries_shared_by_user_id" not in indexes
+    assert "ix_image_gallery_entries_forked_from_entry_id" not in indexes
+    template_columns = {column["name"] for column in inspector.get_columns("user_canvas_templates")}
+    assert not {"is_public", "shared_at", "shared_by_username", "forked_from_template_id"} & template_columns
+    asset_columns = {column["name"] for column in inspector.get_columns("image_session_assets")}
+    assert "imported_from_gallery_entry_id" not in asset_columns
+    assert "gallery_entry_reports" not in inspector.get_table_names()
     engine.dispose()
     get_settings.cache_clear()
 

@@ -59,9 +59,8 @@ Wave 3 work for KMS-backed rotation.
 
 The new-api SSO shared secret (`new_api_sso_shared_secret`) is stored in
 ProductFlow's `app_settings` table, not in environment. The bootstrap secrets
-(`ADMIN_ACCESS_KEY`, `SESSION_SECRET`, `PRODUCTFLOW_TOKEN_KEY`,
-`SETTINGS_ACCESS_TOKEN`) stay in env because they are needed before the database
-can be read.
+(`SESSION_SECRET`, `PRODUCTFLOW_TOKEN_KEY`, `SETTINGS_ACCESS_TOKEN`) stay in
+env because they are needed before the database can be read.
 
 Comparison rules:
 

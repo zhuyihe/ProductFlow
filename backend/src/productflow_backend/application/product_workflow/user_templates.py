@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -143,6 +144,19 @@ def list_canvas_templates(session: Session, owner_user_id: str | None = None) ->
     return [*list_builtin_canvas_templates(), *(user_canvas_template_to_canvas_template(row) for row in user_templates)]
 
 
+def list_public_user_canvas_templates(session: Session) -> list[UserCanvasTemplate]:
+    stmt = (
+        select(UserCanvasTemplate)
+        .where(UserCanvasTemplate.archived_at.is_(None), UserCanvasTemplate.is_public.is_(True))
+        .order_by(
+            UserCanvasTemplate.shared_at.desc(),
+            UserCanvasTemplate.created_at.desc(),
+            UserCanvasTemplate.id.desc(),
+        )
+    )
+    return list(session.scalars(stmt).all())
+
+
 def get_canvas_template(session: Session, template_key: str, owner_user_id: str | None = None) -> CanvasTemplate:
     from productflow_backend.application.canvas_templates import get_builtin_canvas_template
 
@@ -259,6 +273,72 @@ def archive_user_canvas_template(
     return template
 
 
+def share_user_canvas_template(
+    session: Session,
+    *,
+    template_id: str,
+    owner_user_id: str | None = None,
+    username: str | None = None,
+) -> UserCanvasTemplate:
+    template = _get_user_template_or_raise(session, template_id, owner_user_id)
+    if template.archived_at is not None:
+        raise NotFoundError("用户模板不存在")
+    template.is_public = True
+    template.shared_at = now_utc()
+    if username and username.strip():
+        template.shared_by_username = username.strip()
+    template.updated_at = template.shared_at
+    session.commit()
+    session.expire_all()
+    return _get_user_template_or_raise(session, template_id, owner_user_id)
+
+
+def unshare_user_canvas_template(
+    session: Session,
+    *,
+    template_id: str,
+    owner_user_id: str | None = None,
+) -> UserCanvasTemplate:
+    template = _get_user_template_or_raise(session, template_id, owner_user_id)
+    if template.archived_at is not None:
+        raise NotFoundError("用户模板不存在")
+    template.is_public = False
+    template.updated_at = now_utc()
+    session.commit()
+    session.expire_all()
+    return _get_user_template_or_raise(session, template_id, owner_user_id)
+
+
+def import_public_user_canvas_template(
+    session: Session,
+    *,
+    template_id: str,
+    owner_user_id: str,
+) -> UserCanvasTemplate:
+    source = _get_public_user_template_or_raise(session, template_id)
+    payload = deepcopy(source.template_json)
+    clone = UserCanvasTemplate(
+        id=new_id(),
+        key="",
+        owner_user_id=owner_user_id,
+        title=f"{source.title}（副本）",
+        description=source.description,
+        kind=source.kind,
+        schema_version=source.schema_version,
+        template_json=payload,
+        is_public=False,
+        shared_at=None,
+        shared_by_username=None,
+        forked_from_template_id=source.id,
+    )
+    clone.key = f"{USER_TEMPLATE_KEY_PREFIX}{clone.id}"
+    session.add(clone)
+    session.flush()
+    session.commit()
+    session.expire_all()
+    return _get_user_template_or_raise(session, clone.id, owner_user_id)
+
+
 def _parse_template_payload(row: UserCanvasTemplate) -> UserCanvasTemplatePayload:
     if row.kind != "node_group" or row.schema_version != USER_TEMPLATE_SCHEMA_VERSION:
         raise BusinessValidationError("用户模板版本不支持")
@@ -301,6 +381,19 @@ def _get_active_user_template_by_key(
     template = session.scalar(stmt)
     if template is None:
         raise BusinessValidationError("画布模板不存在")
+    return template
+
+
+def _get_public_user_template_or_raise(session: Session, template_id: str) -> UserCanvasTemplate:
+    template = session.scalar(
+        select(UserCanvasTemplate).where(
+            UserCanvasTemplate.id == template_id,
+            UserCanvasTemplate.archived_at.is_(None),
+            UserCanvasTemplate.is_public.is_(True),
+        )
+    )
+    if template is None:
+        raise NotFoundError("用户模板不存在")
     return template
 
 

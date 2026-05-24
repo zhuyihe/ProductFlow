@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-
-
-class SessionCreateRequest(BaseModel):
-    admin_key: str = Field(default="")
+from pydantic import BaseModel
 
 
 class SessionResponse(BaseModel):
@@ -13,7 +9,6 @@ class SessionResponse(BaseModel):
 
 class SessionStateResponse(BaseModel):
     authenticated: bool
-    access_required: bool
     principal_kind: str | None = None
     username: str | None = None
     new_api_user_id: str | None = None

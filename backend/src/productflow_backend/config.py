@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import Field, ValidationError, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -128,7 +128,6 @@ class Settings(BaseSettings):
     backend_cors_origins: str = "http://localhost:29281,http://127.0.0.1:29281"
     session_cookie_secure: bool = False
 
-    admin_access_key: str = Field(min_length=8)
     settings_access_token: str | None = None
     session_secret: str = Field(min_length=16)
     new_api_base_url: str | None = None
@@ -212,7 +211,6 @@ class Settings(BaseSettings):
         ge=1,
         le=24 * 60 * 60,
     )
-    admin_access_required: bool = True
     deletion_enabled: bool = False
 
     @classmethod
@@ -299,12 +297,6 @@ class Settings(BaseSettings):
     def _normalize_image_tool_allowed_fields(cls, value: Any) -> str:
         return normalize_image_tool_allowed_fields(value)
 
-    @model_validator(mode="after")
-    def _validate_distinct_settings_token(self) -> Settings:
-        if self.settings_access_token and self.settings_access_token.strip() == self.admin_access_key:
-            raise ValueError("SETTINGS_ACCESS_TOKEN 必须与 ADMIN_ACCESS_KEY 分开设置")
-        return self
-
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.backend_cors_origins.split(",") if origin.strip()]
@@ -323,8 +315,8 @@ def get_settings() -> Settings:
     """Bootstrap settings loaded from env.
 
     Infrastructure settings such as database URL, Redis URL, session secret and
-    admin key intentionally stay env-backed because the app needs them before it
-    can read any database-stored configuration.
+    settings token intentionally stay env-backed because the app needs them
+    before it can read any database-stored configuration.
     """
 
     return Settings()
@@ -660,16 +652,6 @@ CONFIG_DEFINITIONS: tuple[ConfigDefinition, ...] = (
         description="ProductFlow 服务端调用 New API 校验 ticket 的超时时间。",
         minimum=1,
         maximum=60,
-    ),
-    ConfigDefinition(
-        key="admin_access_required",
-        label="要求登录访问密钥",
-        category="安全与运维",
-        input_type="boolean",
-        description=(
-            "默认开启，普通工作台和私有 API 需要 ADMIN_ACCESS_KEY 登录；关闭后仍需 SETTINGS_ACCESS_TOKEN "
-            "才能查看和修改系统配置。"
-        ),
     ),
     ConfigDefinition(
         key="deletion_enabled",

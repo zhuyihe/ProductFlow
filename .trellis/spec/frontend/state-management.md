@@ -24,8 +24,9 @@ Server state is loaded through `web/src/lib/api.ts` and cached by TanStack Query
 
 Current query key patterns:
 
-- Session: `['session']` in `App.tsx`. `GET /api/auth/session` returns both `authenticated` and `access_required`; when
-  login is disabled server-side, `authenticated` is true even without a login cookie.
+- Session: `['session']` in `App.tsx`. `GET /api/auth/session` returns the current authenticated snapshot
+  (`authenticated`, `principal_kind`, `username`, `new_api_user_id`, `new_api_token_id`, `sso_start_url`). It is the
+  source of truth for auth redirects and logout state.
 - Product list: `['products']` in `ProductListPage.tsx` and `ImageChatPage.tsx`.
 - Product detail/history: `['product', productId]` and `['product-history', productId]` in `ProductDetailPage.tsx`.
 - Product workbench: `['product-workflow', productId]` and `['product-workflow-status', productId]` in
@@ -34,8 +35,8 @@ Current query key patterns:
   `ImageChatPage.tsx`.
 - Runtime config: `['runtime-config']` in `ProductDetailPage.tsx`, `ProductListPage.tsx`, and `ImageChatPage.tsx`.
 - Full settings config: `['config']` in `SettingsPage.tsx`; successful settings saves/resets must invalidate
-  `['runtime-config']` when they can affect public runtime behavior, and `['session']` because settings can toggle
-  `admin_access_required`.
+  `['runtime-config']` when they can affect public runtime behavior. Settings changes do not invalidate `['session']`
+  because auth is SSO/session-based rather than toggle-driven.
 - Settings lock state: `['settings-lock-state']` in `SettingsPage.tsx`; fetch full `['config']` only after the secondary
   settings token unlock succeeds.
 

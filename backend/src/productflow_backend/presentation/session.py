@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
 import threading
+from base64 import b64encode
+from collections.abc import Mapping
+from typing import Any
 
 from itsdangerous import TimestampSigner
 from starlette.middleware.sessions import SessionMiddleware
@@ -32,3 +36,10 @@ class ClockStableSessionMiddleware(SessionMiddleware):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.signer = MonotonicTimestampSigner(self.signer.secret_key)
+
+
+def build_signed_session_cookie_value(session_data: Mapping[str, Any], *, secret_key: str) -> str:
+    """Return the Starlette-compatible signed value for the browser `session` cookie."""
+
+    payload = b64encode(json.dumps(dict(session_data)).encode("utf-8"))
+    return MonotonicTimestampSigner(secret_key).sign(payload).decode("utf-8")

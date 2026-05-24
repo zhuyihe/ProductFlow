@@ -508,6 +508,9 @@ def test_canvas_template_catalog_endpoint_lists_builtin_scenario_templates(confi
             "title": node.title,
             "position_x": node.position_x,
             "position_y": node.position_y,
+            "config_json": node.config_json,
+            "prompt_seed": node.prompt_seed,
+            "instruction_seed": node.instruction_seed,
             "size": node.size,
         }
         for node in template.nodes
@@ -519,7 +522,7 @@ def test_canvas_template_catalog_endpoint_lists_builtin_scenario_templates(confi
         }
         for edge in template.edges
     ]
-    assert all("config_json" not in node for node in scenario_template["preview_nodes"])
+    assert any(node["config_json"] for node in scenario_template["preview_nodes"])
     assert scenario_template["reference_input_hints"]
     assert scenario_template["output_slots"]
     assert scenario_template["suggested_connections"]

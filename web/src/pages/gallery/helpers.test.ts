@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import type { GalleryEntry } from "../../lib/types";
-import { galleryEntryAspectRatio, galleryEntrySizeLabel, galleryTileLayout, selectGalleryEntry } from "./helpers";
+import {
+  galleryEntryAspectRatio,
+  galleryEntryAuthorLabelForLocale,
+  galleryEntrySizeLabel,
+  galleryTemplateAuthorLabelForLocale,
+  galleryTileLayout,
+  selectGalleryEntry,
+  selectGalleryTemplate,
+} from "./helpers";
+import type { CanvasTemplateSummary } from "../../lib/types";
 
 const createdAt = "2026-04-28T00:00:00Z";
 const gridRowUnitPx = 8;
@@ -18,6 +27,9 @@ function entry(overrides: Partial<GalleryEntry>): GalleryEntry {
     id: "gallery-1",
     image_session_asset_id: "asset-1",
     image_session_round_id: "round-1",
+    shared_by_user_id: "user-1",
+    shared_by_username: "maker",
+    forked_from_entry_id: null,
     image_session_id: "session-1",
     image_session_title: "session",
     product_id: null,
@@ -51,6 +63,36 @@ function entry(overrides: Partial<GalleryEntry>): GalleryEntry {
   };
 }
 
+function template(overrides: Partial<CanvasTemplateSummary>): CanvasTemplateSummary {
+  return {
+    key: "user:template-1",
+    version: 1,
+    kind: "node_group",
+    title: "template",
+    description: "",
+    source: "user",
+    user_template_id: "template-1",
+    scenario: {
+      scenario: "main_image",
+      title: "Main image",
+      description: "",
+      ecommerce_stage: "listing",
+      tags: [],
+    },
+    preview_nodes: [],
+    preview_edges: [],
+    output_slots: [],
+    reference_input_hints: [],
+    suggested_connections: [],
+    default_external_connections: [],
+    is_public: true,
+    shared_at: createdAt,
+    shared_by_username: "maker",
+    forked_from_template_id: null,
+    ...overrides,
+  };
+}
+
 describe("gallery helpers", () => {
   it("formats requested and actual size metadata", () => {
     expect(galleryEntrySizeLabel(entry({}))).toBe("实际 1024x1024 · 请求 2048x2048");
@@ -60,12 +102,44 @@ describe("gallery helpers", () => {
     expect(galleryEntrySizeLabel(entry({ size: null, actual_size: null }), "en-US")).toBe("Unknown size");
   });
 
+  it("prefers shared usernames and falls back when legacy rows have no author snapshot", () => {
+    expect(galleryEntryAuthorLabelForLocale(entry({ shared_by_username: "alice" }))).toBe("alice");
+    expect(galleryEntryAuthorLabelForLocale(entry({ shared_by_username: null, shared_by_user_id: "user-7" }))).toBe(
+      "user-7",
+    );
+    expect(galleryEntryAuthorLabelForLocale(entry({ shared_by_username: null, shared_by_user_id: null }))).toBe(
+      "未知作者",
+    );
+    expect(
+      galleryEntryAuthorLabelForLocale(entry({ shared_by_username: null, shared_by_user_id: null }), "en-US"),
+    ).toBe("Unknown author");
+  });
+
   it("keeps a selected entry when present and falls back to the newest list item", () => {
     const first = entry({ id: "gallery-1" });
     const second = entry({ id: "gallery-2" });
     expect(selectGalleryEntry([first, second], "gallery-2")).toBe(second);
     expect(selectGalleryEntry([first, second], "missing")).toBe(first);
     expect(selectGalleryEntry([], "gallery-1")).toBeNull();
+  });
+
+  it("keeps a selected template by id or key and falls back to the newest template", () => {
+    const first = template({ user_template_id: "template-1", key: "user:template-1" });
+    const second = template({ user_template_id: "template-2", key: "user:template-2" });
+    expect(selectGalleryTemplate([first, second], "template-2")).toBe(second);
+    expect(selectGalleryTemplate([first, second], "user:template-2")).toBe(second);
+    expect(selectGalleryTemplate([first, second], "missing")).toBe(first);
+    expect(selectGalleryTemplate([], "template-1")).toBeNull();
+  });
+
+  it("formats gallery template authors with legacy fallbacks", () => {
+    expect(galleryTemplateAuthorLabelForLocale(template({ shared_by_username: "alice" }))).toBe("alice");
+    expect(galleryTemplateAuthorLabelForLocale(template({ shared_by_username: null, user_template_id: "template-7" }))).toBe(
+      "template-7",
+    );
+    expect(galleryTemplateAuthorLabelForLocale(template({ shared_by_username: null, user_template_id: null }))).toBe(
+      "未知作者",
+    );
   });
 
   it("derives a bounded aspect ratio from actual size before requested size", () => {

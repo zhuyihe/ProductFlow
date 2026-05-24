@@ -35,7 +35,6 @@ export type CanvasTemplateScenario =
 
 export interface SessionState {
   authenticated: boolean;
-  access_required: boolean;
   principal_kind?: string | null;
   username?: string | null;
   new_api_user_id?: string | null;
@@ -365,6 +364,9 @@ export interface CanvasTemplatePreviewNode {
   title: string;
   position_x: number;
   position_y: number;
+  config_json?: Record<string, unknown>;
+  prompt_seed?: string | null;
+  instruction_seed?: string | null;
   size: string | null;
 }
 
@@ -388,6 +390,10 @@ export interface CanvasTemplateSummary {
   reference_input_hints: CanvasTemplateReferenceInputHint[];
   suggested_connections: CanvasTemplateSuggestedConnection[];
   default_external_connections: CanvasTemplateDefaultExternalConnection[];
+  is_public?: boolean;
+  shared_at?: string | null;
+  shared_by_username?: string | null;
+  forked_from_template_id?: string | null;
 }
 
 export interface CanvasTemplateListResponse {
@@ -420,6 +426,7 @@ export interface ImageSessionAsset {
   kind: ImageSessionAssetKind;
   original_filename: string;
   mime_type: string;
+  imported_from_gallery_entry_id?: string | null;
   download_url: string;
   preview_url: string;
   thumbnail_url: string;
@@ -544,6 +551,9 @@ export interface GalleryEntry {
   id: string;
   image_session_asset_id: string;
   image_session_round_id: string | null;
+  shared_by_user_id: string | null;
+  shared_by_username: string | null;
+  forked_from_entry_id: string | null;
   image_session_id: string;
   image_session_title: string;
   product_id: string | null;
@@ -568,6 +578,20 @@ export interface GalleryEntry {
 
 export interface GalleryEntryListResponse {
   items: GalleryEntry[];
+}
+
+export type GalleryEntryDetail = GalleryEntry;
+export type GalleryTemplate = CanvasTemplateSummary;
+export type GalleryTemplateDetail = CanvasTemplateSummary;
+
+export interface GalleryEntryReport {
+  id: string;
+  entry_id: string;
+  reporter_user_id: string;
+  reason_code: string;
+  reason_text: string | null;
+  status: string;
+  created_at: string;
 }
 
 export type ConfigSource = "database" | "env_default";
@@ -601,7 +625,6 @@ export interface ConfigResponse {
 export interface RuntimeConfig {
   image_generation_max_dimension: number;
   image_tool_allowed_fields: ImageToolOptionKey[];
-  admin_access_required: boolean;
   deletion_enabled: boolean;
 }
 

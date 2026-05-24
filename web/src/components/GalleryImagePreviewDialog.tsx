@@ -20,6 +20,7 @@ interface GalleryImagePreviewDialogProps {
   providerNotesTitle: string;
   downloadUrl: string;
   downloadLabel: string;
+  actions?: ReactNode;
   closeLabel: string;
   onClose: () => void;
 }
@@ -36,6 +37,7 @@ export function GalleryImagePreviewDialog({
   providerNotesTitle,
   downloadUrl,
   downloadLabel,
+  actions,
   closeLabel,
   onClose,
 }: GalleryImagePreviewDialogProps) {
@@ -92,7 +94,7 @@ export function GalleryImagePreviewDialog({
               </div>
             ) : null}
           </div>
-          <div className="border-t border-slate-200 p-4">
+          <div className="space-y-3 border-t border-slate-200 p-4">
             <a
               href={api.toApiUrl(downloadUrl)}
               target="_blank"
@@ -102,6 +104,7 @@ export function GalleryImagePreviewDialog({
               <Download size={16} className="mr-2" />
               {downloadLabel}
             </a>
+            {actions ? <div className="grid gap-2">{actions}</div> : null}
           </div>
         </aside>
       </div>

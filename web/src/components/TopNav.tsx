@@ -58,7 +58,7 @@ const navItems = [
   },
 ] as const;
 
-const adminOnlyNavTargets = new Set(["/gallery", "/settings"]);
+const adminOnlyNavTargets = new Set(["/settings"]);
 
 const themeIcons: Record<ThemePreference, typeof Sun> = {
   light: Sun,

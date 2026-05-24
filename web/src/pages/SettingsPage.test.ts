@@ -83,7 +83,7 @@ function providerBinding(overrides: Partial<ProviderBinding> & Pick<ProviderBind
 describe("SettingsPage draft helpers", () => {
   it("only submits changed non-secret values instead of rewriting the whole config page", () => {
     const items = [
-      configItem({ key: "admin_access_required", input_type: "boolean", value: true }),
+      configItem({ key: "deletion_enabled", input_type: "boolean", value: false }),
       configItem({ key: "image_main_image_size", value: "1024x1024" }),
       configItem({ key: "image_tool_allowed_fields", input_type: "multi_select", value: ["model", "quality"] }),
     ];

@@ -85,11 +85,7 @@ function AppRoutes() {
         />
         <Route
           path="/gallery"
-          element={
-            authenticated
-              ? (isAdmin ? <GalleryPage /> : <Navigate to="/products" replace />)
-              : <Navigate to={workspaceLoginTarget} replace />
-          }
+          element={authenticated ? <GalleryPage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
         <Route
           path="/help"
