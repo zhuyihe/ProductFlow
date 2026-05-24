@@ -91,7 +91,21 @@ class _PolicyRejectedWorkflowImageProvider:
         raise RuntimeError("Request blocked by content policy")
 
 
-def test_start_product_workflow_run_persists_new_api_token_context(db_session) -> None:
+@pytest.mark.parametrize(
+    ("principal_kind", "new_api_user_id", "token_id", "token_name", "token"),
+    [
+        ("user", "42", "77", "ProductFlow", "sk-user-token"),
+        ("admin", "99", "88", "ProductFlow Admin", "sk-admin-token"),
+    ],
+)
+def test_start_product_workflow_run_persists_new_api_token_context(
+    db_session,
+    principal_kind: str,
+    new_api_user_id: str,
+    token_id: str,
+    token_name: str,
+    token: str,
+) -> None:
     from productflow_backend.application.auth_sessions import Principal
     from productflow_backend.application.product_workflows import start_product_workflow_run
 
@@ -107,25 +121,61 @@ def test_start_product_workflow_run_persists_new_api_token_context(db_session) -
     )
     principal = Principal(
         session_id="auth-session-1",
-        kind="user",
-        new_api_user_id="42",
+        kind=principal_kind,
+        new_api_user_id=new_api_user_id,
         username="alice",
         email=None,
         group="default",
-        role="user",
-        new_api_token_id="77",
-        new_api_token_name="ProductFlow",
-        new_api_token="sk-user-token",
+        role=principal_kind,
+        new_api_token_id=token_id,
+        new_api_token_name=token_name,
+        new_api_token=token,
     )
 
     kickoff = start_product_workflow_run(db_session, product_id=product.id, principal=principal)
 
     run = db_session.get(WorkflowRun, kickoff.run_id)
     assert run is not None
-    assert run.new_api_user_id == "42"
-    assert run.new_api_token_id == "77"
-    assert run.new_api_token_name == "ProductFlow"
-    assert run.new_api_token == "sk-user-token"
+    assert run.new_api_user_id == new_api_user_id
+    assert run.new_api_token_id == token_id
+    assert run.new_api_token_name == token_name
+    assert run.new_api_token == token
+
+
+def test_start_product_workflow_run_rejects_bootstrap_admin_without_new_api_token(db_session) -> None:
+    from productflow_backend.application.auth_sessions import Principal
+    from productflow_backend.application.product_workflows import start_product_workflow_run
+    from productflow_backend.application.provider_runtime import MISSING_NEW_API_TOKEN_DETAIL
+    from productflow_backend.domain.errors import BusinessValidationError
+
+    product = create_product(
+        db_session,
+        name="bootstrap workflow",
+        category="护肤",
+        price=None,
+        source_note="bootstrap admin 不应走共享 provider",
+        image_bytes=_make_demo_image_bytes(),
+        filename="workflow.png",
+        content_type="image/png",
+    )
+    principal = Principal(
+        session_id="bootstrap-session",
+        kind="admin",
+        new_api_user_id="bootstrap-admin",
+        username="root",
+        email=None,
+        group=None,
+        role="admin",
+        new_api_token_id=None,
+        new_api_token_name=None,
+        new_api_token=None,
+    )
+
+    with pytest.raises(BusinessValidationError, match="缺少 New API token") as exc_info:
+        start_product_workflow_run(db_session, product_id=product.id, principal=principal)
+
+    assert exc_info.value.message == MISSING_NEW_API_TOKEN_DETAIL
+    assert db_session.query(WorkflowRun).count() == 0
 
 
 def test_workflow_run_kickoff_reuses_overlapping_active_node_runs(db_session, configured_env: Path) -> None:

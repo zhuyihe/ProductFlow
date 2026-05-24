@@ -55,8 +55,8 @@ from productflow_backend.application.product_workflow_dependencies import (
 )
 from productflow_backend.application.provider_runtime import (
     ProviderExecutionContext,
+    interactive_provider_execution_context_from_principal,
     provider_credential_override_from_context,
-    provider_execution_context_from_principal,
     provider_execution_context_from_workflow_run,
     provider_execution_context_values,
 )
@@ -208,8 +208,8 @@ def start_product_workflow_run(
             should_enqueue=_workflow_run_should_enqueue(active_run),
         )
 
+    provider_context = provider_execution_context or interactive_provider_execution_context_from_principal(principal)
     ensure_generation_capacity(session)
-    provider_context = provider_execution_context or provider_execution_context_from_principal(principal)
     run = WorkflowRun(
         workflow_id=workflow.id,
         status=WorkflowRunStatus.RUNNING,

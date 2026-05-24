@@ -32,9 +32,9 @@ from productflow_backend.application.image_generation_failures import (
     classify_image_generation_failure,
 )
 from productflow_backend.application.provider_runtime import (
+    interactive_provider_execution_context_from_principal,
     provider_credential_override_from_context,
     provider_execution_context_from_image_generation_task,
-    provider_execution_context_from_principal,
     provider_execution_context_values,
 )
 from productflow_backend.application.queue_submission import enqueue_or_mark_failed
@@ -833,7 +833,6 @@ def create_image_session_generation_task(
     """校验并创建连续生图 durable 任务；不调用 provider。"""
     image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
     normalized_tool_options = _normalize_tool_options(tool_options)
-    provider_context = provider_execution_context_from_principal(principal)
     normalized_size, normalized_base_asset_id, normalized_reference_ids = _validate_generation_request(
         image_session,
         size=size,
@@ -842,6 +841,7 @@ def create_image_session_generation_task(
         generation_count=generation_count,
         tool_options=normalized_tool_options,
     )
+    provider_context = interactive_provider_execution_context_from_principal(principal)
     ensure_generation_capacity(session)
     task = ImageSessionGenerationTask(
         session_id=image_session.id,

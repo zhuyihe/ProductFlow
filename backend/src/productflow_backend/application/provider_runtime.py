@@ -4,8 +4,11 @@ from dataclasses import dataclass, field
 
 from productflow_backend.application.auth_sessions import Principal
 from productflow_backend.config import get_runtime_settings, resolve_new_api_relay_base_url
+from productflow_backend.domain.errors import BusinessValidationError
 from productflow_backend.infrastructure.db.models import ImageSessionGenerationTask, WorkflowRun
 from productflow_backend.infrastructure.provider_config import ProviderCredentialOverride
+
+MISSING_NEW_API_TOKEN_DETAIL = "当前 ProductFlow 会话缺少 New API token，请从 New API 重新进入 ProductFlow"
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,7 +32,7 @@ class ProviderExecutionContext:
 
 
 def provider_execution_context_from_principal(principal: Principal | None) -> ProviderExecutionContext | None:
-    if principal is None or principal.is_admin:
+    if principal is None:
         return None
     return _provider_execution_context(
         new_api_user_id=principal.new_api_user_id,
@@ -37,6 +40,17 @@ def provider_execution_context_from_principal(principal: Principal | None) -> Pr
         new_api_token_name=principal.new_api_token_name,
         new_api_token=principal.new_api_token,
     )
+
+
+def interactive_provider_execution_context_from_principal(
+    principal: Principal | None,
+) -> ProviderExecutionContext | None:
+    if principal is None:
+        return None
+    context = provider_execution_context_from_principal(principal)
+    if context is not None and not context.new_api_token:
+        raise BusinessValidationError(MISSING_NEW_API_TOKEN_DETAIL)
+    return context
 
 
 def provider_execution_context_from_workflow_run(run: WorkflowRun) -> ProviderExecutionContext | None:

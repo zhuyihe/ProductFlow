@@ -341,22 +341,24 @@ client = genai.Client(
   `new_api_token_id`, and `sso_start_url` when configured.
 - SSO ticket role parsing is frozen at session creation:
   - missing/blank/invalid role -> ordinary user fallback
-  - `0` -> reject with 401 / `"当前账号没有 ProductFlow 访问权限"`
+  - `0` -> reject with 401 / `"guest_account_disabled"`
   - `1` -> user session
   - `>= 10` -> admin session
   - other positive integers -> user session plus a warning
 - Session kind is stored in `auth_sessions.principal_kind` and remains frozen until expiry or revocation; requests do not
   call back to new-api to re-check the role on every request.
 - `DELETE /api/auth/session` revokes the stored session row and clears the browser cookie.
-- CLI bootstrap writes a temporary admin session directly in the database and prints a signed session cookie value; it is
-  the only break-glass replacement for the deleted password-admin path.
+- CLI bootstrap writes a temporary admin session directly in the database and prints a signed session cookie value to
+  stderr with a warning; it is the only break-glass replacement for the deleted password-admin path.
+- CLI bootstrap admin sessions have no New API token. They are for recovery/configuration and must not silently use
+  ProductFlow shared provider credentials for interactive generation.
 - Private workspace routes are gated only by authenticated session presence and principal kind; there is no
   `admin_access_required` toggle any more.
 
 ### 4. Validation & Error Matrix
 
 - No authenticated session -> private route returns `401`, `{"detail": "请先登录"}`.
-- Guest/new-api role `0` -> `401`, `{"detail": "当前账号没有 ProductFlow 访问权限"}`.
+- Guest/new-api role `0` -> `401`, `{"detail": "guest_account_disabled"}`.
 - Invalid or removed `POST /api/auth/session` -> `404`.
 - Revoked/expired session -> `GET /api/auth/session` returns `{"authenticated": false}`.
 - `GET /api/settings` without login -> `401`; after login but without unlock -> `403`, `{"detail": "请先解锁系统配置"}`.
@@ -365,9 +367,11 @@ client = genai.Client(
 ### 5. Good/Base/Bad Cases
 
 - Good: a role-10 new-api user signs in through SSO and gets an admin ProductFlow session with a short TTL.
-- Good: break-glass bootstrap creates a temporary admin session directly in the DB for containerized recovery.
+- Good: break-glass bootstrap creates a temporary admin session directly in the DB for containerized recovery and settings
+  repair.
 - Base: a role-1 new-api user gets a normal workspace session and can browse the public gallery.
 - Bad: keeping a password-admin HTTP login path around "for convenience".
+- Bad: using a bootstrap admin session as an unbilled generation actor.
 - Bad: re-checking new-api on every request instead of freezing the session principal until expiry.
 - Bad: storing a login toggle in `app_settings`; the auth boundary is session-based now.
 
@@ -379,6 +383,7 @@ client = genai.Client(
 - Removed-login-route test: `POST /api/auth/session` returns 404.
 - Revocation test: a revoked session no longer authorizes private routes.
 - Settings-boundary test: login does not bypass `SETTINGS_ACCESS_TOKEN`.
+- Bootstrap CLI test: cookie value is not written to stdout.
 - Clock rollback regression: session signer remains monotonic across small wall-clock rollback.
 
 ### 7. Wrong vs Correct

@@ -106,6 +106,24 @@ The reverse proxy (Caddy on `image.aync.cc.cd`) must forward at least:
 - `X-Forwarded-For: <client_ip>`
 - `Host: image.aync.cc.cd`
 
+## New API Relay Credential Use
+
+Interactive provider calls use the current SSO principal's New API token as the relay credential. This applies to both
+ordinary users and ProductFlow admins. Admin status grants ProductFlow authorization, moderation, and settings access; it
+must not bypass New API token billing, token model limits, quota, or usage attribution.
+
+Rules:
+
+- `ProviderExecutionContext` may carry `new_api_user_id`, token metadata, and the decrypted `new_api_token`; the token
+  field must stay `repr=False` and must never be returned through API responses.
+- ProductFlow provider profiles supply model names and provider-specific settings. For interactive SSO generation, the
+  API key and base URL must be overridden with `new_api_token` and the configured New API relay URL.
+- Durable `workflow_runs` and `image_session_generation_tasks` store the token snapshot chosen at submit time so retries
+  keep the original billing identity.
+- A CLI/bootstrap admin session has no New API token. It may be used to recover settings, but it must not silently fall
+  back to ProductFlow shared provider credentials for user-initiated generation.
+- A missing token in an interactive relay path is an expected safe failure, not permission to use a shared provider key.
+
 ## Reviewing New Code
 
 A change that touches secrets is in scope. Ask:
@@ -118,6 +136,8 @@ A change that touches secrets is in scope. Ask:
    `secrets.compare_digest`?
 4. Does any new environment variable hold a secret? If yes, is it required by
    the production-mode validator?
+5. Does an interactive provider call have an SSO principal? If yes, does it use
+   that principal's New API token rather than ProductFlow's shared provider key?
 
 ## Anti-Patterns (Do Not Reintroduce)
 
@@ -131,6 +151,10 @@ if payload.admin_key != settings.admin_access_key:
 
 # WRONG: token leaking into a log line
 logger.info("loaded session for user=%s token=%s", uid, principal.new_api_token)
+
+# WRONG: admin status bypasses the relay billing identity
+if principal.is_admin:
+    return None
 
 # WRONG: HTTPS-only cookie without trusting the proxy header
 # (uvicorn launched without --proxy-headers -> Secure cookie never sticks)

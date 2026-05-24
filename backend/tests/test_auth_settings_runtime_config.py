@@ -1067,7 +1067,7 @@ def test_resolvers_ignore_legacy_rows_after_provider_bindings_exist(configured_e
     assert image_config.responses_background_enabled is False
 
 
-def test_resolvers_override_real_provider_credentials_with_current_user_token(
+def test_resolvers_override_real_provider_credentials_with_current_principal_token(
     configured_env: Path,
 ) -> None:
     from productflow_backend.application.auth_sessions import Principal
@@ -1117,38 +1117,59 @@ def test_resolvers_override_real_provider_credentials_with_current_user_token(
     finally:
         session.close()
 
-    principal = Principal(
-        session_id="auth-session-1",
-        kind="user",
-        new_api_user_id="42",
-        username="alice",
-        email=None,
-        group="default",
-        role="user",
-        new_api_token_id="77",
-        new_api_token_name="ProductFlow",
-        new_api_token="sk-user-token",
-    )
-    credential_override = provider_credential_override_from_context(
-        provider_execution_context_from_principal(principal)
-    )
+    principals = [
+        (
+            Principal(
+                session_id="auth-session-1",
+                kind="user",
+                new_api_user_id="42",
+                username="alice",
+                email=None,
+                group="default",
+                role="user",
+                new_api_token_id="77",
+                new_api_token_name="ProductFlow",
+                new_api_token="sk-user-token",
+            ),
+            "sk-user-token",
+        ),
+        (
+            Principal(
+                session_id="auth-session-2",
+                kind="admin",
+                new_api_user_id="99",
+                username="root",
+                email=None,
+                group="default",
+                role="admin",
+                new_api_token_id="88",
+                new_api_token_name="ProductFlow Admin",
+                new_api_token="sk-admin-token",
+            ),
+            "sk-admin-token",
+        ),
+    ]
+    for principal, expected_token in principals:
+        credential_override = provider_credential_override_from_context(
+            provider_execution_context_from_principal(principal)
+        )
 
-    assert credential_override is not None
-    assert credential_override.api_key == "sk-user-token"
-    assert credential_override.base_url == "https://relay.example/v1"
+        assert credential_override is not None
+        assert credential_override.api_key == expected_token
+        assert credential_override.base_url == "https://relay.example/v1"
 
-    text_config = resolve_text_provider_config(credential_override)
-    assert text_config.api_key == "sk-user-token"
-    assert text_config.base_url == "https://relay.example/v1"
-    assert text_config.brief_model == "brief-model"
-    assert text_config.copy_model == "copy-model"
+        text_config = resolve_text_provider_config(credential_override)
+        assert text_config.api_key == expected_token
+        assert text_config.base_url == "https://relay.example/v1"
+        assert text_config.brief_model == "brief-model"
+        assert text_config.copy_model == "copy-model"
 
-    image_config = resolve_image_provider_config(credential_override)
-    assert image_config.api_key == "sk-user-token"
-    assert image_config.base_url == "https://relay.example/v1"
-    assert image_config.model == "gpt-image-2"
-    assert image_config.images_quality == "high"
-    assert image_config.images_style == "natural"
+        image_config = resolve_image_provider_config(credential_override)
+        assert image_config.api_key == expected_token
+        assert image_config.base_url == "https://relay.example/v1"
+        assert image_config.model == "gpt-image-2"
+        assert image_config.images_quality == "high"
+        assert image_config.images_style == "natural"
 
 
 def test_resolvers_reject_missing_models_instead_of_using_legacy_defaults(

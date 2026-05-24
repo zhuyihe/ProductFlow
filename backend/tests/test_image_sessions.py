@@ -977,10 +977,22 @@ def test_image_session_worker_auto_retry_exposes_last_failure_metadata(
     assert sent == [result.task.id]
 
 
-def test_image_session_generation_task_uses_current_user_new_api_token(
+@pytest.mark.parametrize(
+    ("principal_kind", "new_api_user_id", "token_id", "token_name", "token"),
+    [
+        ("user", "42", "77", "ProductFlow", "sk-user-token"),
+        ("admin", "99", "88", "ProductFlow Admin", "sk-admin-token"),
+    ],
+)
+def test_image_session_generation_task_uses_current_principal_new_api_token(
     configured_env: Path,
     db_session,
     monkeypatch: pytest.MonkeyPatch,
+    principal_kind: str,
+    new_api_user_id: str,
+    token_id: str,
+    token_name: str,
+    token: str,
 ) -> None:
     settings_session = get_session_factory()()
     try:
@@ -1025,20 +1037,20 @@ def test_image_session_generation_task_uses_current_user_new_api_token(
     image_session = create_image_session(db_session, product_id=None, title="relay token")
     principal = Principal(
         session_id="auth-session-1",
-        kind="user",
-        new_api_user_id="42",
+        kind=principal_kind,
+        new_api_user_id=new_api_user_id,
         username="alice",
         email=None,
         group="default",
-        role="user",
-        new_api_token_id="77",
-        new_api_token_name="ProductFlow",
-        new_api_token="sk-user-token",
+        role=principal_kind,
+        new_api_token_id=token_id,
+        new_api_token_name=token_name,
+        new_api_token=token,
     )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
-        prompt="使用当前用户 token 生图",
+        prompt="使用当前 principal token 生图",
         size="1024x1024",
         principal=principal,
     )
@@ -1049,11 +1061,11 @@ def test_image_session_generation_task_uses_current_user_new_api_token(
     task = db_session.get(ImageSessionGenerationTask, result.task.id)
     assert task is not None
     assert task.status == JobStatus.SUCCEEDED
-    assert task.new_api_user_id == "42"
-    assert task.new_api_token_id == "77"
-    assert task.new_api_token_name == "ProductFlow"
-    assert task.new_api_token == "sk-user-token"
-    assert client_kwargs == [{"api_key": "sk-user-token", "base_url": "https://relay.example/v1"}]
+    assert task.new_api_user_id == new_api_user_id
+    assert task.new_api_token_id == token_id
+    assert task.new_api_token_name == token_name
+    assert task.new_api_token == token
+    assert client_kwargs == [{"api_key": token, "base_url": "https://relay.example/v1"}]
     assert calls == [
         {
             "model": "gpt-image-2",
@@ -1065,6 +1077,42 @@ def test_image_session_generation_task_uses_current_user_new_api_token(
     ]
     assert isinstance(calls[0]["prompt"], str)
     get_settings.cache_clear()
+
+
+def test_image_session_generation_task_rejects_bootstrap_admin_without_new_api_token(db_session) -> None:
+    from productflow_backend.application.auth_sessions import Principal
+    from productflow_backend.application.image_sessions import (
+        create_image_session,
+        create_image_session_generation_task,
+    )
+    from productflow_backend.application.provider_runtime import MISSING_NEW_API_TOKEN_DETAIL
+    from productflow_backend.domain.errors import BusinessValidationError
+
+    image_session = create_image_session(db_session, product_id=None, title="bootstrap no token")
+    principal = Principal(
+        session_id="bootstrap-session",
+        kind="admin",
+        new_api_user_id="bootstrap-admin",
+        username="root",
+        email=None,
+        group=None,
+        role="admin",
+        new_api_token_id=None,
+        new_api_token_name=None,
+        new_api_token=None,
+    )
+
+    with pytest.raises(BusinessValidationError, match="缺少 New API token") as exc_info:
+        create_image_session_generation_task(
+            db_session,
+            image_session_id=image_session.id,
+            prompt="bootstrap admin 不应走共享 provider",
+            size="1024x1024",
+            principal=principal,
+        )
+
+    assert exc_info.value.message == MISSING_NEW_API_TOKEN_DETAIL
+    assert db_session.query(ImageSessionGenerationTask).count() == 0
 
 
 def test_image_session_worker_non_retryable_policy_failure_stops_without_auto_retry(
