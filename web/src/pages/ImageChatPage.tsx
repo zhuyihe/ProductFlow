@@ -1291,17 +1291,17 @@ export function ImageChatPage() {
               t={t}
             />
             {selectedRound?.provider_notes.length ? (
-              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
+              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/10 dark:text-atelier-cream/70">
                 {selectedRound.provider_notes.map((note) => (
                   <span key={note}>{note}</span>
                 ))}
               </div>
             ) : selectedPlaceholder?.failure_reason ? (
-              <div className="mt-2 rounded-2xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-xs text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/50/10 dark:text-atelier-vermilion">
+              <div className="mt-2 rounded-2xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-xs text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">
                 {selectedPlaceholder.failure_reason}
               </div>
             ) : selectedPlaceholder?.provider_notes.length ? (
-              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
+              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/10 dark:text-atelier-cream/70">
                 {selectedPlaceholder.provider_notes.map((note) => (
                   <span key={note}>{note}</span>
                 ))}
@@ -1457,19 +1457,19 @@ export function ImageChatPage() {
 
             <div className="space-y-4">
               {successMessage ? (
-                <div className="rounded-xl border border-atelier-smoke/40 bg-atelier-cream px-3 py-2 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream0/10 dark:text-atelier-cream/70">
+                <div className="rounded-xl border border-atelier-smoke/40 bg-atelier-cream px-3 py-2 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/10 dark:text-atelier-cream/70">
                   {successMessage}
                 </div>
               ) : null}
               {errorMessage ? (
-                <div className="rounded-xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/50/10 dark:text-atelier-vermilion">{errorMessage}</div>
+                <div className="rounded-xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">{errorMessage}</div>
               ) : null}
             </div>
           </div>
 
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-atelier-smoke/30 bg-atelier-paper/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-paper-sm backdrop-blur dark:border-atelier-cream/15 dark:bg-[#1A1410]/90 dark:shadow-paper-md lg:sticky lg:inset-x-auto lg:bottom-0 lg:p-4">
             {baseRequirementMessage ? (
-              <div className="mb-2 rounded-xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
+              <div className="mb-2 rounded-xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/10 dark:text-atelier-cream/70">
                 {baseRequirementMessage}
               </div>
             ) : null}
@@ -1749,18 +1749,18 @@ export function ImageChatPage() {
 
               <div className="mt-4 space-y-3">
                 {successMessage ? (
-                  <div className="rounded-xl border border-atelier-smoke/40 bg-atelier-cream px-3 py-2 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream0/10 dark:text-atelier-cream/70">
+                  <div className="rounded-xl border border-atelier-smoke/40 bg-atelier-cream px-3 py-2 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/10 dark:text-atelier-cream/70">
                     {successMessage}
                   </div>
                 ) : null}
                 {errorMessage ? (
-                  <div className="rounded-xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/50/10 dark:text-atelier-vermilion">{errorMessage}</div>
+                  <div className="rounded-xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">{errorMessage}</div>
                 ) : null}
               </div>
             </div>
             <div className="border-t border-atelier-smoke/30 bg-atelier-paper/96 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] dark:border-atelier-cream/15 dark:bg-[#1A1410]/94">
               {baseRequirementMessage ? (
-                <div className="mb-2 rounded-xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
+                <div className="mb-2 rounded-xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/10 dark:text-atelier-cream/70">
                   {baseRequirementMessage}
                 </div>
               ) : null}

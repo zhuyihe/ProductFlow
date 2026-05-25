@@ -86,18 +86,18 @@ export function placeholderStatusLabel(candidate: ImageHistoryPlaceholderCandida
 
 export function placeholderStatusClass(candidate: ImageHistoryPlaceholderCandidate) {
   if (candidate.status === "failed") {
-    return "border-red-200 bg-red-50 text-red-700 dark:border-red-400/40 dark:bg-red-500/15 dark:text-red-100";
+    return "border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion";
   }
   if (candidate.status === "queued") {
-    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-300/40 dark:bg-amber-500/15 dark:text-amber-100";
+    return "border-atelier-smoke/40 bg-atelier-kraft text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/10 dark:text-atelier-cream/70";
   }
   if (candidate.status === "completed") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-300/40 dark:bg-emerald-500/15 dark:text-emerald-100";
+    return "border-atelier-smoke/30 bg-atelier-cream text-atelier-smoke dark:border-atelier-cream/15 dark:bg-atelier-cream/5 dark:text-atelier-cream/40";
   }
   if (candidate.status === "cancelled") {
-    return "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200";
+    return "border-atelier-smoke/30 bg-atelier-cream text-atelier-smoke dark:border-atelier-cream/15 dark:bg-atelier-cream/5 dark:text-atelier-cream/40";
   }
-  return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-violet-400/50 dark:bg-violet-500/15 dark:text-violet-100";
+  return "border-atelier-vermilion/30 bg-atelier-vermilion/5 text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10 dark:text-atelier-vermilion";
 }
 
 export function placeholderSizeLabel(candidate: ImageHistoryPlaceholderCandidate) {

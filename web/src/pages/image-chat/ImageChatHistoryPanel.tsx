@@ -63,7 +63,7 @@ export function ImageChatHistoryPanel({
 
   if (variant === "mobileDrawer") {
     return (
-      <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-[#0f1726]">
+      <div className="flex min-h-0 flex-1 flex-col bg-atelier-paper dark:bg-[#1F1812]">
         {historyBranches.length ? (
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2 py-3">
             {historyBranches.map((branch) => (
@@ -83,7 +83,7 @@ export function ImageChatHistoryPanel({
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 items-center justify-center px-2 py-6">
-            <div className="flex min-h-24 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-2 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-500">
+            <div className="flex min-h-24 w-full items-center justify-center border border-dashed border-atelier-smoke/40 bg-atelier-cream/60 px-2 text-center font-mono text-[10px] uppercase tracking-widest text-atelier-smoke dark:border-atelier-cream/15 dark:bg-atelier-cream/5 dark:text-atelier-cream/40">
               {t("chat.resultsAppearHere")}
             </div>
           </div>
@@ -94,7 +94,7 @@ export function ImageChatHistoryPanel({
 
   return (
     <div
-      className="relative hidden shrink-0 flex-col border-t border-slate-200 bg-white/95 px-2.5 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.04)] dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[0_-18px_40px_rgba(0,0,0,0.24)] lg:flex lg:h-[var(--image-chat-history-panel-height)] lg:px-3 lg:py-2.5"
+      className="relative hidden shrink-0 flex-col border-t border-atelier-smoke/30 bg-atelier-paper px-2.5 py-2 dark:border-atelier-cream/15 dark:bg-[#1F1812] lg:flex lg:h-[var(--image-chat-history-panel-height)] lg:px-3 lg:py-2.5"
       style={style}
     >
       {onResizeStart ? (
@@ -103,17 +103,17 @@ export function ImageChatHistoryPanel({
           aria-label={t("chat.resizeHistory")}
           title={t("chat.resizeHistoryTitle")}
           onPointerDown={onResizeStart}
-          className="absolute inset-x-0 -top-1 z-20 hidden h-3 cursor-row-resize items-center justify-center transition-colors hover:bg-indigo-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-violet-500/15 lg:flex"
+          className="absolute inset-x-0 -top-1 z-20 hidden h-3 cursor-row-resize items-center justify-center transition-colors hover:bg-atelier-vermilion/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-atelier-vermilion dark:hover:bg-atelier-vermilion/15 lg:flex"
         >
-          <span className="h-1 w-12 rounded-full bg-slate-300 dark:bg-slate-600" />
+          <span className="h-1 w-12 rounded-full bg-atelier-smoke/50 dark:bg-atelier-cream/30" />
         </button>
       ) : null}
       <div className="mb-1 flex items-center justify-between gap-3 lg:mb-2">
         <div>
-          <div className="text-sm font-semibold text-slate-950 dark:text-white">{t("chat.history")}</div>
+          <div className="font-display text-base italic text-atelier-ink dark:text-atelier-cream">{t("chat.history")}</div>
         </div>
         {branchBaseSelected ? (
-          <div className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-100">
+          <div className="border border-atelier-vermilion/40 bg-atelier-vermilion/5 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10 dark:text-atelier-vermilion">
             {t("chat.clickHistoryBase")}
           </div>
         ) : null}
@@ -139,7 +139,7 @@ export function ImageChatHistoryPanel({
           ))}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-500">
+        <div className="flex min-h-0 flex-1 items-center justify-center border border-dashed border-atelier-smoke/40 bg-atelier-cream/60 font-mono text-[10px] uppercase tracking-widest text-atelier-smoke dark:border-atelier-cream/15 dark:bg-atelier-cream/5 dark:text-atelier-cream/40">
           {t("chat.resultsAppearHere")}
         </div>
       )}

@@ -33,13 +33,13 @@ export function SessionReferencePanel({
   t,
 }: SessionReferencePanelProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700/80 dark:bg-[#151f33]">
-      <div className="mb-2 text-sm font-semibold text-slate-950 dark:text-white">{t("chat.sessionReferences")}</div>
+    <div className="border border-atelier-smoke/30 bg-atelier-paper p-4 dark:border-atelier-cream/15 dark:bg-[#1F1812]">
+      <div className="mb-2 font-display text-sm italic text-atelier-ink dark:text-atelier-cream">{t("chat.sessionReferences")}</div>
       <ImageDropZone
         ariaLabel={t("chat.uploadSessionReference")}
         multiple
         disabled={disabled || uploadBusy}
-        className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-600/80 dark:bg-[#0b1220] dark:text-slate-300 dark:hover:border-violet-400/55 dark:hover:bg-violet-500/10"
+        className="flex cursor-pointer items-center justify-center border border-dashed border-atelier-smoke/50 bg-atelier-cream px-4 py-4 text-sm text-atelier-sepia transition-colors hover:border-atelier-vermilion/30 hover:bg-atelier-vermilion/5 dark:border-atelier-cream/15 dark:bg-[#1A1410] dark:text-atelier-cream/60 dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/10"
         onFiles={onFiles}
       >
         {({ isDragging }) => (
@@ -49,7 +49,7 @@ export function SessionReferencePanel({
           </>
         )}
       </ImageDropZone>
-      <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+      <div className="mt-2 font-mono text-[10px] uppercase tracking-widest text-atelier-smoke dark:text-atelier-cream/40">
         {t("chat.selectedReferences", { selected: selectedAssetIds.length, max: maxSelectedCount })}
       </div>
       {assets.length ? (
@@ -61,10 +61,10 @@ export function SessionReferencePanel({
             return (
               <div
                 key={asset.id}
-                className={`group relative overflow-hidden rounded-xl border bg-slate-50 dark:bg-[#0b1220] ${
+                className={`group relative overflow-hidden rounded-xl border bg-atelier-cream dark:bg-[#1A1410] ${
                   selected
-                    ? "border-indigo-500 ring-2 ring-indigo-100 dark:border-violet-400 dark:ring-violet-400/45"
-                    : "border-slate-200 dark:border-slate-700"
+                    ? "border-atelier-vermilion ring-2 ring-atelier-vermilion/30 dark:border-atelier-vermilion dark:ring-atelier-vermilion/40"
+                    : "border-atelier-smoke/30 dark:border-atelier-cream/15"
                 }`}
               >
                 <a href={api.toApiUrl(asset.preview_url)} target="_blank" rel="noreferrer" title={asset.original_filename}>
@@ -76,14 +76,14 @@ export function SessionReferencePanel({
                     className="h-20 w-full object-cover"
                   />
                 </a>
-                <label className="absolute bottom-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950/90 dark:text-violet-100 dark:ring-violet-400/35">
+                <label className="absolute bottom-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-atelier-paper/95 text-atelier-sepia shadow-paper-sm ring-1 ring-atelier-smoke/30 dark:bg-[#241B14]/90 dark:text-atelier-cream dark:ring-atelier-cream/15">
                   <input
                     type="checkbox"
                     checked={selected}
                     disabled={selectionLimitReached}
                     onChange={(event) => onToggle(asset.id, event.target.checked)}
                     aria-label={t("chat.useReference")}
-                    className="h-3 w-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-3 w-3 border-atelier-smoke/50 text-atelier-vermilion focus:ring-atelier-vermilion"
                   />
                   <span className="sr-only">{t("chat.useReference")}</span>
                 </label>
@@ -92,7 +92,7 @@ export function SessionReferencePanel({
                   aria-label={t("chat.deleteSessionReference")}
                   onClick={() => onDelete(asset.id)}
                   disabled={deleting}
-                  className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-slate-500 opacity-100 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-red-600 disabled:opacity-60 dark:bg-slate-950/90 dark:text-slate-300 dark:ring-slate-700 dark:hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
+                  className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-md bg-atelier-paper/90 text-atelier-smoke opacity-100 shadow-paper-sm ring-1 ring-atelier-smoke/30 transition-colors hover:text-atelier-vermilion-dark disabled:opacity-60 dark:bg-[#241B14]/90 dark:text-atelier-cream/40 dark:ring-atelier-cream/15 dark:hover:text-atelier-vermilion md:opacity-0 md:group-hover:opacity-100"
                 >
                   {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
@@ -139,25 +139,25 @@ export function ProductAssociationPanel({
   const saveDisabled = attachBusy || !selectedRound || (!isProductMode && !targetProductId);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/80 dark:bg-[#151f33]">
-      <div className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">{t("chat.saveToProduct")}</div>
+    <div className="border border-atelier-smoke/30 bg-atelier-cream p-4 dark:border-atelier-cream/15 dark:bg-[#1F1812]">
+      <div className="mb-3 font-display text-sm italic text-atelier-ink dark:text-atelier-cream">{t("chat.saveToProduct")}</div>
       {isProductMode ? (
         product ? (
           <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3">
             <ProductThumbnail sourceImage={sourceImage} alt={product.name} />
             <div className="min-w-0 self-center">
-              <div className="truncate text-sm font-medium text-zinc-900 dark:text-slate-100">{product.name}</div>
-              <div className="mt-1 text-xs text-zinc-500 dark:text-slate-400">{t("chat.productReferenceCount", { count: referenceImages.length })}</div>
+              <div className="truncate font-display text-sm italic text-atelier-ink dark:text-atelier-cream">{product.name}</div>
+              <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-atelier-smoke dark:text-atelier-cream/40">{t("chat.productReferenceCount", { count: referenceImages.length })}</div>
             </div>
           </div>
         ) : (
-          <div className="flex justify-center py-6 text-zinc-400">
+          <div className="flex justify-center py-6 text-atelier-smoke">
             <Loader2 size={16} className="animate-spin" />
           </div>
         )
       ) : (
         <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-200">{t("chat.targetProduct")}</span>
+          <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-widest text-atelier-sepia dark:text-atelier-cream/60">{t("chat.targetProduct")}</span>
           <SelectField
             value={targetProductId}
             options={
@@ -175,7 +175,7 @@ export function ProductAssociationPanel({
           {referenceImages.slice(0, 4).map((asset) => {
             const deleting = deletingReferenceAssetId === asset.id;
             return (
-              <div key={asset.id} className="group relative overflow-hidden rounded-md border border-zinc-200 bg-white dark:border-slate-700 dark:bg-slate-950/70">
+              <div key={asset.id} className="group relative overflow-hidden rounded-md border border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#1A1410]">
                 <a href={api.toApiUrl(asset.preview_url)} target="_blank" rel="noreferrer" title={asset.original_filename}>
                   <img
                     src={api.toApiUrl(asset.thumbnail_url)}
@@ -190,7 +190,7 @@ export function ProductAssociationPanel({
                   aria-label={t("chat.deleteProductReference")}
                   onClick={() => onDeleteReference(asset.id)}
                   disabled={deleting}
-                  className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded bg-white/90 text-zinc-500 opacity-100 shadow-sm ring-1 ring-zinc-200 transition-colors hover:text-red-600 disabled:opacity-60 dark:bg-slate-950/90 dark:text-slate-300 dark:ring-slate-700 dark:hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
+                  className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-md bg-atelier-paper/90 text-atelier-smoke opacity-100 shadow-paper-sm ring-1 ring-atelier-smoke/30 transition-colors hover:text-atelier-vermilion-dark disabled:opacity-60 dark:bg-[#241B14]/90 dark:text-atelier-cream/40 dark:ring-atelier-cream/15 dark:hover:text-atelier-vermilion md:opacity-0 md:group-hover:opacity-100"
                 >
                   {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
                 </button>
@@ -200,13 +200,13 @@ export function ProductAssociationPanel({
         </div>
       ) : null}
 
-      <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-800">
+      <div className="mt-4 border-t border-atelier-smoke/30 pt-3 dark:border-atelier-cream/15">
         {selectedRound ? (
-          <div className="mb-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-atelier-smoke dark:text-atelier-cream/40">
             {t("chat.selectedCandidate", { size: formatImageSizeValue(selectedRound.size) })}
           </div>
         ) : (
-          <div className="mb-2 rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-950/45 dark:text-slate-500">
+          <div className="mb-2 border border-dashed border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-center text-sm text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1A1410] dark:text-atelier-cream/40">
             {t("chat.selectHistoryFirst")}
           </div>
         )}
@@ -215,7 +215,7 @@ export function ProductAssociationPanel({
             type="button"
             onClick={() => onAttach("reference")}
             disabled={saveDisabled}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-950 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:border-violet-400/55 dark:hover:text-violet-100"
+            className="inline-flex items-center justify-center border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-sm text-atelier-sepia transition-colors hover:border-atelier-smoke/50 hover:text-atelier-ink disabled:opacity-60 dark:border-atelier-cream/15 dark:bg-[#1A1410] dark:text-atelier-cream/60 dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
           >
             {attachBusy ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Check size={14} className="mr-2" />}
             {isProductMode ? t("chat.addReference") : t("chat.saveAsReference")}
@@ -225,7 +225,7 @@ export function ProductAssociationPanel({
               type="button"
               onClick={() => onAttach("main_source")}
               disabled={saveDisabled}
-              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500/20 dark:text-violet-100 dark:ring-1 dark:ring-violet-400/35 dark:hover:bg-violet-500/30"
+              className="inline-flex items-center justify-center bg-atelier-ink px-3 py-2 font-display text-sm italic text-atelier-cream transition-colors hover:bg-atelier-vermilion disabled:opacity-60 dark:bg-atelier-vermilion/20 dark:text-atelier-cream dark:ring-1 dark:ring-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/30"
             >
               {attachBusy ? <Loader2 size={14} className="mr-2 animate-spin" /> : <ImageIcon size={14} className="mr-2" />}
               {t("chat.setMainSource")}
@@ -239,11 +239,11 @@ export function ProductAssociationPanel({
 
 function ProductThumbnail({ sourceImage, alt }: { sourceImage: SourceAsset | null; alt: string }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-slate-700 dark:bg-slate-950/70">
+    <div className="overflow-hidden rounded-lg border border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#1A1410]">
       {sourceImage ? (
         <img src={api.toApiUrl(sourceImage.thumbnail_url)} alt={alt} decoding="async" className="h-24 w-full object-cover" />
       ) : (
-        <div className="flex h-24 items-center justify-center text-zinc-300 dark:text-slate-500">
+        <div className="flex h-24 items-center justify-center text-atelier-smoke dark:text-atelier-cream/40">
           <ImageIcon size={20} />
         </div>
       )}
