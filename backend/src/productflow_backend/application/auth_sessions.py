@@ -29,6 +29,7 @@ class Principal:
     new_api_token: str | None = field(repr=False)
     new_api_token_group: str | None = None
     new_api_image_model: str | None = None
+    new_api_image_models: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def is_admin(self) -> bool:
@@ -79,6 +80,7 @@ class NewApiSessionClaims:
     token_name: str | None = None
     token_group: str | None = None
     image_model: str | None = None
+    image_models: tuple[str, ...] = field(default_factory=tuple)
     expires_in_seconds: int | None = None
 
 
@@ -116,6 +118,24 @@ def principal_kind_from_new_api_role(role: str | None) -> str:
     return "user"
 
 
+def normalize_image_model_options(
+    image_models: tuple[str, ...] | list[str] | None,
+    selected_model: str | None = None,
+) -> tuple[str, ...]:
+    models: list[str] = []
+    if isinstance(image_models, list | tuple):
+        for model in image_models:
+            normalized = str(model).strip()
+            if normalized and normalized not in models:
+                models.append(normalized)
+    selected = (selected_model or "").strip()
+    if selected and selected in models:
+        models.remove(selected)
+    if selected:
+        models.insert(0, selected)
+    return tuple(models)
+
+
 def create_new_api_user_session(session: Session, claims: NewApiSessionClaims) -> AuthSession:
     ttl = (
         claims.expires_in_seconds
@@ -135,6 +155,7 @@ def create_new_api_user_session(session: Session, claims: NewApiSessionClaims) -
         new_api_token_name=claims.token_name,
         new_api_token_group=claims.token_group,
         new_api_image_model=claims.image_model,
+        new_api_image_models=list(normalize_image_model_options(claims.image_models, claims.image_model)) or None,
         expires_at=utc_now() + timedelta(seconds=ttl),
     )
     session.add(auth_session)
@@ -174,4 +195,8 @@ def load_principal(session: Session, auth_session_id: str | None) -> Principal |
         new_api_token=auth_session.new_api_token,
         new_api_token_group=auth_session.new_api_token_group,
         new_api_image_model=auth_session.new_api_image_model,
+        new_api_image_models=normalize_image_model_options(
+            auth_session.new_api_image_models,
+            auth_session.new_api_image_model,
+        ),
     )

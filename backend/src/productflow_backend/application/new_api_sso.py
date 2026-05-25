@@ -46,6 +46,17 @@ def verify_new_api_sso_ticket(ticket: str, *, settings: Settings) -> NewApiSessi
     user_id = _first_text(payload, "user_id", "id", "uid")
     if user_id is None:
         raise NewApiSsoError("New API SSO 响应缺少用户信息")
+    image_model = (
+        _first_text(payload, "image_model", "selected_image_model")
+        or _first_text(productflow_payload, "image_model", "selected_image_model")
+        or _first_text(token_payload, "image_model", "selected_image_model", "model")
+    )
+    image_models = (
+        _first_text_list(payload, "image_models", "available_image_models", "models")
+        or _first_text_list(productflow_payload, "image_models", "available_image_models", "models")
+        or _first_text_list(token_payload, "image_models", "available_image_models", "models")
+        or ((image_model,) if image_model else ())
+    )
 
     return NewApiSessionClaims(
         user_id=user_id,
@@ -61,11 +72,8 @@ def verify_new_api_sso_ticket(ticket: str, *, settings: Settings) -> NewApiSessi
             or _first_text(productflow_payload, "token_group", "selected_token_group")
             or _first_text(token_payload, "group", "token_group")
         ),
-        image_model=(
-            _first_text(payload, "image_model", "selected_image_model")
-            or _first_text(productflow_payload, "image_model", "selected_image_model")
-            or _first_text(token_payload, "image_model", "selected_image_model", "model")
-        ),
+        image_model=image_model,
+        image_models=tuple(image_models),
         expires_in_seconds=_first_int(payload, "expires_in", "session_expires_in"),
     )
 
@@ -108,6 +116,32 @@ def _first_text(payload: dict | None, *keys: str) -> str | None:
         normalized = str(value).strip()
         if normalized:
             return normalized
+    return None
+
+
+def _first_text_list(payload: dict | None, *keys: str) -> tuple[str, ...] | None:
+    if payload is None:
+        return None
+    for key in keys:
+        value = payload.get(key)
+        if value is None:
+            continue
+        items: list[object]
+        if isinstance(value, str):
+            items = [part.strip() for part in value.split(",")]
+        elif isinstance(value, list | tuple | set):
+            items = list(value)
+        else:
+            continue
+        normalized: list[str] = []
+        for item in items:
+            if isinstance(item, dict | list | tuple | set):
+                continue
+            text = str(item).strip()
+            if text and text not in normalized:
+                normalized.append(text)
+        if normalized:
+            return tuple(normalized)
     return None
 
 

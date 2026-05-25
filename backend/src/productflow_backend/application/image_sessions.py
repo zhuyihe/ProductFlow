@@ -21,7 +21,7 @@ from productflow_backend.application.admission import (
     get_generation_task_queue_metadata,
     get_queued_generation_positions,
 )
-from productflow_backend.application.auth_sessions import Principal
+from productflow_backend.application.auth_sessions import Principal, normalize_image_model_options
 from productflow_backend.application.image_generation_core import (
     normalize_image_generation_tool_options,
     provider_output_with_actual_image_size,
@@ -346,6 +346,44 @@ def _validate_generation_request(
 
 def _normalize_tool_options(tool_options: dict[str, Any] | None) -> dict[str, Any] | None:
     return normalize_image_generation_tool_options(tool_options)
+
+
+def _select_principal_image_model(
+    principal: Principal | None,
+    tool_options: dict[str, Any] | None,
+) -> str | None:
+    if principal is None:
+        return None
+    requested_model = _optional_tool_option_text(tool_options, "model")
+    allowed_models = normalize_image_model_options(principal.new_api_image_models, principal.new_api_image_model)
+    if not allowed_models and principal.new_api_token and (principal.new_api_token_group or principal.new_api_user_id):
+        raise BusinessValidationError("当前 Atelier 会话缺少 New API 生图模型，请从 AYNC-API 重新进入 Atelier")
+    if requested_model:
+        if allowed_models and requested_model not in allowed_models:
+            raise BusinessValidationError("所选生图模型不在当前 New API 分组可用范围内")
+        return requested_model
+    if principal.new_api_image_model:
+        return principal.new_api_image_model
+    if allowed_models:
+        return allowed_models[0]
+    return None
+
+
+def _tool_options_with_model(
+    tool_options: dict[str, Any] | None,
+    image_model: str | None,
+) -> dict[str, Any] | None:
+    normalized_model = (image_model or "").strip()
+    if not normalized_model:
+        return tool_options
+    return {**(tool_options or {}), "model": normalized_model}
+
+
+def _optional_tool_option_text(tool_options: dict[str, Any] | None, key: str) -> str | None:
+    if not isinstance(tool_options, dict):
+        return None
+    normalized = "" if tool_options.get(key) is None else str(tool_options.get(key)).strip()
+    return normalized or None
 
 
 def _images_api_batch_count(
@@ -832,6 +870,7 @@ def create_image_session_generation_task(
 ) -> ImageSessionGenerationTaskCreationResult:
     """校验并创建连续生图 durable 任务；不调用 provider。"""
     image_session = _get_image_session_or_raise(session, image_session_id, owner_user_id)
+    selected_image_model = _select_principal_image_model(principal, tool_options)
     normalized_tool_options = _normalize_tool_options(tool_options)
     normalized_size, normalized_base_asset_id, normalized_reference_ids = _validate_generation_request(
         image_session,
@@ -841,7 +880,11 @@ def create_image_session_generation_task(
         generation_count=generation_count,
         tool_options=normalized_tool_options,
     )
-    provider_context = interactive_provider_execution_context_from_principal(principal)
+    normalized_tool_options = _tool_options_with_model(normalized_tool_options, selected_image_model)
+    provider_context = interactive_provider_execution_context_from_principal(
+        principal,
+        image_model_override=selected_image_model,
+    )
     ensure_generation_capacity(session)
     task = ImageSessionGenerationTask(
         session_id=image_session.id,

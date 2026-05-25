@@ -1551,7 +1551,9 @@ interface ImageBindingSectionProps {
 function ImageBindingSection({ data, draft, pending, session, onChange, onSave }: ImageBindingSectionProps) {
   const { t } = useI18n();
   const ssoImageModel = session?.new_api_image_model?.trim();
+  const ssoImageModels = session?.new_api_image_models?.map((model) => model.trim()).filter(Boolean) ?? [];
   const ssoTokenGroup = session?.new_api_token_group?.trim();
+  const hasSsoImageModelSource = Boolean(session?.new_api_token_id || ssoImageModel || ssoImageModels.length);
   const requiredCapability =
     draft.provider_kind === "openai_responses"
       ? "image_responses"
@@ -1598,7 +1600,7 @@ function ImageBindingSection({ data, draft, pending, session, onChange, onSave }
           />
         </SettingsFormField>
       ) : null}
-      {ssoImageModel ? (
+      {hasSsoImageModelSource ? (
         <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-50">
           <div className="font-semibold">{t("settings.provider.ssoModelSourceTitle")}</div>
           <p className="mt-1 text-indigo-800 dark:text-violet-100/80">
@@ -1615,7 +1617,9 @@ function ImageBindingSection({ data, draft, pending, session, onChange, onSave }
               <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-violet-200">
                 {t("settings.provider.ssoImageModelLabel")}
               </dt>
-              <dd className="mt-1 font-mono text-sm">{ssoImageModel}</dd>
+              <dd className="mt-1 font-mono text-sm">
+                {ssoImageModels.length ? ssoImageModels.join(", ") : ssoImageModel || t("settings.provider.ssoMissingValue")}
+              </dd>
             </div>
           </dl>
           <p className="mt-3 text-xs text-indigo-700 dark:text-violet-100/70">

@@ -71,6 +71,7 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
                         "token_name": "ProductFlow",
                         "token_group": "GPT-Image-2",
                         "image_model": "gpt-image-2",
+                        "image_models": ["gpt-image-3", "gpt-image-2", "gpt-image-2"],
                         "expires_in": 3600,
                     }
                 }
@@ -97,6 +98,7 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
         "new_api_token_id": "77",
         "new_api_token_group": "GPT-Image-2",
         "new_api_image_model": "gpt-image-2",
+        "new_api_image_models": ["gpt-image-2", "gpt-image-3"],
     }
     assert "sk-productflow-secret" not in state.text
 
@@ -109,6 +111,7 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
         assert auth_session.new_api_token_name == "ProductFlow"
         assert auth_session.new_api_token_group == "GPT-Image-2"
         assert auth_session.new_api_image_model == "gpt-image-2"
+        assert auth_session.new_api_image_models == ["gpt-image-2", "gpt-image-3"]
         assert 3595 <= (auth_session.expires_at - auth_session.created_at).total_seconds() <= 3605
     finally:
         session.close()
@@ -448,6 +451,9 @@ def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configu
             "token": "sk-user-a",
             "token_id": "token-a",
             "token_name": "ProductFlow",
+            "token_group": "GPT-Image",
+            "image_model": "gpt-image-2",
+            "image_models": ["gpt-image-2"],
         },
         "ticket-b": {
             "user_id": "user-b",
@@ -456,6 +462,9 @@ def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configu
             "token": "sk-user-b",
             "token_id": "token-b",
             "token_name": "ProductFlow",
+            "token_group": "GPT-Image",
+            "image_model": "gpt-image-2",
+            "image_models": ["gpt-image-2"],
         },
     }
 

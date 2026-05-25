@@ -80,6 +80,7 @@ class AuthSession(Base, TimestampMixin):
     new_api_token_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     new_api_token_group: Mapped[str | None] = mapped_column(String(120), nullable=True)
     new_api_image_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    new_api_image_models: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     new_api_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

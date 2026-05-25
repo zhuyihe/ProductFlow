@@ -9,6 +9,8 @@ interface ImageToolControlsProps {
   onChange: (value: ImageToolOptions) => void;
   surface?: "card" | "plain";
   allowedFields?: readonly ImageToolOptionKey[];
+  modelOptions?: readonly string[];
+  lockModelToOptions?: boolean;
 }
 
 function parseOptionalNumber(value: string): number | null {
@@ -24,6 +26,8 @@ export function ImageToolControls({
   onChange,
   surface = "card",
   allowedFields = DEFAULT_IMAGE_TOOL_ALLOWED_FIELDS,
+  modelOptions = [],
+  lockModelToOptions = false,
 }: ImageToolControlsProps) {
   const { t } = useI18n();
   const update = (next: Partial<ImageToolOptions>) => onChange({ ...value, ...next });
@@ -38,12 +42,28 @@ export function ImageToolControls({
       <div className="mb-3 text-sm font-semibold text-slate-950">{t("imageTool.provider")}</div>
       <div className="grid grid-cols-2 gap-2">
         {allowed.has("model") ? (
-          <CompactInput
-            label={t("imageTool.tool")}
-            value={value.model ?? ""}
-            placeholder={t("imageTool.default")}
-            onChange={(next) => update({ model: next || null })}
-          />
+          modelOptions.length ? (
+            <CompactSelect
+              label={t("imageTool.model")}
+              value={value.model ?? modelOptions[0] ?? ""}
+              onChange={(next) => update({ model: next || null })}
+              options={modelOptions.map((model) => ({ value: model, label: model }))}
+            />
+          ) : lockModelToOptions ? (
+            <CompactSelect
+              label={t("imageTool.model")}
+              value=""
+              onChange={() => undefined}
+              options={[{ value: "", label: t("imageTool.noModels") }]}
+            />
+          ) : (
+            <CompactInput
+              label={t("imageTool.model")}
+              value={value.model ?? ""}
+              placeholder={t("imageTool.default")}
+              onChange={(next) => update({ model: next || null })}
+            />
+          )
         ) : null}
         {allowed.has("quality") ? (
           <CompactSelect

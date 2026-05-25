@@ -997,6 +997,7 @@ def test_image_session_generation_task_uses_current_principal_new_api_token(
     settings_session = get_session_factory()()
     try:
         settings_session.merge(AppSetting(key="new_api_base_url", value="https://relay.example"))
+        settings_session.merge(AppSetting(key="image_tool_allowed_fields", value="quality"))
         settings_session.commit()
     finally:
         settings_session.close()
@@ -1080,6 +1081,122 @@ def test_image_session_generation_task_uses_current_principal_new_api_token(
         }
     ]
     assert isinstance(calls[0]["prompt"], str)
+    get_settings.cache_clear()
+
+
+def test_image_session_generation_uses_selected_new_api_image_model(
+    configured_env: Path,
+    db_session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings_session = get_session_factory()()
+    try:
+        settings_session.merge(AppSetting(key="new_api_base_url", value="https://relay.example"))
+        settings_session.merge(AppSetting(key="image_tool_allowed_fields", value="quality"))
+        settings_session.commit()
+    finally:
+        settings_session.close()
+    get_settings.cache_clear()
+
+    monkeypatch.setenv("IMAGE_PROVIDER_KIND", "openai_images")
+    monkeypatch.setenv("IMAGE_API_KEY", "shared-admin-key")
+    monkeypatch.setenv("IMAGE_GENERATE_MODEL", "gpt-image-1")
+    get_settings.cache_clear()
+
+    from productflow_backend.application.auth_sessions import Principal
+    from productflow_backend.application.image_sessions import (
+        create_image_session,
+        create_image_session_generation_task,
+        execute_image_session_generation_task,
+    )
+    from productflow_backend.domain.errors import BusinessValidationError
+
+    calls: list[dict[str, object]] = []
+    encoded_result = b64encode(_make_demo_image_bytes()).decode("utf-8")
+
+    class DummyImages:
+        def generate(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                data=[SimpleNamespace(b64_json=encoded_result, revised_prompt="relay result")]
+            )
+
+    class DummyOpenAI:
+        def __init__(self, **kwargs) -> None:
+            self.images = DummyImages()
+
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+
+    image_session = create_image_session(db_session, product_id=None, title="personal model")
+    principal = Principal(
+        session_id="auth-session-1",
+        kind="user",
+        new_api_user_id="42",
+        username="alice",
+        email=None,
+        group="default",
+        role="user",
+        new_api_token_id="77",
+        new_api_token_name="ProductFlow",
+        new_api_token="sk-user-token",
+        new_api_token_group="GPT-Image",
+        new_api_image_model="gpt-image-2",
+        new_api_image_models=("gpt-image-2", "gpt-image-3"),
+    )
+
+    result = create_image_session_generation_task(
+        db_session,
+        image_session_id=image_session.id,
+        prompt="用个人选择的模型",
+        size="1024x1024",
+        tool_options={"model": "gpt-image-3"},
+        principal=principal,
+    )
+    assert result.task.tool_options == {"model": "gpt-image-3"}
+
+    execute_image_session_generation_task(result.task.id)
+
+    db_session.expire_all()
+    task = db_session.get(ImageSessionGenerationTask, result.task.id)
+    assert task is not None
+    assert task.new_api_image_model == "gpt-image-3"
+    assert task.tool_options == {"model": "gpt-image-3"}
+    assert calls[0]["model"] == "gpt-image-3"
+
+    invalid_session = create_image_session(db_session, product_id=None, title="invalid model")
+    with pytest.raises(BusinessValidationError, match="所选生图模型"):
+        create_image_session_generation_task(
+            db_session,
+            image_session_id=invalid_session.id,
+            prompt="越界模型",
+            size="1024x1024",
+            tool_options={"model": "gpt-image-1"},
+            principal=principal,
+        )
+
+    stale_session = create_image_session(db_session, product_id=None, title="stale sso session")
+    stale_principal = Principal(
+        session_id="auth-session-2",
+        kind="user",
+        new_api_user_id="42",
+        username="alice",
+        email=None,
+        group="default",
+        role="user",
+        new_api_token_id="78",
+        new_api_token_name="ProductFlow",
+        new_api_token="sk-user-token",
+        new_api_token_group="GPT-Image",
+    )
+    with pytest.raises(BusinessValidationError, match="缺少 New API 生图模型"):
+        create_image_session_generation_task(
+            db_session,
+            image_session_id=stale_session.id,
+            prompt="旧会话绕过前端",
+            size="1024x1024",
+            tool_options={"model": "gpt-image-2"},
+            principal=stale_principal,
+        )
     get_settings.cache_clear()
 
 

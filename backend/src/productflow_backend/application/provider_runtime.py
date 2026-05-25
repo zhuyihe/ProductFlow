@@ -33,7 +33,11 @@ class ProviderExecutionContext:
         )
 
 
-def provider_execution_context_from_principal(principal: Principal | None) -> ProviderExecutionContext | None:
+def provider_execution_context_from_principal(
+    principal: Principal | None,
+    *,
+    image_model_override: str | None = None,
+) -> ProviderExecutionContext | None:
     if principal is None:
         return None
     return _provider_execution_context(
@@ -42,16 +46,18 @@ def provider_execution_context_from_principal(principal: Principal | None) -> Pr
         new_api_token_name=principal.new_api_token_name,
         new_api_token=principal.new_api_token,
         new_api_token_group=principal.new_api_token_group,
-        new_api_image_model=principal.new_api_image_model,
+        new_api_image_model=image_model_override or principal.new_api_image_model,
     )
 
 
 def interactive_provider_execution_context_from_principal(
     principal: Principal | None,
+    *,
+    image_model_override: str | None = None,
 ) -> ProviderExecutionContext | None:
     if principal is None:
         return None
-    context = provider_execution_context_from_principal(principal)
+    context = provider_execution_context_from_principal(principal, image_model_override=image_model_override)
     if context is not None and not context.new_api_token:
         raise BusinessValidationError(MISSING_NEW_API_TOKEN_DETAIL)
     return context

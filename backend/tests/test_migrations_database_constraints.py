@@ -188,6 +188,7 @@ def test_auth_session_model_matches_migration_contract() -> None:
     assert table.c.new_api_token_group.nullable
     assert table.c.new_api_image_model.type.length == 255
     assert table.c.new_api_image_model.nullable
+    assert table.c.new_api_image_models.nullable
     assert table.c.new_api_token.nullable
     assert table.c.revoked_at.nullable
     assert table.c.expires_at.nullable
@@ -311,6 +312,7 @@ def test_auth_session_migration_schema_and_downgrade_support_sqlite(tmp_path: Pa
     assert columns["new_api_user_id"]["nullable"] is True
     assert columns["new_api_token_group"]["nullable"] is True
     assert columns["new_api_image_model"]["nullable"] is True
+    assert columns["new_api_image_models"]["nullable"] is True
     assert columns["new_api_token"]["nullable"] is True
     assert columns["revoked_at"]["nullable"] is True
     assert columns["expires_at"]["nullable"] is True

@@ -24,7 +24,6 @@ from productflow_backend.application.image_sessions import (
 from productflow_backend.infrastructure.storage import ImageVariantName, LocalStorage
 from productflow_backend.presentation.deps import (
     current_owner_user_id,
-    current_principal,
     get_session,
     request_audit_context,
     require_deletion_enabled,
@@ -249,7 +248,7 @@ def generate_image_session_round_endpoint(
     image_session_id: str,
     payload: GenerateImageSessionRoundRequest,
     session: Session = Depends(get_session),
-    principal: Principal | None = Depends(current_principal),
+    principal: Principal = Depends(require_workspace_principal),
     owner_user_id: str | None = Depends(current_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
@@ -265,16 +264,15 @@ def generate_image_session_round_endpoint(
         tool_options=payload.tool_options.model_dump(exclude_none=True) if payload.tool_options else None,
         principal=principal,
     )
-    if principal is not None:
-        record_admin_user_content_access(
-            session,
-            principal=principal,
-            target_user_id=image_session.owner_user_id,
-            action="generate",
-            resource_type="image_session",
-            resource_id=image_session.id,
-            request_context=audit_context,
-        )
+    record_admin_user_content_access(
+        session,
+        principal=principal,
+        target_user_id=image_session.owner_user_id,
+        action="generate",
+        resource_type="image_session",
+        resource_id=image_session.id,
+        request_context=audit_context,
+    )
     return serialize_image_session_detail(image_session)
 
 

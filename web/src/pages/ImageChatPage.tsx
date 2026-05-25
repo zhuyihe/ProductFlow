@@ -82,7 +82,9 @@ import type {
   ImageSessionGenerationTask,
   ImageSessionListResponse,
   ImageSessionStatus,
+  ImageToolOptionKey,
   ImageToolOptions,
+  SessionState,
 } from "../lib/types";
 
 const DUPLICATE_GENERATION_SUBMIT_WINDOW_MS = 1800;
@@ -136,6 +138,19 @@ function writeImageChatRouteState(scope: string, state: ImageChatRouteState) {
 
 function getSessionReferenceAssets(imageSession: ImageSessionDetail | undefined): ImageSessionAsset[] {
   return imageSession?.assets.filter((asset) => asset.kind === "reference_upload") ?? [];
+}
+
+function getSessionImageModelOptions(session: SessionState | undefined): string[] {
+  const models: string[] = [];
+  const addModel = (value: string | null | undefined) => {
+    const normalized = value?.trim();
+    if (normalized && !models.includes(normalized)) {
+      models.push(normalized);
+    }
+  };
+  addModel(session?.new_api_image_model);
+  session?.new_api_image_models?.forEach(addModel);
+  return models;
 }
 
 type PendingDeleteAction =
@@ -307,6 +322,21 @@ export function ImageChatPage() {
   const imageGenerationMaxDimension =
     runtimeConfigQuery.data?.image_generation_max_dimension ?? DEFAULT_IMAGE_GENERATION_MAX_DIMENSION;
   const imageToolAllowedFields = runtimeConfigQuery.data?.image_tool_allowed_fields ?? DEFAULT_IMAGE_TOOL_ALLOWED_FIELDS;
+  const imageModelOptions = useMemo(() => getSessionImageModelOptions(sessionQuery.data), [sessionQuery.data]);
+  const hasNewApiImageModelSource = Boolean(sessionQuery.data?.new_api_token_id || imageModelOptions.length);
+  const imageToolSubmitFields = useMemo<ImageToolOptionKey[]>(() => {
+    if (!hasNewApiImageModelSource || imageToolAllowedFields.includes("model")) {
+      return [...imageToolAllowedFields];
+    }
+    return ["model", ...imageToolAllowedFields];
+  }, [hasNewApiImageModelSource, imageToolAllowedFields]);
+  const imageToolAdvancedFields = useMemo<ImageToolOptionKey[]>(
+    () =>
+      hasNewApiImageModelSource
+        ? imageToolAllowedFields.filter((field) => field !== "model")
+        : [...imageToolAllowedFields],
+    [hasNewApiImageModelSource, imageToolAllowedFields],
+  );
   const deletionEnabled = runtimeConfigQuery.data?.deletion_enabled ?? false;
   const sizeOptions = useMemo(
     () => buildImageSizeOptions(imageGenerationMaxDimension),
@@ -384,8 +414,8 @@ export function ImageChatPage() {
   const sessionReferenceAssets = useMemo(() => getSessionReferenceAssets(imageSession), [imageSession]);
   const maxSelectedReferenceCount = branchBaseAssetId ? MAX_BRANCH_CONTEXT_IMAGES - 1 : MAX_BRANCH_CONTEXT_IMAGES;
   const compactedToolOptions = useMemo(
-    () => compactImageToolOptions(toolOptions, imageToolAllowedFields),
-    [imageToolAllowedFields, toolOptions],
+    () => compactImageToolOptions(toolOptions, imageToolSubmitFields),
+    [imageToolSubmitFields, toolOptions],
   );
   const submitGenerationCount = effectiveImageGenerationSubmitCount(generationCount, compactedToolOptions);
   const hasActiveGenerationTask = imageSession?.generation_tasks.some(isImageSessionGenerationTaskActive) ?? false;
@@ -415,6 +445,22 @@ export function ImageChatPage() {
       void queryClient.invalidateQueries({ queryKey: ["image-sessions", productId ?? "standalone"] });
     }
   }, [productId, queryClient, selectedSessionId, sessionStatusQuery.data]);
+
+  useEffect(() => {
+    setToolOptions((current) => {
+      const currentModel = current.model?.trim();
+      if (imageModelOptions.length && currentModel && imageModelOptions.includes(currentModel)) {
+        return current;
+      }
+      if (imageModelOptions.length) {
+        return { ...current, model: imageModelOptions[0] };
+      }
+      if (hasNewApiImageModelSource && currentModel) {
+        return { ...current, model: null };
+      }
+      return current;
+    });
+  }, [hasNewApiImageModelSource, imageModelOptions]);
 
   useEffect(() => {
     if (!imageSession) {
@@ -1039,7 +1085,7 @@ export function ImageChatPage() {
     : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900 dark:bg-[#060a12] dark:text-slate-100 lg:h-screen lg:overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-atelier-cream text-atelier-ink dark:bg-[#1A1410] dark:text-atelier-cream lg:h-screen lg:overflow-hidden">
       <TopNav
         breadcrumbs={isProductMode ? `${productQuery.data?.name ?? t("chat.productFallback")} / ${t("chat.breadcrumb")}` : t("chat.breadcrumb")}
         onHome={() => navigate(isProductMode && productId ? `/products/${productId}` : "/products")}
@@ -1052,7 +1098,7 @@ export function ImageChatPage() {
         onPointerDown={handleMobileEdgeSwipeStart}
       >
         <aside
-          className="relative hidden w-full shrink-0 flex-col border-b border-slate-200 bg-white/95 dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[12px_0_36px_rgba(0,0,0,0.24)] dark:backdrop-blur-xl lg:flex lg:w-[var(--image-chat-left-panel-width)] lg:border-b-0 lg:border-r"
+          className="relative hidden w-full shrink-0 flex-col border-b border-atelier-smoke/30 bg-atelier-paper/95 dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-paper-md dark:backdrop-blur-xl lg:flex lg:w-[var(--image-chat-left-panel-width)] lg:border-b-0 lg:border-r"
           style={leftPanelStyle}
         >
           <button
@@ -1060,21 +1106,21 @@ export function ImageChatPage() {
             aria-label={t("chat.resizeSessions")}
             title={t("chat.resizeSessionsTitle")}
             onPointerDown={(event) => handlePanelResizeStart("left", event)}
-            className="absolute right-[-5px] top-0 z-20 hidden h-full w-3 cursor-col-resize items-center justify-center transition-colors hover:bg-indigo-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-violet-500/15 lg:flex"
+            className="absolute right-[-5px] top-0 z-20 hidden h-full w-3 cursor-col-resize items-center justify-center transition-colors hover:bg-atelier-vermilion/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:hover:bg-atelier-vermilion/10 lg:flex"
           >
-            <span className="h-12 w-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <span className="h-12 w-1 rounded-full bg-atelier-smoke/40 dark:bg-atelier-cream/30" />
           </button>
-          <div className="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+          <div className="border-b border-atelier-smoke/30 px-4 py-4 dark:border-atelier-cream/15">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-slate-950 dark:text-white">{t("chat.sessions")}</div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("chat.count", { count: sessionItems.length })}</div>
+                <div className="text-sm font-semibold text-atelier-ink dark:text-atelier-cream">{t("chat.sessions")}</div>
+                <div className="mt-1 text-xs text-atelier-smoke dark:text-atelier-smoke">{t("chat.count", { count: sessionItems.length })}</div>
               </div>
               <button
                 type="button"
                 onClick={() => createSessionMutation.mutate()}
                 disabled={createSessionMutation.isPending}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 transition-colors hover:bg-indigo-500 disabled:opacity-60 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-violet-500 dark:shadow-violet-900/35 dark:ring-1 dark:ring-violet-300/30"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-atelier-ink text-atelier-cream shadow-sm shadow-paper-md transition-colors hover:bg-atelier-vermilion disabled:opacity-60 dark:bg-atelier-vermilion dark:shadow-paper-md dark:ring-1 dark:ring-atelier-vermilion/30"
                 aria-label={t("chat.newSession")}
               >
                 {createSessionMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Plus size={16} />}
@@ -1095,7 +1141,7 @@ export function ImageChatPage() {
           />
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-100 dark:bg-[#0b1220] lg:overflow-hidden">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-atelier-cream dark:bg-[#1F1812] lg:overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col p-3 pb-2">
             <div className="mb-3 flex items-center justify-between gap-1.5 lg:hidden">
               <button
@@ -1103,7 +1149,7 @@ export function ImageChatPage() {
                 type="button"
                 onClick={() => setMobileSessionDrawerOpen(true)}
                 aria-label={t("chat.openSessionDrawer")}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors active:scale-[0.98] hover:border-indigo-200 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200 dark:hover:border-violet-400/60 dark:hover:text-violet-100"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia shadow-sm transition-colors active:scale-[0.98] hover:border-atelier-vermilion/30 hover:text-atelier-vermilion focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-cream dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
               >
                 <Menu size={18} />
               </button>
@@ -1123,11 +1169,11 @@ export function ImageChatPage() {
                     }}
                     disabled={renameSessionMutation.isPending}
                     aria-label={t("chat.rename")}
-                    className="h-10 w-full rounded-xl border border-indigo-200 bg-white px-3 text-center text-sm font-semibold text-slate-950 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-500 dark:border-violet-400/45 dark:bg-slate-950/80 dark:text-white dark:focus:border-violet-300 dark:focus:ring-violet-400/20"
+                    className="h-10 w-full rounded-xl border border-atelier-vermilion/30 bg-atelier-paper px-3 text-center text-sm font-semibold text-atelier-ink shadow-sm focus:border-atelier-vermilion focus:outline-none focus:ring-2 focus:ring-atelier-vermilion/20 disabled:bg-atelier-paper disabled:text-atelier-smoke dark:border-atelier-vermilion/40 dark:bg-[#1A1410]/80 dark:text-atelier-cream dark:focus:border-atelier-vermilion dark:focus:ring-atelier-vermilion/20"
                   />
                 ) : (
                   <>
-                    <div className="truncate text-sm font-semibold text-slate-950 dark:text-white">
+                    <div className="truncate text-sm font-semibold text-atelier-ink dark:text-atelier-cream">
                       {imageSession?.title ?? t("chat.workbench")}
                     </div>
                   </>
@@ -1145,7 +1191,7 @@ export function ImageChatPage() {
                   }}
                   disabled={!selectedSessionId || renameSessionMutation.isPending}
                   aria-label={renameEnabled ? t("chat.saveSessionName") : t("chat.rename")}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:border-violet-400/55 dark:hover:text-violet-100"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia shadow-sm transition-colors hover:border-atelier-vermilion/30 hover:text-atelier-vermilion focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion disabled:opacity-60 dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
                 >
                   {renameSessionMutation.isPending ? (
                     <Loader2 size={17} className="animate-spin" />
@@ -1160,7 +1206,7 @@ export function ImageChatPage() {
                   type="button"
                   onClick={() => setMobileHistoryDrawerOpen(true)}
                   aria-label={t("chat.openHistoryDrawer")}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:border-violet-400/55 dark:hover:text-violet-100"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia shadow-sm transition-colors hover:border-atelier-vermilion/30 hover:text-atelier-vermilion focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
                 >
                   <History size={17} />
                 </button>
@@ -1168,25 +1214,25 @@ export function ImageChatPage() {
             </div>
             <div className="mb-3 hidden flex-col gap-3 lg:flex lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-300">
-                  <span className="inline-flex h-7 items-center rounded-full bg-white px-3 shadow-sm ring-1 ring-slate-200 dark:border dark:border-violet-400/30 dark:bg-slate-950/70 dark:text-violet-100 dark:ring-violet-400/20">
+                <div className="flex items-center gap-2 text-xs font-medium text-atelier-smoke dark:text-atelier-smoke">
+                  <span className="inline-flex h-7 items-center rounded-full bg-atelier-paper px-3 shadow-sm ring-1 ring-atelier-smoke/30 dark:border dark:border-atelier-vermilion/30 dark:bg-[#1A1410]/70 dark:text-atelier-cream dark:ring-atelier-vermilion/20">
                     {t("chat.currentResult")}
                   </span>
                   {branchBaseRound ? (
-                    <span className="inline-flex h-7 items-center gap-1 rounded-full bg-indigo-600 px-3 text-white shadow-sm shadow-indigo-500/20 dark:bg-violet-500/20 dark:text-violet-100 dark:ring-1 dark:ring-violet-400/40">
+                    <span className="inline-flex h-7 items-center gap-1 rounded-full bg-atelier-ink px-3 text-atelier-cream shadow-sm shadow-paper-md dark:bg-atelier-vermilion/15 dark:text-atelier-cream dark:ring-1 dark:ring-atelier-vermilion/40">
                       <Layers3 size={12} /> {t("chat.baseSelected")}
                     </span>
                   ) : null}
                 </div>
-                <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                <h1 className="mt-2 text-xl font-semibold tracking-tight text-atelier-ink dark:text-atelier-cream">
                   {imageSession?.title ?? t("chat.workbench")}
                 </h1>
                 {selectedRound ? (
-                  <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 md:hidden">
+                  <div className="mt-1 text-xs font-medium text-atelier-smoke dark:text-atelier-smoke md:hidden">
                     {imageRoundSizeLabel(selectedRound, t)} · {t("chat.candidate", { index: selectedRound.candidate_index, count: selectedRound.candidate_count })}
                   </div>
                 ) : selectedPlaceholder ? (
-                  <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 md:hidden">
+                  <div className="mt-1 text-xs font-medium text-atelier-smoke dark:text-atelier-smoke md:hidden">
                     {placeholderStatusLabel(selectedPlaceholder, t)} · {t("chat.candidate", { index: selectedPlaceholder.candidate_index, count: selectedPlaceholder.candidate_count })}
                   </div>
                 ) : null}
@@ -1194,7 +1240,7 @@ export function ImageChatPage() {
               <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
                 {selectedRound ? (
                   <>
-                    <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200 md:inline-flex">
+                    <span className="hidden rounded-full border border-atelier-smoke/30 bg-atelier-paper px-3 py-1.5 text-xs text-atelier-sepia shadow-sm dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-cream md:inline-flex">
                       {imageRoundSizeLabel(selectedRound, t)} · {t("chat.candidate", { index: selectedRound.candidate_index, count: selectedRound.candidate_count })}
                     </span>
                     <a
@@ -1203,7 +1249,7 @@ export function ImageChatPage() {
                       rel="noreferrer"
                       title={t("chat.downloadCurrent")}
                       aria-label={t("chat.downloadCurrent")}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200 dark:hover:border-violet-400/60 dark:hover:text-violet-100"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia shadow-sm transition-colors hover:border-atelier-vermilion/30 hover:text-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-cream dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
                     >
                       <Download size={15} />
                     </a>
@@ -1213,7 +1259,7 @@ export function ImageChatPage() {
                       disabled={saveGalleryMutation.isPending}
                       title={t("chat.saveSelectedGallery")}
                       aria-label={t("chat.saveSelectedGallery")}
-                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 ring-1 ring-indigo-500 transition-colors hover:bg-indigo-700 disabled:opacity-60 dark:bg-gradient-to-r dark:from-indigo-500 dark:to-violet-500 dark:shadow-violet-900/35 dark:ring-violet-300/35"
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-atelier-ink px-4 text-sm font-semibold text-atelier-cream shadow-sm shadow-paper-md ring-1 ring-atelier-vermilion transition-colors hover:bg-atelier-vermilion-dark disabled:opacity-60 dark:bg-atelier-vermilion dark:shadow-paper-md dark:ring-atelier-vermilion/30"
                     >
                       {saveGalleryMutation.isPending ? (
                         <Loader2 size={16} className="mr-2 animate-spin" />
@@ -1245,17 +1291,17 @@ export function ImageChatPage() {
               t={t}
             />
             {selectedRound?.provider_notes.length ? (
-              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/35 dark:bg-amber-500/10 dark:text-amber-200">
+              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
                 {selectedRound.provider_notes.map((note) => (
                   <span key={note}>{note}</span>
                 ))}
               </div>
             ) : selectedPlaceholder?.failure_reason ? (
-              <div className="mt-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
+              <div className="mt-2 rounded-2xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-xs text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/50/10 dark:text-atelier-vermilion">
                 {selectedPlaceholder.failure_reason}
               </div>
             ) : selectedPlaceholder?.provider_notes.length ? (
-              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/35 dark:bg-amber-500/10 dark:text-amber-200">
+              <div className="mt-2 flex flex-wrap gap-2 rounded-2xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
                 {selectedPlaceholder.provider_notes.map((note) => (
                   <span key={note}>{note}</span>
                 ))}
@@ -1279,7 +1325,7 @@ export function ImageChatPage() {
         </section>
 
         <aside
-          className="relative hidden w-full shrink-0 flex-col border-t border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[-12px_0_36px_rgba(0,0,0,0.24)] dark:backdrop-blur-xl lg:flex lg:w-[var(--image-chat-right-panel-width)] lg:border-l lg:border-t-0"
+          className="relative hidden w-full shrink-0 flex-col border-t border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-paper-md dark:backdrop-blur-xl lg:flex lg:w-[var(--image-chat-right-panel-width)] lg:border-l lg:border-t-0"
           style={rightPanelStyle}
         >
           <button
@@ -1287,22 +1333,22 @@ export function ImageChatPage() {
             aria-label={t("chat.resizeSettings")}
             title={t("chat.resizeSettingsTitle")}
             onPointerDown={(event) => handlePanelResizeStart("right", event)}
-            className="absolute left-[-5px] top-0 z-20 hidden h-full w-3 cursor-col-resize items-center justify-center transition-colors hover:bg-indigo-50/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-violet-500/15 lg:flex"
+            className="absolute left-[-5px] top-0 z-20 hidden h-full w-3 cursor-col-resize items-center justify-center transition-colors hover:bg-atelier-vermilion/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:hover:bg-atelier-vermilion/10 lg:flex"
           >
-            <span className="h-12 w-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <span className="h-12 w-1 rounded-full bg-atelier-smoke/40 dark:bg-atelier-cream/30" />
           </button>
           <div className="min-h-0 flex-1 px-4 py-5 lg:overflow-y-auto lg:px-5">
             <div className="mb-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-950 dark:text-white">
+                  <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-atelier-ink dark:text-atelier-cream">
                     <Settings size={15} /> {t("chat.generationSettings")}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setRenameEnabled((current) => !current)}
-                  className="inline-flex h-8 items-center rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-300 dark:hover:border-violet-400/50 dark:hover:text-violet-100"
+                  className="inline-flex h-8 items-center rounded-lg border border-atelier-smoke/30 px-2.5 text-xs font-medium text-atelier-sepia transition-colors hover:border-atelier-smoke/50 hover:text-atelier-ink dark:border-atelier-cream/15 dark:bg-[#1A1410]/60 dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
                 >
                   <Pencil size={12} className="mr-1.5" /> {t("chat.rename")}
                 </button>
@@ -1312,13 +1358,13 @@ export function ImageChatPage() {
                   value={titleDraft}
                   onChange={(event) => setTitleDraft(event.target.value)}
                   disabled={!renameEnabled || renameSessionMutation.isPending}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-violet-400 dark:focus:ring-violet-400/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+                  className="w-full rounded-xl border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-sm text-atelier-ink focus:border-atelier-vermilion focus:outline-none focus:ring-2 focus:ring-atelier-vermilion/20 disabled:bg-atelier-paper disabled:text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1A1410]/70 dark:text-atelier-cream dark:focus:border-atelier-vermilion dark:focus:ring-atelier-vermilion/20 dark:disabled:bg-atelier-cream/10 dark:disabled:text-atelier-smoke"
                 />
                 {renameEnabled ? (
                   <button
                     type="button"
                     onClick={handleRename}
-                    className="inline-flex items-center rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 dark:bg-violet-500 dark:hover:bg-violet-400"
+                    className="inline-flex items-center rounded-xl bg-atelier-ink px-3 py-2 text-sm font-semibold text-atelier-cream transition-colors hover:bg-atelier-vermilion dark:bg-atelier-vermilion dark:hover:bg-atelier-vermilion-dark"
                     aria-label={t("chat.saveSessionName")}
                   >
                     {renameSessionMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -1368,7 +1414,7 @@ export function ImageChatPage() {
                   />
 
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-950 dark:text-white" htmlFor="image-chat-prompt">
+                    <label className="mb-2 block text-sm font-semibold text-atelier-ink dark:text-atelier-cream" htmlFor="image-chat-prompt">
                       {t("chat.prompt")}
                     </label>
                     <textarea
@@ -1377,7 +1423,7 @@ export function ImageChatPage() {
                       onChange={(event) => setDraft(event.target.value)}
                       rows={6}
                       placeholder={isProductMode ? t("chat.productPromptPlaceholder") : t("chat.freePromptPlaceholder")}
-                      className="w-full resize-none rounded-2xl border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/20"
+                      className="w-full resize-none rounded-2xl border border-atelier-smoke/30 px-3 py-3 text-sm leading-6 text-atelier-ink focus:border-atelier-vermilion focus:outline-none focus:ring-2 focus:ring-atelier-vermilion/20 dark:border-atelier-cream/15 dark:bg-[#1A1410]/70 dark:text-atelier-cream dark:placeholder:text-atelier-smoke dark:focus:border-atelier-vermilion dark:focus:ring-atelier-vermilion/20"
                     />
                   </div>
 
@@ -1386,7 +1432,9 @@ export function ImageChatPage() {
                     sizeOptions={sizeOptions}
                     maxDimension={imageGenerationMaxDimension}
                     toolOptions={toolOptions}
-                    allowedToolFields={imageToolAllowedFields}
+                    allowedToolFields={imageToolSubmitFields}
+                    modelOptions={imageModelOptions}
+                    lockModelToOptions={hasNewApiImageModelSource}
                     generationCount={generationCount}
                     generationCountOptions={IMAGE_CHAT_GENERATION_COUNT_OPTIONS}
                     onSizeChange={setSize}
@@ -1397,25 +1445,31 @@ export function ImageChatPage() {
                 </div>
               }
               advanced={
-                <ImageToolControls value={toolOptions} allowedFields={imageToolAllowedFields} onChange={setToolOptions} />
+                <ImageToolControls
+                  value={toolOptions}
+                  allowedFields={imageToolAdvancedFields}
+                  modelOptions={imageModelOptions}
+                  lockModelToOptions={hasNewApiImageModelSource}
+                  onChange={setToolOptions}
+                />
               }
             />
 
             <div className="space-y-4">
               {successMessage ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/10 dark:text-emerald-200">
+                <div className="rounded-xl border border-atelier-smoke/40 bg-atelier-cream px-3 py-2 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream0/10 dark:text-atelier-cream/70">
                   {successMessage}
                 </div>
               ) : null}
               {errorMessage ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">{errorMessage}</div>
+                <div className="rounded-xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/50/10 dark:text-atelier-vermilion">{errorMessage}</div>
               ) : null}
             </div>
           </div>
 
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-8px_24px_rgba(15,23,42,0.10)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-[0_-18px_40px_rgba(0,0,0,0.32)] lg:sticky lg:inset-x-auto lg:bottom-0 lg:p-4">
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-atelier-smoke/30 bg-atelier-paper/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-paper-sm backdrop-blur dark:border-atelier-cream/15 dark:bg-[#1A1410]/90 dark:shadow-paper-md lg:sticky lg:inset-x-auto lg:bottom-0 lg:p-4">
             {baseRequirementMessage ? (
-              <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-400/35 dark:bg-amber-500/10 dark:text-amber-200">
+              <div className="mb-2 rounded-xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
                 {baseRequirementMessage}
               </div>
             ) : null}
@@ -1423,7 +1477,7 @@ export function ImageChatPage() {
               type="button"
               onClick={handleGenerate}
               disabled={generateDisabled}
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition-colors hover:bg-indigo-500 disabled:opacity-60 dark:bg-gradient-to-r dark:from-indigo-500 dark:via-violet-500 dark:to-fuchsia-500 dark:shadow-violet-900/45 dark:ring-1 dark:ring-violet-300/35"
+              className="inline-flex w-full items-center justify-center rounded-2xl bg-atelier-ink px-4 py-3.5 text-sm font-semibold text-atelier-cream shadow-lg shadow-paper-md transition-colors hover:bg-atelier-vermilion disabled:opacity-60 dark:bg-atelier-vermilion dark:shadow-paper-md dark:ring-1 dark:ring-atelier-vermilion/30"
             >
               {generateMutation.isPending ? (
                 <Loader2 size={15} className="mr-2 animate-spin" />
@@ -1450,23 +1504,23 @@ export function ImageChatPage() {
         }}
       >
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-[2px] lg:hidden" />
+          <Drawer.Overlay className="fixed inset-0 z-[70] bg-atelier-ink/45 backdrop-blur-[2px] lg:hidden" />
           <Drawer.Content
             onPointerDown={handleMobileSessionDrawerSwipeBackStart}
-            className="fixed inset-y-0 left-0 z-[71] flex w-[min(86vw,360px)] flex-col border-r border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-[#0f1726] lg:hidden"
+            className="fixed inset-y-0 left-0 z-[71] flex w-[min(86vw,360px)] flex-col border-r border-atelier-smoke/30 bg-atelier-paper shadow-2xl outline-none dark:border-atelier-cream/15 dark:bg-[#1F1812] lg:hidden"
           >
             <Drawer.Title className="sr-only">{t("chat.mobileSessionDrawer")}</Drawer.Title>
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3 border-b border-atelier-smoke/30 px-4 py-4 dark:border-atelier-cream/15">
               <div>
-                <div className="text-sm font-semibold text-slate-950 dark:text-white">{t("chat.sessions")}</div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("chat.count", { count: sessionItems.length })}</div>
+                <div className="text-sm font-semibold text-atelier-ink dark:text-atelier-cream">{t("chat.sessions")}</div>
+                <div className="mt-1 text-xs text-atelier-smoke dark:text-atelier-smoke">{t("chat.count", { count: sessionItems.length })}</div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => createSessionMutation.mutate()}
                   disabled={createSessionMutation.isPending}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 transition-colors active:scale-[0.98] hover:bg-indigo-500 disabled:opacity-60 dark:bg-gradient-to-br dark:from-indigo-500 dark:to-violet-500 dark:shadow-violet-900/35 dark:ring-1 dark:ring-violet-300/30"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-atelier-ink text-atelier-cream shadow-sm shadow-paper-md transition-colors active:scale-[0.98] hover:bg-atelier-vermilion disabled:opacity-60 dark:bg-atelier-vermilion dark:shadow-paper-md dark:ring-1 dark:ring-atelier-vermilion/30"
                   aria-label={t("chat.newSession")}
                 >
                   {createSessionMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={18} />}
@@ -1478,7 +1532,7 @@ export function ImageChatPage() {
                     setMobileSessionDrawerOpen(false);
                     mobileSessionButtonRef.current?.focus();
                   }}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition-colors active:scale-[0.98] hover:border-slate-300 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:border-violet-400/55 dark:hover:text-violet-100"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia transition-colors active:scale-[0.98] hover:border-atelier-smoke/50 hover:text-atelier-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
                 >
                   <X size={18} />
                 </button>
@@ -1510,12 +1564,12 @@ export function ImageChatPage() {
         }}
       >
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-[2px] lg:hidden" />
-          <Drawer.Content className="fixed inset-y-0 right-0 z-[71] flex w-[7.75rem] flex-col border-l border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-[#0f1726] lg:hidden">
+          <Drawer.Overlay className="fixed inset-0 z-[70] bg-atelier-ink/45 backdrop-blur-[2px] lg:hidden" />
+          <Drawer.Content className="fixed inset-y-0 right-0 z-[71] flex w-[7.75rem] flex-col border-l border-atelier-smoke/30 bg-atelier-paper shadow-2xl outline-none dark:border-atelier-cream/15 dark:bg-[#1F1812] lg:hidden">
             <Drawer.Title className="sr-only">{t("chat.mobileHistoryDrawer")}</Drawer.Title>
-            <div className="flex items-center justify-between gap-1 border-b border-slate-200 px-2 py-3 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-1 border-b border-atelier-smoke/30 px-2 py-3 dark:border-atelier-cream/15">
               <div className="min-w-0 px-1">
-                <div className="text-sm font-semibold text-slate-950 dark:text-white">{t("chat.history")}</div>
+                <div className="text-sm font-semibold text-atelier-ink dark:text-atelier-cream">{t("chat.history")}</div>
               </div>
               <button
                 type="button"
@@ -1524,7 +1578,7 @@ export function ImageChatPage() {
                   setMobileHistoryDrawerOpen(false);
                   mobileHistoryButtonRef.current?.focus();
                 }}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition-colors active:scale-[0.98] hover:border-slate-300 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:border-violet-400/55 dark:hover:text-violet-100"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia transition-colors active:scale-[0.98] hover:border-atelier-smoke/50 hover:text-atelier-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
               >
                 <X size={18} />
               </button>
@@ -1546,7 +1600,7 @@ export function ImageChatPage() {
       </Drawer.Root>
 
       <div className="fixed inset-x-0 z-40 px-3 lg:hidden" style={{ bottom: "calc(4.1rem + env(safe-area-inset-bottom))" }}>
-        <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_-6px_18px_rgba(15,23,42,0.12)] dark:border-slate-700 dark:bg-slate-950 dark:shadow-[0_-12px_28px_rgba(0,0,0,0.30)]">
+        <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-2xl border border-atelier-smoke/30 bg-atelier-paper p-2 shadow-paper-sm dark:border-atelier-cream/15 dark:bg-atelier-ink dark:shadow-paper-md">
           {selectedRound ? (
             <div className="flex shrink-0 items-center gap-1.5">
               <a
@@ -1555,7 +1609,7 @@ export function ImageChatPage() {
                 rel="noreferrer"
                 title={t("chat.downloadCurrent")}
                 aria-label={t("chat.downloadCurrent")}
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors active:scale-[0.98] hover:border-indigo-200 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-200 dark:hover:border-violet-400/60 dark:hover:text-violet-100 dark:focus-visible:ring-violet-400"
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-atelier-smoke/30 bg-atelier-paper px-2.5 text-xs font-semibold text-atelier-sepia shadow-sm transition-colors active:scale-[0.98] hover:border-atelier-vermilion/30 hover:text-atelier-vermilion focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-cream dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream dark:focus-visible:ring-atelier-vermilion"
               >
                 <Download size={15} className="shrink-0" />
                 <span>{t("chat.downloadShort")}</span>
@@ -1566,7 +1620,7 @@ export function ImageChatPage() {
                 disabled={saveGalleryMutation.isPending}
                 title={t("chat.saveSelectedGallery")}
                 aria-label={t("chat.saveSelectedGallery")}
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-700 shadow-sm transition-colors active:scale-[0.98] hover:border-indigo-300 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-60 dark:border-violet-400/35 dark:bg-violet-500/15 dark:text-violet-100 dark:hover:border-violet-300/55 dark:hover:bg-violet-500/25 dark:focus-visible:ring-violet-400"
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-2.5 text-xs font-semibold text-atelier-vermilion shadow-sm transition-colors active:scale-[0.98] hover:border-atelier-vermilion/30 hover:bg-atelier-vermilion/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion disabled:opacity-60 dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10 dark:text-atelier-cream dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/15 dark:focus-visible:ring-atelier-vermilion"
               >
                 {saveGalleryMutation.isPending ? <Loader2 size={15} className="shrink-0 animate-spin" /> : <Share2 size={15} className="shrink-0" />}
                 <span>{t("chat.sendGalleryShort")}</span>
@@ -1577,7 +1631,7 @@ export function ImageChatPage() {
             ref={mobileSettingsButtonRef}
             type="button"
             onClick={() => setMobileGenerationSheetOpen(true)}
-            className={`flex min-h-11 min-w-0 items-center rounded-xl bg-indigo-600 text-left text-white shadow-md shadow-indigo-600/16 transition-colors hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:bg-violet-600 dark:shadow-violet-900/35 dark:ring-1 dark:ring-violet-300/35 dark:focus-visible:ring-violet-300 ${
+            className={`flex min-h-11 min-w-0 items-center rounded-xl bg-atelier-ink text-left text-atelier-cream shadow-md shadow-paper-md transition-colors hover:bg-atelier-vermilion focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:bg-atelier-vermilion dark:shadow-paper-md dark:ring-1 dark:ring-atelier-vermilion/30 dark:focus-visible:ring-atelier-vermilion ${
               selectedRound ? "flex-1 px-2.5" : "w-full px-3"
             }`}
             aria-label={t("chat.openGenerationSheet")}
@@ -1586,7 +1640,7 @@ export function ImageChatPage() {
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold leading-5">{t("chat.mobileGenerate")}</span>
             </span>
-            <ChevronRight size={17} className="ml-2 shrink-0 text-indigo-100 dark:text-violet-100" />
+            <ChevronRight size={17} className="ml-2 shrink-0 text-atelier-cream dark:text-atelier-cream" />
           </button>
         </div>
       </div>
@@ -1603,11 +1657,11 @@ export function ImageChatPage() {
         }}
       >
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-[70] bg-slate-950/42 lg:hidden" />
-          <Drawer.Content className="mobile-generation-sheet fixed inset-x-0 bottom-0 z-[71] flex max-h-[80dvh] flex-col rounded-t-[1.5rem] border-t border-slate-200 bg-white shadow-[0_-12px_34px_rgba(15,23,42,0.16)] outline-none dark:border-slate-700 dark:bg-[#0f1726] dark:shadow-[0_-18px_42px_rgba(0,0,0,0.34)] lg:hidden">
+          <Drawer.Overlay className="fixed inset-0 z-[70] bg-atelier-ink/42 lg:hidden" />
+          <Drawer.Content className="mobile-generation-sheet fixed inset-x-0 bottom-0 z-[71] flex max-h-[80dvh] flex-col rounded-t-[1.5rem] border-t border-atelier-smoke/30 bg-atelier-paper shadow-paper-md outline-none dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-paper-md lg:hidden">
             <Drawer.Title className="sr-only">{t("chat.mobileGenerationSheet")}</Drawer.Title>
-            <Drawer.Handle className="mx-auto mt-2 flex h-7 w-24 items-center justify-center rounded-full text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-500 dark:focus-visible:ring-violet-400">
-              <span className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <Drawer.Handle className="mx-auto mt-2 flex h-7 w-24 items-center justify-center rounded-full text-atelier-smoke focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:text-atelier-smoke dark:focus-visible:ring-atelier-vermilion">
+              <span className="h-1.5 w-12 rounded-full bg-atelier-smoke/40 dark:bg-atelier-cream/30" />
             </Drawer.Handle>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
 
@@ -1652,7 +1706,7 @@ export function ImageChatPage() {
                     />
 
                     <div>
-                      <label className="mb-2 block text-sm font-semibold text-slate-950 dark:text-white" htmlFor="image-chat-prompt-mobile">
+                      <label className="mb-2 block text-sm font-semibold text-atelier-ink dark:text-atelier-cream" htmlFor="image-chat-prompt-mobile">
                         {t("chat.prompt")}
                       </label>
                       <textarea
@@ -1661,7 +1715,7 @@ export function ImageChatPage() {
                         onChange={(event) => setDraft(event.target.value)}
                         rows={6}
                         placeholder={isProductMode ? t("chat.productPromptPlaceholder") : t("chat.freePromptPlaceholder")}
-                        className="w-full resize-none rounded-2xl border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/20"
+                        className="w-full resize-none rounded-2xl border border-atelier-smoke/30 px-3 py-3 text-sm leading-6 text-atelier-ink focus:border-atelier-vermilion focus:outline-none focus:ring-2 focus:ring-atelier-vermilion/20 dark:border-atelier-cream/15 dark:bg-[#1A1410]/70 dark:text-atelier-cream dark:placeholder:text-atelier-smoke dark:focus:border-atelier-vermilion dark:focus:ring-atelier-vermilion/20"
                       />
                     </div>
 
@@ -1670,7 +1724,9 @@ export function ImageChatPage() {
                       sizeOptions={sizeOptions}
                       maxDimension={imageGenerationMaxDimension}
                       toolOptions={toolOptions}
-                      allowedToolFields={imageToolAllowedFields}
+                      allowedToolFields={imageToolSubmitFields}
+                      modelOptions={imageModelOptions}
+                      lockModelToOptions={hasNewApiImageModelSource}
                       generationCount={generationCount}
                       generationCountOptions={IMAGE_CHAT_GENERATION_COUNT_OPTIONS}
                       onSizeChange={setSize}
@@ -1681,24 +1737,30 @@ export function ImageChatPage() {
                   </div>
                 }
                 advanced={
-                  <ImageToolControls value={toolOptions} allowedFields={imageToolAllowedFields} onChange={setToolOptions} />
+                  <ImageToolControls
+                    value={toolOptions}
+                    allowedFields={imageToolAdvancedFields}
+                    modelOptions={imageModelOptions}
+                    lockModelToOptions={hasNewApiImageModelSource}
+                    onChange={setToolOptions}
+                  />
                 }
               />
 
               <div className="mt-4 space-y-3">
                 {successMessage ? (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/10 dark:text-emerald-200">
+                  <div className="rounded-xl border border-atelier-smoke/40 bg-atelier-cream px-3 py-2 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream0/10 dark:text-atelier-cream/70">
                     {successMessage}
                   </div>
                 ) : null}
                 {errorMessage ? (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">{errorMessage}</div>
+                  <div className="rounded-xl border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/50/10 dark:text-atelier-vermilion">{errorMessage}</div>
                 ) : null}
               </div>
             </div>
-            <div className="border-t border-slate-200 bg-white/96 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] dark:border-slate-800 dark:bg-slate-950/94">
+            <div className="border-t border-atelier-smoke/30 bg-atelier-paper/96 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] dark:border-atelier-cream/15 dark:bg-[#1A1410]/94">
               {baseRequirementMessage ? (
-                <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-400/35 dark:bg-amber-500/10 dark:text-amber-200">
+                <div className="mb-2 rounded-xl border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft0/10 dark:text-atelier-cream/70">
                   {baseRequirementMessage}
                 </div>
               ) : null}
@@ -1706,7 +1768,7 @@ export function ImageChatPage() {
                 type="button"
                 onClick={handleGenerate}
                 disabled={generateDisabled}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition-colors active:scale-[0.98] hover:bg-indigo-500 disabled:opacity-60 dark:bg-gradient-to-r dark:from-indigo-500 dark:via-violet-500 dark:to-fuchsia-500 dark:shadow-violet-900/45 dark:ring-1 dark:ring-violet-300/35"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-atelier-ink px-4 text-sm font-semibold text-atelier-cream shadow-lg shadow-paper-md transition-colors active:scale-[0.98] hover:bg-atelier-vermilion disabled:opacity-60 dark:bg-atelier-vermilion dark:shadow-paper-md dark:ring-1 dark:ring-atelier-vermilion/30"
               >
                 {generateMutation.isPending ? <Loader2 size={15} className="mr-2 animate-spin" /> : <Sparkles size={15} className="mr-2" />}
                 {generateMutation.isPending

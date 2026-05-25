@@ -203,10 +203,11 @@ For runtime settings:
   `provider_profiles.default_models_json`. If required model settings are absent after bootstrap, resolvers must fail
   with a clear configuration error instead of falling back to legacy `Settings.text_brief_model`,
   `Settings.text_copy_model`, or `Settings.image_generate_model`.
-- Hosted New API SSO image generation has one explicit exception: when the authenticated SSO session carries a
-  New API-selected image model, that session model overrides the local image binding model for interactive image
-  generation and durable retries. Local provider binding image models remain the fallback for non-SSO/bootstrap sessions
-  and for older sessions created before the SSO model claim existed.
+- Hosted New API SSO image generation has one explicit exception: when the authenticated SSO session carries New API image
+  model options, the user-selected model from Atelier generation settings overrides the local image binding model for
+  interactive image generation and durable retries. Local provider binding image models remain the fallback for
+  non-SSO/bootstrap sessions only. Token-backed SSO sessions without model options must fail clearly and ask the user to
+  re-enter from AYNC-API instead of using a stale local model.
 - Image binding config is provider-kind scoped: `openai_responses` owns `responses_background_enabled`, while
   `openai_images` owns `images_quality` and `images_style`, and `google_gemini_image` owns `gemini_api_version` plus
   optional `gemini_output_mime_type`. Do not require or persist Responses background config for `openai_images`, Google
