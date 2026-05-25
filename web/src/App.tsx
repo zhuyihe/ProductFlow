@@ -76,6 +76,10 @@ function AppRoutes() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
+        <Route
+          path="/"
+          element={<Navigate to={authenticated ? "/products" : workspaceLoginTarget} replace />}
+        />
         <Route path="/login" element={<LoginPage authenticated={authenticated} ssoStartUrl={ssoStartUrl} />} />
         <Route
           path="/products"
