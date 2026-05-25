@@ -291,7 +291,7 @@ export function TemplateGraphPreview({
   const layout = buildTemplatePreviewLayout(displayTemplate, metrics);
   if (layout === null) {
     return (
-      <div className="flex h-36 items-center justify-center border-b border-dashed border-zinc-200 bg-zinc-50 text-[11px] text-zinc-400 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-500">
+      <div className="flex h-36 items-center justify-center border-b border-dashed border-atelier-smoke/30 bg-atelier-paper text-[11px] text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
         {t("detail.template.noPreview")}
       </div>
     );
@@ -320,8 +320,8 @@ export function TemplateGraphPreview({
       aria-label={t("detail.template.previewAria", { title: displayTemplate.title })}
       className={
         variant === "dialog"
-          ? "pointer-events-none relative overflow-hidden bg-zinc-50 dark:bg-[#0b1220]"
-          : "relative h-52 overflow-hidden border-b border-zinc-100 bg-zinc-50 dark:border-slate-700 dark:bg-[#0b1220]"
+          ? "pointer-events-none relative overflow-hidden bg-atelier-paper dark:bg-[#1F1812]"
+          : "relative h-52 overflow-hidden border-b border-atelier-smoke/20 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#1F1812]"
       }
       style={
         variant === "dialog"
@@ -340,7 +340,7 @@ export function TemplateGraphPreview({
       >
         <defs>
           <pattern id={gridId} width="14" height="14" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="0.7" className="fill-zinc-300 dark:fill-slate-600" />
+            <circle cx="1" cy="1" r="0.7" className="fill-atelier-smoke dark:fill-atelier-cream/40" />
           </pattern>
           <marker
             id={arrowId}
@@ -354,7 +354,7 @@ export function TemplateGraphPreview({
             <path d="M 0 0 L 6 3 L 0 6 z" fill="#6366f1" />
           </marker>
         </defs>
-        <rect width={metrics.viewBoxWidth} height={metrics.viewBoxHeight} className="fill-zinc-50 dark:fill-[#0b1220]" />
+        <rect width={metrics.viewBoxWidth} height={metrics.viewBoxHeight} className="fill-atelier-paper dark:fill-[#1A1410]" />
         <rect width={metrics.viewBoxWidth} height={metrics.viewBoxHeight} fill={`url(#${gridId})`} opacity="0.85" />
         {edges.map(({ edge, source, target }) => (
           <path
@@ -376,7 +376,7 @@ export function TemplateGraphPreview({
           <div
             key={node.key}
             aria-label={`${node.title} ${meta.label}`}
-            className="absolute rounded-lg border border-slate-200 bg-white/95 p-1.5 text-left shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#151f33]/95"
+            className="absolute rounded-lg border border-atelier-smoke/30 bg-atelier-paper/95 p-1.5 text-left shadow-sm backdrop-blur dark:border-atelier-cream/15 dark:bg-[#241B14]/95"
             style={{
               left: `${(node.x / metrics.viewBoxWidth) * 100}%`,
               top: `${(node.y / metrics.viewBoxHeight) * 100}%`,
@@ -384,24 +384,24 @@ export function TemplateGraphPreview({
               height: `${(metrics.nodeHeight / metrics.viewBoxHeight) * 100}%`,
             }}
           >
-            <span className="absolute left-[-4px] top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-slate-300 bg-white shadow-sm dark:border-slate-500 dark:bg-[#0b1220]" />
-            <span className="absolute right-[-5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-indigo-600 bg-white shadow-sm dark:border-violet-400 dark:bg-[#0b1220]" />
+            <span className="absolute left-[-4px] top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-atelier-smoke/50 bg-atelier-paper shadow-sm dark:border-atelier-cream/15 dark:bg-[#1F1812]" />
+            <span className="absolute right-[-5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-atelier-vermilion bg-atelier-paper shadow-sm dark:border-atelier-vermilion dark:bg-[#1F1812]" />
             <div className="flex items-start gap-1.5">
               <div className="flex min-w-0 flex-1 gap-1.5">
-                <span className="mt-0.5 rounded-md border border-slate-200 bg-slate-50 p-0.5 text-slate-500 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300">
+                <span className="mt-0.5 rounded-md border border-atelier-smoke/30 bg-atelier-paper p-0.5 text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
                   <Icon size={11} strokeWidth={2} />
                 </span>
                 <div className="min-w-0">
-                  <div className={`${variant === "dialog" ? "text-xs leading-4" : "text-[10px] leading-3"} truncate font-semibold text-zinc-900 dark:text-slate-100`}>
+                  <div className={`${variant === "dialog" ? "text-xs leading-4" : "text-[10px] leading-3"} truncate font-semibold text-atelier-ink dark:text-atelier-cream`}>
                     {truncatePreviewTitle(node.title, variant === "dialog" ? 18 : 7)}
                   </div>
-                  <div className={`${variant === "dialog" ? "text-[9px] leading-3" : "text-[7px] leading-none"} mt-0.5 font-medium uppercase text-zinc-400 dark:text-slate-400`}>
+                  <div className={`${variant === "dialog" ? "text-[9px] leading-3" : "text-[7px] leading-none"} mt-0.5 font-medium uppercase text-atelier-smoke dark:text-atelier-smoke`}>
                     {meta.label}
                   </div>
                 </div>
               </div>
             </div>
-            <span className={`${variant === "dialog" ? "mt-2 px-1.5 text-[9px] leading-4" : "mt-1 px-1 text-[7px] leading-3"} inline-flex rounded-full border border-zinc-200 bg-white py-0 font-medium text-zinc-500 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300`}>
+            <span className={`${variant === "dialog" ? "mt-2 px-1.5 text-[9px] leading-4" : "mt-1 px-1 text-[7px] leading-3"} inline-flex rounded-full border border-atelier-smoke/30 bg-atelier-paper py-0 font-medium text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke`}>
               {meta.status}
             </span>
           </div>
@@ -427,7 +427,7 @@ function CompactTemplateGraphPreview({
       <button
         type="button"
         onClick={onOpenPreview}
-        className="flex h-28 w-full items-center justify-center bg-zinc-50 text-[11px] text-zinc-400 transition-colors hover:bg-zinc-100 dark:bg-[#0b1220] dark:text-slate-500 dark:hover:bg-slate-900"
+        className="flex h-28 w-full items-center justify-center bg-atelier-paper text-[11px] text-atelier-smoke transition-colors hover:bg-atelier-cream dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:bg-[#1F1812]"
       >
         {t("detail.template.noPreview")}
       </button>
@@ -457,7 +457,7 @@ function CompactTemplateGraphPreview({
       onClick={onOpenPreview}
       aria-label={t("detail.template.openPreview", { title: displayTemplate.title })}
       title={t("detail.template.openPreview", { title: displayTemplate.title })}
-      className="group relative block aspect-[16/7] min-h-28 w-full overflow-hidden bg-zinc-50 text-left transition-colors hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:bg-[#0b1220] dark:hover:bg-slate-900"
+      className="group relative block aspect-[16/7] min-h-28 w-full overflow-hidden bg-atelier-paper text-left transition-colors hover:bg-atelier-cream focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:bg-[#1F1812] dark:hover:bg-[#1F1812]"
     >
       <svg
         aria-hidden="true"
@@ -467,7 +467,7 @@ function CompactTemplateGraphPreview({
       >
         <defs>
           <pattern id={gridId} width="14" height="14" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="0.7" className="fill-zinc-300 dark:fill-slate-600" />
+            <circle cx="1" cy="1" r="0.7" className="fill-atelier-smoke dark:fill-atelier-cream/40" />
           </pattern>
           <marker
             id={arrowId}
@@ -484,7 +484,7 @@ function CompactTemplateGraphPreview({
         <rect
           width={COMPACT_PREVIEW_METRICS.viewBoxWidth}
           height={COMPACT_PREVIEW_METRICS.viewBoxHeight}
-          className="fill-zinc-50 dark:fill-[#0b1220]"
+          className="fill-atelier-paper dark:fill-[#1A1410]"
         />
         <rect
           width={COMPACT_PREVIEW_METRICS.viewBoxWidth}
@@ -511,7 +511,7 @@ function CompactTemplateGraphPreview({
         return (
           <span
             key={node.key}
-            className="absolute flex flex-col items-center justify-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 text-center text-[9px] font-semibold leading-none text-slate-700 shadow-sm backdrop-blur transition-transform group-hover:scale-[1.02] dark:border-slate-700 dark:bg-[#151f33]/95 dark:text-slate-100"
+            className="absolute flex flex-col items-center justify-center gap-0.5 rounded-lg border border-atelier-smoke/30 bg-atelier-paper/95 text-center text-[9px] font-semibold leading-none text-atelier-sepia shadow-sm backdrop-blur transition-transform group-hover:scale-[1.02] dark:border-atelier-cream/15 dark:bg-[#241B14]/95 dark:text-atelier-cream"
             style={{
               left: `${(node.x / COMPACT_PREVIEW_METRICS.viewBoxWidth) * 100}%`,
               top: `${(node.y / COMPACT_PREVIEW_METRICS.viewBoxHeight) * 100}%`,
@@ -519,12 +519,12 @@ function CompactTemplateGraphPreview({
               height: `${(COMPACT_PREVIEW_METRICS.nodeHeight / COMPACT_PREVIEW_METRICS.viewBoxHeight) * 100}%`,
             }}
           >
-            <Icon size={13} strokeWidth={2} className="text-indigo-600 dark:text-violet-400" />
+            <Icon size={13} strokeWidth={2} className="text-atelier-vermilion dark:text-atelier-vermilion" />
             <span className="max-w-full truncate px-0.5">{compactPreviewNodeLabel(node.node_type, t)}</span>
           </span>
         );
       })}
-      <span className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 bg-white/90 text-zinc-500 shadow-sm opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-slate-700 dark:bg-[#151f33]/90 dark:text-slate-300">
+      <span className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-atelier-smoke/30 bg-atelier-paper/90 text-atelier-smoke shadow-sm opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-atelier-cream/15 dark:bg-[#241B14]/90 dark:text-atelier-smoke">
         <Maximize2 size={13} />
       </span>
     </button>
@@ -564,7 +564,7 @@ function TemplatePreviewDialog({
     <div
       data-template-preview-dialog
       data-vaul-no-drag
-      className="pointer-events-auto fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-6"
+      className="pointer-events-auto fixed inset-0 z-[110] flex items-center justify-center bg-atelier-ink/60 p-3 backdrop-blur-sm sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -575,15 +575,15 @@ function TemplatePreviewDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex max-h-[88dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25 dark:border-slate-700 dark:bg-[#0f1726] dark:shadow-black/50"
+        className="flex max-h-[88dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-atelier-smoke/30 bg-atelier-paper shadow-paper-lg dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-black/50"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
+        <div className="flex items-start justify-between gap-3 border-b border-atelier-smoke/20 px-4 py-3 dark:border-atelier-cream/15 sm:px-5">
           <div className="min-w-0">
-            <h2 id={titleId} className="truncate text-base font-semibold text-slate-950 dark:text-white">
+            <h2 id={titleId} className="truncate text-base font-semibold text-atelier-ink dark:text-atelier-cream">
               {t("detail.template.previewDialogTitle", { title: displayTemplate.title })}
             </h2>
             {displayTemplate.description ? (
-              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-300">
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-atelier-smoke dark:text-atelier-smoke">
                 {displayTemplate.description}
               </p>
             ) : null}
@@ -591,7 +591,7 @@ function TemplatePreviewDialog({
           <button
             type="button"
             onClick={onClose}
-            className="btn-secondary-spring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="btn-secondary-spring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion"
             aria-label={t("detail.preview.close")}
             title={t("detail.preview.close")}
           >
@@ -690,7 +690,7 @@ export function TemplateGroupsPanel({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[180px] items-center justify-center text-zinc-400 dark:text-slate-500">
+      <div className="flex min-h-[180px] items-center justify-center text-atelier-smoke dark:text-atelier-smoke">
         <Loader2 size={20} className="animate-spin" />
       </div>
     );
@@ -698,7 +698,7 @@ export function TemplateGroupsPanel({
 
   if (isError) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
+      <div className="rounded-lg border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2 text-xs text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">
         {t("detail.template.loadFailed")}
       </div>
     );
@@ -706,8 +706,8 @@ export function TemplateGroupsPanel({
 
   if (!templates.length) {
     return (
-      <div className="glass-empty-state flex min-h-[160px] flex-col items-center justify-center gap-2 p-6 text-center text-xs text-zinc-500 dark:text-slate-400">
-        <Layers3 size={18} className="text-indigo-500 opacity-80 dark:text-violet-400" />
+      <div className="glass-empty-state flex min-h-[160px] flex-col items-center justify-center gap-2 p-6 text-center text-xs text-atelier-smoke dark:text-atelier-smoke">
+        <Layers3 size={18} className="text-atelier-vermilion opacity-80 dark:text-atelier-vermilion" />
         <div>{t("detail.template.empty")}</div>
       </div>
     );
@@ -720,7 +720,7 @@ export function TemplateGroupsPanel({
 
   return (
     <section className="space-y-3">
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-200/50 pb-2 dark:border-slate-800">
+      <div className="flex gap-1 overflow-x-auto border-b border-atelier-smoke/30/50 pb-2 dark:border-atelier-cream/15">
         {TEMPLATE_CATEGORY_ORDER.filter((category) => category.key === "all" || categoryCounts[category.key] > 0).map(
           (category) => {
             const active = activeCategory === category.key;
@@ -737,12 +737,12 @@ export function TemplateGroupsPanel({
                 }}
                 className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
                   active
-                    ? "border-slate-900 bg-slate-900 text-white dark:border-indigo-500/50 dark:bg-indigo-500/15 dark:text-indigo-200"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+                    ? "border-atelier-ink bg-atelier-ink text-atelier-cream dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/15 dark:text-atelier-vermilion"
+                    : "border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia hover:bg-atelier-cream hover:text-atelier-ink dark:border-atelier-cream/15 dark:bg-[#241B14] dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/10 dark:hover:text-atelier-vermilion"
                 }`}
               >
                 {t(category.labelKey)}
-                <span className={active ? "ml-1 text-zinc-300" : "ml-1 text-zinc-400"}>
+                <span className={active ? "ml-1 text-atelier-smoke" : "ml-1 text-atelier-smoke"}>
                   {categoryCounts[category.key]}
                 </span>
               </button>
@@ -752,8 +752,8 @@ export function TemplateGroupsPanel({
       </div>
 
       {visibleTemplates.length ? null : (
-        <div className="glass-empty-state flex min-h-[120px] flex-col items-center justify-center gap-2 p-6 text-center text-xs text-zinc-500 dark:text-slate-400">
-          <Layers3 size={18} className="text-indigo-500 opacity-80 dark:text-violet-400" />
+        <div className="glass-empty-state flex min-h-[120px] flex-col items-center justify-center gap-2 p-6 text-center text-xs text-atelier-smoke dark:text-atelier-smoke">
+          <Layers3 size={18} className="text-atelier-vermilion opacity-80 dark:text-atelier-vermilion" />
           <div>{t("detail.template.emptyCategory")}</div>
         </div>
       )}
@@ -772,13 +772,13 @@ export function TemplateGroupsPanel({
         return (
           <article
             key={template.key}
-            className="group overflow-hidden rounded-2xl shadow-sm transition-colors config-bubble hover:border-indigo-500/30 dark:hover:border-indigo-500/40"
+            className="group overflow-hidden rounded-2xl shadow-sm transition-colors config-bubble hover:border-atelier-vermilion/30 dark:hover:border-atelier-vermilion/40"
           >
             <div className="flex items-center gap-2 px-2.5 py-2">
               <button
                 type="button"
                 onClick={() => setExpandedTemplateKey(expanded ? null : template.key)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-atelier-smoke transition-colors hover:bg-atelier-cream hover:text-atelier-ink dark:text-atelier-smoke dark:hover:bg-atelier-vermilion/10 dark:hover:text-atelier-vermilion"
                 aria-label={expanded ? t("detail.template.collapsePreview") : t("detail.template.expandPreview")}
                 title={expanded ? t("detail.template.collapsePreview") : t("detail.template.expandPreview")}
               >
@@ -786,33 +786,33 @@ export function TemplateGroupsPanel({
               </button>
               <div className="min-w-0 flex-1 space-y-1.5 text-left">
                 <div className="min-w-0">
-                  <h3 className="break-words text-sm font-semibold leading-5 text-zinc-950 dark:text-white">
+                  <h3 className="break-words text-sm font-semibold leading-5 text-atelier-ink dark:text-atelier-cream">
                     {displayTemplate.title}
                   </h3>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center gap-1">
                   {isUserTemplate ? (
-                    <span className="rounded-sm border border-zinc-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-zinc-600 dark:border-slate-600 dark:bg-[#0b1220] dark:text-slate-300">
+                    <span className="rounded-sm border border-atelier-smoke/30 bg-atelier-paper px-1.5 py-0.5 text-[9px] font-semibold text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
                       {t("detail.template.custom")}
                     </span>
                   ) : null}
                   {templateShared ? (
-                    <span className="rounded-sm border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-200">
+                    <span className="rounded-sm border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-1.5 py-0.5 text-[9px] font-semibold text-atelier-vermilion dark:border-atelier-vermilion/25 dark:bg-atelier-vermilion/10 dark:text-atelier-vermilion">
                       {t("detail.template.shared")}
                     </span>
                   ) : null}
-                  <span className="max-w-full truncate rounded-sm border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/12 dark:text-emerald-200">
+                  <span className="max-w-full truncate rounded-sm border border-atelier-smoke/30 bg-atelier-cream px-1.5 py-0.5 text-[9px] font-semibold text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/12 dark:text-atelier-cream/70">
                     {summarizeOutput(displayTemplate, t)}
                   </span>
                   {referenceLabel ? (
-                    <span className="max-w-full truncate rounded-sm border border-zinc-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-zinc-600 dark:border-slate-600 dark:bg-[#0b1220] dark:text-slate-300">
+                    <span className="max-w-full truncate rounded-sm border border-atelier-smoke/30 bg-atelier-paper px-1.5 py-0.5 text-[9px] font-semibold text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
                       {referenceLabel}
                     </span>
                   ) : null}
                   {externalLabels.map((label) => (
                     <span
                       key={label}
-                      className="max-w-full truncate rounded-sm border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-200"
+                      className="max-w-full truncate rounded-sm border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-1.5 py-0.5 text-[9px] font-semibold text-atelier-vermilion dark:border-atelier-vermilion/20 dark:bg-atelier-vermilion/10 dark:text-atelier-vermilion"
                     >
                       {label}
                     </span>
@@ -879,13 +879,13 @@ export function TemplateGroupsPanel({
               </div>
             </div>
             {expanded ? (
-              <div className="border-t border-zinc-100 dark:border-slate-700 bg-slate-500/5 dark:bg-black/25">
+              <div className="border-t border-atelier-smoke/20 dark:border-atelier-cream/15 bg-atelier-paper0/5 dark:bg-black/25">
                 <CompactTemplateGraphPreview template={displayTemplate} onOpenPreview={() => setPreviewTemplate(template)} />
               </div>
             ) : null}
             {editing ? (
               <form
-                className="flex items-center gap-2 border-t border-zinc-100 px-3 py-2 dark:border-slate-700"
+                className="flex items-center gap-2 border-t border-atelier-smoke/20 px-3 py-2 dark:border-atelier-cream/15"
                 onSubmit={(event) => {
                   event.preventDefault();
                   const title = editingTitle.trim();

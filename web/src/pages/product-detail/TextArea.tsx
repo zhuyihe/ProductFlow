@@ -40,7 +40,7 @@ export function TextArea({
 
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
         {label}
       </span>
       <textarea

@@ -23,8 +23,8 @@ export function SidebarTabButton({
       onClick={onClick}
       className={`flex w-full flex-col items-center rounded-xl px-1 py-2 text-[10px] font-medium transition-all transition-spring ${
         active
-          ? "bg-white text-indigo-600 shadow-[0_2px_8px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/30 scale-[1.05] dark:bg-slate-800 dark:text-slate-100 dark:ring-1 dark:ring-indigo-500/50 dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
-          : "text-slate-500 hover:scale-[1.05] hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white"
+          ? "bg-atelier-paper text-atelier-vermilion shadow-[0_2px_8px_rgba(99,102,241,0.15)] ring-1 ring-atelier-vermilion/30 scale-[1.05] dark:bg-[#241B14] dark:text-atelier-cream dark:ring-1 dark:ring-atelier-vermilion/50 dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
+          : "text-atelier-smoke hover:scale-[1.05] hover:bg-atelier-cream hover:text-atelier-ink dark:text-atelier-smoke dark:hover:bg-[#241B14]/60 dark:hover:text-atelier-cream"
       }`}
     >
       <span className={`transition-transform duration-300 ${active ? "scale-110" : ""}`}>{icon}</span>

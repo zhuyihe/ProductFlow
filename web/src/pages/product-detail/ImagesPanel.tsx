@@ -36,10 +36,10 @@ export function ImagesPanel({
   const selectedReferenceLabel = selectedReferenceNode ? workflowNodeDisplayTitle(selectedReferenceNode, t) : "";
   return (
     <section>
-      <div className="mb-3 space-y-1 text-xs text-zinc-500 dark:text-slate-400">
+      <div className="mb-3 space-y-1 text-xs text-atelier-smoke dark:text-atelier-smoke">
         <div>{artifactCount ? t("detail.downloadableCount", { count: artifactCount }) : t("detail.waitingAssets")}</div>
         {canFillReference ? (
-          <div className="text-indigo-600 dark:text-violet-400 font-semibold">
+          <div className="text-atelier-vermilion dark:text-atelier-vermilion font-semibold">
             {t("detail.fillInto", { label: selectedReferenceLabel })}
           </div>
         ) : (
@@ -89,8 +89,8 @@ export function ImagesPanel({
           ))}
         </div>
       ) : (
-        <div className="glass-empty-state flex min-h-[160px] flex-col items-center justify-center gap-2 p-6 text-center text-xs leading-relaxed text-zinc-500 dark:text-slate-400">
-          <ImageIcon size={18} className="text-indigo-500 opacity-80 dark:text-violet-400" />
+        <div className="glass-empty-state flex min-h-[160px] flex-col items-center justify-center gap-2 p-6 text-center text-xs leading-relaxed text-atelier-smoke dark:text-atelier-smoke">
+          <ImageIcon size={18} className="text-atelier-vermilion opacity-80 dark:text-atelier-vermilion" />
           <div>{t("detail.noImages")}</div>
         </div>
       )}

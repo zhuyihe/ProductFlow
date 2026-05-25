@@ -63,10 +63,10 @@ const SAVE_STATUS_LABEL_KEYS: Record<SaveStatus, TranslationKey> = {
 };
 
 const SAVE_STATUS_CLASS_NAMES: Record<SaveStatus, string> = {
-  idle: "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300",
-  saving: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/35 dark:bg-blue-500/12 dark:text-blue-200",
-  saved: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/12 dark:text-emerald-200",
-  failed: "border-red-200 bg-red-50 text-red-700 dark:border-red-400/35 dark:bg-red-500/12 dark:text-red-200",
+  idle: "border-atelier-smoke/30 bg-atelier-paper text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke",
+  saving: "border-atelier-vermilion/30 bg-atelier-vermilion/5 text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/15 dark:text-atelier-vermilion",
+  saved: "border-atelier-smoke/40 bg-atelier-cream text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/12 dark:text-atelier-cream/70",
+  failed: "border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/12 dark:text-atelier-vermilion",
 };
 
 const ADD_COPY_FIELD_BUTTON_CLASS_NAME =
@@ -170,15 +170,15 @@ export function InspectorPanel({
     <div className="space-y-3">
       <section className="config-bubble rounded-2xl p-4 shadow-sm">
         <div className="flex items-start gap-3">
-          <span className="rounded-xl border border-indigo-100 bg-indigo-50 p-2 text-indigo-700 dark:border-violet-400/35 dark:bg-violet-500/15 dark:text-violet-100">
+          <span className="rounded-xl border border-atelier-vermilion/30 bg-atelier-vermilion/5 p-2 text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10 dark:text-atelier-cream">
             <InspectorIcon size={16} />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-base font-semibold text-zinc-950 dark:text-white">
+            <div className="truncate text-base font-semibold text-atelier-ink dark:text-atelier-cream">
               {displayTitle}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300">
+              <span className="rounded-full border border-atelier-smoke/30 bg-atelier-paper px-2 py-0.5 text-[10px] font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
                 {displayLabel}
               </span>
               <span
@@ -209,7 +209,7 @@ export function InspectorPanel({
               </span>
             </div>
             {node.last_run_at ? (
-              <div className="mt-2 text-[11px] text-zinc-400 dark:text-slate-400">
+              <div className="mt-2 text-[11px] text-atelier-smoke dark:text-atelier-smoke">
                 {t("detail.inspector.lastRun", { time: formatDateTime(node.last_run_at) })}
               </div>
             ) : null}
@@ -217,7 +217,7 @@ export function InspectorPanel({
         </div>
 
         {activeRunContext ? (
-          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2.5 text-xs leading-5 text-indigo-700 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-100">
+          <div className="mt-4 rounded-xl border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-3 py-2.5 text-xs leading-5 text-atelier-vermilion dark:border-atelier-vermilion/30 dark:bg-atelier-vermilion/10 dark:text-atelier-cream">
             <div className="flex items-start gap-2">
               <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin" />
               <div className="min-w-0">
@@ -227,12 +227,12 @@ export function InspectorPanel({
                     : t("detail.inspector.activeRunRunning")}
                 </div>
                 {activeRunNodeText ? (
-                  <div className="mt-0.5 text-indigo-600/85 dark:text-violet-100/80">{activeRunNodeText}</div>
+                  <div className="mt-0.5 text-atelier-vermilion/85 dark:text-atelier-cream/80">{activeRunNodeText}</div>
                 ) : null}
                 {activeRunQueueText ? (
-                  <div className="mt-1 text-indigo-600/75 dark:text-violet-100/70">{activeRunQueueText}</div>
+                  <div className="mt-1 text-atelier-vermilion/75 dark:text-atelier-cream/70">{activeRunQueueText}</div>
                 ) : null}
-                <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-indigo-600/70 dark:text-violet-100/60">
+                <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-atelier-vermilion/70 dark:text-atelier-cream/60">
                   <span>{t("detail.nodeRunStarted", { time: formatDateTime(activeRunContext.nodeRun.started_at) })}</span>
                   {activeRunContext.run.is_cancelable ? <span>{t("detail.runCancelable")}</span> : null}
                 </div>
@@ -294,11 +294,11 @@ export function InspectorPanel({
       </section>
 
       <section className="config-bubble rounded-2xl p-4 shadow-sm">
-        <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-slate-300">
+        <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
           {t("detail.inspector.config")}
         </div>
         <label className="mb-3 block">
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
             {t("detail.inspector.nodeName")}
           </span>
           <input
@@ -309,7 +309,7 @@ export function InspectorPanel({
             className="w-full px-3 py-2.5 text-sm outline-none input-premium"
           />
         </label>
-        <div className="mb-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300">
+        <div className="mb-3 rounded-md border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-xs leading-5 text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
           {node.node_type === "image_generation"
             ? t("detail.inspector.description.imageGeneration")
             : node.node_type === "reference_image"
@@ -366,30 +366,30 @@ export function InspectorPanel({
         <section
           className={`rounded-2xl border p-4 text-xs leading-relaxed shadow-sm ${
             node.status === "cancelled"
-              ? "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300"
-              : "border-red-200 bg-red-50 text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200"
+              ? "border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke"
+              : "border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion"
           }`}
         >
           <AlertCircle size={13} className="mr-1.5 inline" />
           {node.failure_reason}
           {node.status === "failed" && node.is_retryable && node.node_type !== "product_context" ? (
-            <div className="mt-2 font-semibold text-red-700 dark:text-red-100">{t("detail.inspector.retryableCurrent")}</div>
+            <div className="mt-2 font-semibold text-atelier-vermilion-dark dark:text-atelier-vermilion">{t("detail.inspector.retryableCurrent")}</div>
           ) : null}
           {node.status === "failed" && !node.is_retryable ? (
-            <div className="mt-2 font-semibold text-red-700 dark:text-red-100">{t("detail.notRetryable")}</div>
+            <div className="mt-2 font-semibold text-atelier-vermilion-dark dark:text-atelier-vermilion">{t("detail.notRetryable")}</div>
           ) : null}
           {node.attempt_count > 0 ? (
-            <div className="mt-2 text-[11px] text-red-700/85 dark:text-red-100/85">
+            <div className="mt-2 text-[11px] text-atelier-vermilion-dark/85 dark:text-atelier-vermilion/85">
               {t("detail.nodeAttemptSummary", { attempts: node.attempt_count, retries: node.retry_count })}
             </div>
           ) : null}
           {node.status === "failed" && !node.is_retryable && node.non_retryable_reason ? (
-            <div className="mt-1 text-[11px] text-red-700/85 dark:text-red-100/85">
+            <div className="mt-1 text-[11px] text-atelier-vermilion-dark/85 dark:text-atelier-vermilion/85">
               {t("detail.nonRetryableReason", { reason: node.non_retryable_reason })}
             </div>
           ) : null}
           {node.status === "failed" && node.retry_hint ? (
-            <div className="mt-1 text-[11px] text-red-700/85 dark:text-red-100/85">
+            <div className="mt-1 text-[11px] text-atelier-vermilion-dark/85 dark:text-atelier-vermilion/85">
               {workflowRetryHintLabel(node.retry_hint, t)}
             </div>
           ) : null}
@@ -418,7 +418,7 @@ function ProductContextInspector({
   return (
     <div className="space-y-3">
       <div
-        className={`group relative flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white/50 p-2 shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-950/40 dark:hover:border-violet-400/50 hover:shadow-[0_8px_20px_-6px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_8px_20px_-6px_rgba(139,92,246,0.3)] ${IMAGE_PREVIEW_SURFACE_CLASS_NAME}`}
+        className={`group relative flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-atelier-smoke/30 bg-atelier-paper/50 p-2 shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-atelier-vermilion/30 dark:border-atelier-cream/15 dark:bg-[#1A1410]/40 dark:hover:border-atelier-vermilion/40 hover:shadow-[0_8px_20px_-6px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_8px_20px_-6px_rgba(139,92,246,0.3)] ${IMAGE_PREVIEW_SURFACE_CLASS_NAME}`}
       >
         {sourceImage ? (
           <>
@@ -430,11 +430,11 @@ function ProductContextInspector({
             <DownloadLink image={sourceImage} variant="overlay" />
           </>
         ) : (
-          <div className="text-xs text-zinc-400 dark:text-slate-500">{t("detail.inspector.noSourceImage")}</div>
+          <div className="text-xs text-atelier-smoke dark:text-atelier-smoke">{t("detail.inspector.noSourceImage")}</div>
         )}
       </div>
       <label className="block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
           {t("detail.inspector.productName")}
         </span>
         <input
@@ -447,7 +447,7 @@ function ProductContextInspector({
       </label>
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
             {t("detail.inspector.category")}
           </span>
           <input
@@ -459,7 +459,7 @@ function ProductContextInspector({
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
             {t("detail.inspector.price")}
           </span>
           <input
@@ -476,7 +476,7 @@ function ProductContextInspector({
         value={draft.sourceNote}
         onChange={(value) => onDraftChange({ ...draft, sourceNote: value })}
       />
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-400">
+      <div className="rounded-md border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-xs text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
         {t("detail.inspector.originalProduct", { name: product.name })}
         {product.category ? ` · ${product.category}` : ""}
         {product.price ? ` · ${formatPrice(product.price)}` : ""}
@@ -508,28 +508,28 @@ function ReferenceImageInspector({
     <div className="space-y-3">
       {image ? (
         <div
-          className={`group relative flex aspect-[4/3] min-h-[180px] w-full items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white/50 p-3 shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-950/40 dark:hover:border-violet-400/50 hover:shadow-[0_8px_20px_-6px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_8px_20px_-6px_rgba(139,92,246,0.3)] ${IMAGE_PREVIEW_SURFACE_CLASS_NAME}`}
+          className={`group relative flex aspect-[4/3] min-h-[180px] w-full items-center justify-center overflow-hidden rounded-2xl border border-atelier-smoke/30 bg-atelier-paper/50 p-3 shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-atelier-vermilion/30 dark:border-atelier-cream/15 dark:bg-[#1A1410]/40 dark:hover:border-atelier-vermilion/40 hover:shadow-[0_8px_20px_-6px_rgba(99,102,241,0.15)] dark:hover:shadow-[0_8px_20px_-6px_rgba(139,92,246,0.3)] ${IMAGE_PREVIEW_SURFACE_CLASS_NAME}`}
         >
           <button
             type="button"
             onClick={() => onPreviewImage(image)}
-            className="flex h-full w-full items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            className="flex h-full w-full items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion focus-visible:ring-offset-2"
             aria-label={t("detail.inspector.preview", { alt: image.alt })}
           >
             <img src={image.previewUrl} alt={image.alt} className="h-full w-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]" />
-            <span className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-zinc-950/70 px-2 py-1 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-atelier-ink/70 px-2 py-1 text-[11px] font-medium text-atelier-cream opacity-0 transition-opacity group-hover:opacity-100">
               {t("detail.inspector.clickPreview")}
             </span>
           </button>
           <DownloadLink image={image} variant="overlay" />
-          <div className="absolute left-2 top-2 inline-flex items-center rounded-full border border-violet-400/60 bg-slate-950/88 px-2.5 py-1 text-[11px] font-semibold text-violet-100 shadow-lg shadow-violet-950/35 ring-1 ring-violet-300/20 backdrop-blur">
-            <Sparkles size={12} className="mr-1 text-violet-300" />
+          <div className="absolute left-2 top-2 inline-flex items-center rounded-full border border-atelier-vermilion/40 bg-atelier-ink/88 px-2.5 py-1 text-[11px] font-semibold text-atelier-cream shadow-lg shadow-paper-md ring-1 ring-atelier-vermilion/20 backdrop-blur">
+            <Sparkles size={12} className="mr-1 text-atelier-vermilion" />
             {t("detail.canUseAsReference")}
           </div>
         </div>
       ) : null}
       <label className="block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
           {t("detail.inspector.label")}
         </span>
         <input
@@ -541,7 +541,7 @@ function ReferenceImageInspector({
         />
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
           {t("detail.inspector.role")}
         </span>
         <SelectField
@@ -558,9 +558,9 @@ function ReferenceImageInspector({
       <ImageDropZone
         ariaLabel={hasImage ? t("detail.inspector.replaceReference") : t("detail.inspector.uploadReference")}
         disabled={busy}
-        className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-300 px-3 py-6 text-xs font-medium text-zinc-600 transition-all duration-300 hover:border-indigo-500 hover:bg-indigo-50/20 hover:text-indigo-600 dark:border-slate-700/80 dark:text-slate-300 dark:hover:border-violet-400 dark:hover:bg-violet-500/5 dark:hover:text-violet-200"
-        activeClassName="border-indigo-500 bg-indigo-50/60 text-indigo-700 shadow-[0_0_0_4px_rgba(99,102,241,0.12)] dark:border-violet-400 dark:bg-violet-500/12 dark:text-violet-100 dark:shadow-[0_0_0_4px_rgba(139,92,246,0.18)]"
-        focusClassName="focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-violet-400 dark:focus-visible:ring-offset-slate-950"
+        className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-atelier-smoke/50 px-3 py-6 text-xs font-medium text-atelier-sepia transition-all duration-300 hover:border-atelier-vermilion hover:bg-atelier-vermilion/20 hover:text-atelier-vermilion dark:border-atelier-cream/15 dark:text-atelier-smoke dark:hover:border-atelier-vermilion dark:hover:bg-atelier-vermilion/5 dark:hover:text-atelier-vermilion"
+        activeClassName="border-atelier-vermilion bg-atelier-vermilion/5/60 text-atelier-vermilion shadow-[0_0_0_4px_rgba(99,102,241,0.12)] dark:border-atelier-vermilion dark:bg-atelier-vermilion/10 dark:text-atelier-cream dark:shadow-[0_0_0_4px_rgba(139,92,246,0.18)]"
+        focusClassName="focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion focus-visible:ring-offset-2 dark:focus-visible:ring-atelier-vermilion dark:focus-visible:ring-offset-slate-950"
         onFiles={(files) => {
           const file = files[0];
           if (file) {
@@ -569,7 +569,7 @@ function ReferenceImageInspector({
         }}
       >
         {({ isDragging }) => (
-          <div className={`flex h-full w-full items-center justify-center transition-transform duration-200 ${isDragging ? "scale-[1.03] text-indigo-600 dark:text-violet-300" : ""}`}>
+          <div className={`flex h-full w-full items-center justify-center transition-transform duration-200 ${isDragging ? "scale-[1.03] text-atelier-vermilion dark:text-atelier-vermilion" : ""}`}>
             <Upload size={14} className={`mr-2 transition-transform duration-200 ${isDragging ? "-translate-y-0.5 scale-110" : ""}`} />
             {isDragging
               ? t("detail.inspector.dropUpload")
@@ -606,7 +606,7 @@ function CopyNodeInspector({
         onChange={(value) => onDraftChange({ ...draft, instruction: value })}
       />
       <label className="block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
           {t("detail.inspector.tone")}
         </span>
         <input
@@ -618,7 +618,7 @@ function CopyNodeInspector({
         />
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
           {t("detail.inspector.channel")}
         </span>
         <input
@@ -630,8 +630,8 @@ function CopyNodeInspector({
         />
       </label>
       {hasCopy ? (
-        <div className="space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-slate-700 dark:bg-[#0b1220]">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+        <div className="space-y-3 rounded-2xl border border-atelier-smoke/30 bg-atelier-paper/80 p-3 dark:border-atelier-cream/15 dark:bg-[#1F1812]">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
             {t("detail.inspector.editCopy")}
           </div>
           {copyPayload ? (
@@ -641,7 +641,7 @@ function CopyNodeInspector({
               t={t}
             />
           ) : null}
-          <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] leading-5 text-zinc-500 dark:border-slate-700 dark:bg-[#151f33] dark:text-slate-400">
+          <div className="rounded-md border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-[11px] leading-5 text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#241B14] dark:text-atelier-smoke">
             {t("detail.inspector.copyAutosave")}
           </div>
         </div>
@@ -779,7 +779,7 @@ function CopySectionEditor({ section, onChange, t }: { section: CopySection; onC
       />
       {section.items.length ? (
         <div className="space-y-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
             {t("detail.inspector.items")}
           </div>
           <div className="space-y-1.5">
@@ -868,7 +868,7 @@ function OptionalTextInput({
 
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-400">
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
         {label}
       </span>
       <input
@@ -965,7 +965,7 @@ function ImageGenerationInspector({
   return (
     <div className="space-y-3">
       {downstreamReferenceCount === 0 ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-400/35 dark:bg-amber-500/10 dark:text-amber-200">
+        <div className="rounded-md border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs leading-5 text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/10 dark:text-atelier-cream/70">
           {t("detail.inspector.connectImageNodeFirst")}
         </div>
       ) : null}
@@ -974,15 +974,15 @@ function ImageGenerationInspector({
         onChange={setSettingsTab}
         basic={
           <div className="space-y-3">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-[#0b1220]">
+            <div className="rounded-xl border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 dark:border-atelier-cream/15 dark:bg-[#1F1812]">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t("detail.inspector.generationCount")}</div>
-                  <div className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                  <div className="text-xs font-semibold text-atelier-sepia dark:text-atelier-cream">{t("detail.inspector.generationCount")}</div>
+                  <div className="mt-1 text-[11px] leading-5 text-atelier-smoke dark:text-atelier-smoke">
                     {t("detail.inspector.downstreamImageCount", { count: downstreamReferenceCount })}
                   </div>
                 </div>
-                <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-[#151f33] dark:text-slate-200">
+                <span className="shrink-0 rounded-full border border-atelier-smoke/30 bg-atelier-paper px-2.5 py-1 text-xs font-semibold text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#241B14] dark:text-atelier-cream">
                   {t("detail.inspector.imageCount", { count: downstreamReferenceCount })}
                 </span>
               </div>
@@ -1002,7 +1002,7 @@ function ImageGenerationInspector({
                     meta: promptMeta,
                   })
                 }
-                className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-950 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300 dark:hover:border-violet-400/45 dark:hover:bg-violet-500/12 dark:hover:text-white"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-xs font-medium text-atelier-sepia transition-colors hover:border-atelier-smoke/50 hover:text-atelier-ink dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/10 dark:hover:text-atelier-cream"
               >
                 <FileText size={13} className="mr-1.5" />
                 {t("detail.inspector.reviewPrompt")}

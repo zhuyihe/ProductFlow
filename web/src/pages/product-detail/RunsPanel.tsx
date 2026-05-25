@@ -16,18 +16,18 @@ import {
 } from "./utils";
 
 const RUN_STATUS_CLASS_NAMES: Record<WorkflowRunStatus, string> = {
-  running: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/35 dark:bg-blue-500/12 dark:text-blue-200",
+  running: "border-atelier-vermilion/30 bg-atelier-vermilion/5 text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/15 dark:text-atelier-vermilion",
   succeeded:
-    "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/12 dark:text-emerald-200",
-  failed: "border-red-200 bg-red-50 text-red-700 dark:border-red-400/35 dark:bg-red-500/12 dark:text-red-200",
-  cancelled: "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300",
+    "border-atelier-smoke/40 bg-atelier-cream text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/12 dark:text-atelier-cream/70",
+  failed: "border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/12 dark:text-atelier-vermilion",
+  cancelled: "border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke",
 };
 
 const RUN_STATUS_DOT_CLASS_NAMES: Record<WorkflowRunStatus, string> = {
-  running: "bg-blue-500 shadow-blue-500/30",
-  succeeded: "bg-emerald-500 shadow-emerald-500/30",
-  failed: "bg-red-500 shadow-red-500/30",
-  cancelled: "bg-zinc-400 shadow-zinc-400/30",
+  running: "bg-atelier-vermilion shadow-paper-md",
+  succeeded: "bg-atelier-smoke shadow-paper-md",
+  failed: "bg-atelier-vermilion-dark shadow-paper-md",
+  cancelled: "bg-atelier-smoke shadow-paper-md",
 };
 
 interface RunsPanelProps {
@@ -100,11 +100,11 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-xs text-zinc-500 dark:text-slate-400">
+        <div className="text-xs text-atelier-smoke dark:text-atelier-smoke">
           {workflow?.runs.length ? t("detail.runsCount", { count: workflow.runs.length }) : t("detail.noRunHistory")}
         </div>
         {latestRun ? (
-          <div className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] text-zinc-500 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300">
+          <div className="rounded-full border border-atelier-smoke/30 bg-atelier-paper px-2.5 py-1 text-[11px] text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
             {t("detail.latest", { time: formatDateTime(latestRun.started_at) })}
           </div>
         ) : null}
@@ -132,32 +132,32 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
                         >
                           {t(`detail.runStatus.${run.status}`)}
                         </span>
-                        <span className="inline-flex items-center text-[11px] text-zinc-500 dark:text-slate-400">
-                          <Layers3 size={12} className="mr-1 text-zinc-400 dark:text-slate-500" />
+                        <span className="inline-flex items-center text-[11px] text-atelier-smoke dark:text-atelier-smoke">
+                          <Layers3 size={12} className="mr-1 text-atelier-smoke dark:text-atelier-smoke" />
                           {t("detail.nodeRunCount", { count: run.node_runs.length })}
                         </span>
                         {run.is_cancelable ? (
-                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/12 dark:text-amber-100">
+                          <span className="rounded-full border border-atelier-smoke/40 bg-atelier-kraft px-2 py-0.5 text-[10px] font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/12 dark:text-atelier-cream/70">
                             {t("detail.runCancelable")}
                           </span>
                         ) : null}
-                        <span className="text-[11px] text-zinc-400 dark:text-slate-500">
+                        <span className="text-[11px] text-atelier-smoke dark:text-atelier-smoke">
                           {formatDateTime(run.started_at)}
                         </span>
                         {run.finished_at ? (
-                          <span className="text-[11px] text-zinc-400 dark:text-slate-500">
+                          <span className="text-[11px] text-atelier-smoke dark:text-atelier-smoke">
                             {t("detail.finished", { time: formatDateTime(run.finished_at) })}
                           </span>
                         ) : null}
                       </div>
-                      {queueText ? <div className="mt-2 text-[11px] leading-5 text-zinc-500 dark:text-slate-400">{queueText}</div> : null}
+                      {queueText ? <div className="mt-2 text-[11px] leading-5 text-atelier-smoke dark:text-atelier-smoke">{queueText}</div> : null}
                     </div>
                     {run.is_retryable ? (
                       <button
                         type="button"
                         onClick={() => onRetryRun(run)}
                         disabled={runBusy}
-                        className="inline-flex shrink-0 items-center rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-60 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300 dark:hover:border-red-400/50 dark:hover:bg-red-500/12 dark:hover:text-red-200"
+                        className="inline-flex shrink-0 items-center rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-2 py-1 text-[11px] font-medium text-atelier-sepia transition-colors hover:border-atelier-vermilion-dark/30 hover:bg-atelier-vermilion-dark/5 hover:text-atelier-vermilion-dark disabled:opacity-60 dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion-dark/15 dark:hover:text-atelier-vermilion"
                       >
                         {runBusy ? (
                           <Loader2 size={12} className="mr-1 animate-spin" />
@@ -168,11 +168,11 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
                       </button>
                     ) : null}
                   </div>
-                  <div className="rounded-xl border border-zinc-100 bg-zinc-50/70 p-2 dark:border-slate-700/70 dark:bg-[#0b1220]/70">
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-slate-500">
+                  <div className="rounded-xl border border-atelier-smoke/20 bg-atelier-paper/70 p-2 dark:border-atelier-cream/15 dark:bg-[#1F1812]/70">
+                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
                       {t("detail.nodeRunDetails")}
                     </div>
-                    <div className="divide-y divide-zinc-100 overflow-hidden rounded-lg border border-white bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-[#111b2d]">
+                    <div className="divide-y divide-atelier-smoke/20 overflow-hidden rounded-lg border border-atelier-smoke/30 bg-atelier-paper dark:divide-atelier-cream/15 dark:border-atelier-cream/15 dark:bg-[#1F1812]">
                       {run.node_runs.map((nodeRun) => {
                         const node = findWorkflowNode(workflow, nodeRun.node_id);
                         const promptItem = promptItems.find((item) => item.nodeId === nodeRun.node_id);
@@ -183,20 +183,20 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="max-w-[170px] truncate text-[11px] font-semibold text-zinc-800 dark:text-slate-100">
+                                  <span className="max-w-[170px] truncate text-[11px] font-semibold text-atelier-ink dark:text-atelier-cream">
                                     {node ? workflowNodeDisplayTitle(node, t) : t("detail.nodeRunUnknown")}
                                   </span>
                                   {node ? (
-                                    <span className="text-[10px] text-zinc-400 dark:text-slate-500">
+                                    <span className="text-[10px] text-atelier-smoke dark:text-atelier-smoke">
                                       {workflowNodeDisplayLabel(node, t)}
                                     </span>
                                   ) : null}
                                   {durationText ? (
-                                    <span className="text-[10px] text-zinc-400 dark:text-slate-500">{durationText}</span>
+                                    <span className="text-[10px] text-atelier-smoke dark:text-atelier-smoke">{durationText}</span>
                                   ) : null}
                                 </div>
                                 {providerSummary ? (
-                                  <div className="mt-1 line-clamp-2 text-[10px] leading-4 text-zinc-500 dark:text-slate-400">
+                                  <div className="mt-1 line-clamp-2 text-[10px] leading-4 text-atelier-smoke dark:text-atelier-smoke">
                                     {providerSummary}
                                   </div>
                                 ) : null}
@@ -211,8 +211,8 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
                               <div
                                 className={`mt-2 line-clamp-2 rounded-lg border px-2 py-1 text-[11px] leading-5 ${
                                   nodeRun.status === "cancelled"
-                                    ? "border-zinc-100 bg-zinc-50 text-zinc-600 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300"
-                                    : "border-red-100 bg-red-50 text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200"
+                                    ? "border-atelier-smoke/20 bg-atelier-paper text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke"
+                                    : "border-atelier-vermilion-dark/20 bg-atelier-vermilion-dark/5 text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion"
                                 }`}
                               >
                                 {nodeRun.failure_reason}
@@ -228,7 +228,7 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
                                     meta: formatDateTime(run.started_at),
                                   })
                                 }
-                                className="mt-2 inline-flex max-w-full items-center rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-medium text-zinc-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300 dark:hover:border-violet-400/50 dark:hover:bg-violet-500/12 dark:hover:text-violet-100"
+                                className="mt-2 inline-flex max-w-full items-center rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-2 py-1 text-[11px] font-medium text-atelier-sepia transition-colors hover:border-atelier-vermilion/30 hover:bg-atelier-vermilion/5 hover:text-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/10 dark:hover:text-atelier-cream"
                               >
                                 <FileText size={12} className="mr-1 shrink-0" />
                                 <span className="truncate">{t("detail.nodeRunPrompt")}</span>
@@ -243,15 +243,15 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
                     <div
                       className={`line-clamp-2 rounded-lg border px-2.5 py-1.5 ${
                         run.status === "cancelled"
-                          ? "border-zinc-100 bg-zinc-50 text-zinc-600 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300"
-                          : "border-red-100 bg-red-50 text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200"
+                          ? "border-atelier-smoke/20 bg-atelier-paper text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke"
+                          : "border-atelier-vermilion-dark/20 bg-atelier-vermilion-dark/5 text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion"
                       }`}
                     >
                       {run.failure_reason}
                     </div>
                   ) : null}
                   {run.status === "failed" && !run.is_retryable ? (
-                    <div className="inline-flex rounded-lg border border-red-100 bg-white px-2.5 py-1 text-[11px] font-medium text-red-600 dark:border-red-400/35 dark:bg-[#0b1220] dark:text-red-200">
+                    <div className="inline-flex rounded-lg border border-atelier-vermilion-dark/20 bg-atelier-paper px-2.5 py-1 text-[11px] font-medium text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-[#1F1812] dark:text-atelier-vermilion">
                       {t("detail.notRetryable")}
                     </div>
                   ) : null}
@@ -261,7 +261,7 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
           })}
         </div>
       ) : (
-        <div className="flex min-h-[160px] items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50/60 px-4 py-6 text-center text-xs text-zinc-500 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-400">
+        <div className="flex min-h-[160px] items-center justify-center rounded-xl border border-dashed border-atelier-smoke/30 bg-atelier-paper/60 px-4 py-6 text-center text-xs text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
           {t("detail.noRuns")}
         </div>
       )}

@@ -1742,7 +1742,7 @@ export function ProductDetailPage() {
 
   if (productQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-zinc-400 dark:bg-[#060a12] dark:text-slate-400">
+      <div className="flex min-h-screen items-center justify-center bg-atelier-paper text-atelier-smoke dark:bg-[#1A1410] dark:text-atelier-smoke">
         <Loader2 size={24} className="animate-spin" />
       </div>
     );
@@ -1750,8 +1750,8 @@ export function ProductDetailPage() {
 
   if (productQuery.isError || !productQuery.data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#060a12]">
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
+      <div className="flex min-h-screen items-center justify-center bg-atelier-paper dark:bg-[#1A1410]">
+        <div className="rounded-lg border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-4 py-3 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">
           {t("detail.loadFailed")}
         </div>
       </div>
@@ -1795,7 +1795,7 @@ export function ProductDetailPage() {
 
   const renderWorkflowToolbarButtons = () => (
     <>
-      <span className="w-full text-center text-[10px] font-semibold leading-none text-slate-500">
+      <span className="w-full text-center text-[10px] font-semibold leading-none text-atelier-smoke">
         {t("detail.toolbar.runSection")}
       </span>
       <button
@@ -1820,8 +1820,8 @@ export function ProductDetailPage() {
         <Sparkles size={16} />
         <span className="mt-1 leading-tight">{t("detail.autoLayout")}</span>
       </button>
-      <div className="my-1 h-px w-11 self-center bg-slate-200/70 dark:bg-slate-800" />
-      <span className="w-full text-center text-[10px] font-semibold leading-none text-slate-500">
+      <div className="my-1 h-px w-11 self-center bg-atelier-smoke/30 dark:bg-[#241B14]" />
+      <span className="w-full text-center text-[10px] font-semibold leading-none text-atelier-smoke">
         {t("detail.toolbar.addSection")}
       </span>
     </>
@@ -1829,8 +1829,8 @@ export function ProductDetailPage() {
 
   const renderToolbarViewDivider = () => (
     <>
-      <div className="my-1 h-px w-11 self-center bg-slate-200/70 dark:bg-slate-800" />
-      <span className="w-full text-center text-[10px] font-semibold leading-none text-slate-500">
+      <div className="my-1 h-px w-11 self-center bg-atelier-smoke/30 dark:bg-[#241B14]" />
+      <span className="w-full text-center text-[10px] font-semibold leading-none text-atelier-smoke">
         {t("detail.toolbar.viewSection")}
       </span>
     </>
@@ -1858,12 +1858,12 @@ export function ProductDetailPage() {
             className="config-bubble rounded-2xl p-4 shadow-sm transition-all hover:scale-[1.01]"
           >
             <div className="flex items-start">
-              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-violet-400">
+              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-atelier-vermilion/10 text-atelier-vermilion dark:bg-atelier-vermilion/20 dark:text-atelier-vermilion">
                 <NodeIcon size={16} />
               </span>
               <span className="ml-3 min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-zinc-900 dark:text-slate-100">{optionLabel}</span>
-                <span className="mt-1 block text-xs leading-5 text-zinc-500 dark:text-slate-400">
+                <span className="block text-sm font-semibold text-atelier-ink dark:text-atelier-cream">{optionLabel}</span>
+                <span className="mt-1 block text-xs leading-5 text-atelier-smoke dark:text-atelier-smoke">
                   {description}
                 </span>
               </span>
@@ -1968,8 +1968,8 @@ export function ProductDetailPage() {
         })}
       />
     ) : (
-      <div className="glass-empty-state px-4 py-8 text-center text-xs text-zinc-500 dark:text-slate-400 flex flex-col items-center justify-center gap-2">
-        <MousePointer2 size={18} className="text-indigo-500 opacity-70 dark:text-indigo-400" />
+      <div className="glass-empty-state px-4 py-8 text-center text-xs text-atelier-smoke dark:text-atelier-smoke flex flex-col items-center justify-center gap-2">
+        <MousePointer2 size={18} className="text-atelier-vermilion opacity-70 dark:text-atelier-vermilion" />
         <div>{t("detail.selectNodeHint")}</div>
       </div>
     );
@@ -2052,22 +2052,22 @@ export function ProductDetailPage() {
   );
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-white text-sm text-zinc-900 dark:bg-[#060a12] dark:text-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-atelier-paper text-sm text-atelier-ink dark:bg-[#1A1410] dark:text-atelier-cream">
       {!topChromeCollapsed ? <TopNav onHome={() => navigate("/products")} breadcrumbs={product.name} /> : null}
 
-      <main className="flex min-h-0 flex-1 flex-col border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-[#060a12]">
+      <main className="flex min-h-0 flex-1 flex-col border-t border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#1A1410]">
         {error ? (
-          <div className="z-20 border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
+          <div className="z-20 border-b border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-4 py-2 text-xs text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">
             <AlertCircle size={14} className="mr-2 inline" /> {error}
           </div>
         ) : null}
         {!error && notice ? (
-          <div className="z-20 border-b border-blue-200 bg-blue-50 px-4 py-2 text-xs text-blue-700 dark:border-blue-400/35 dark:bg-blue-500/10 dark:text-blue-200">
+          <div className="z-20 border-b border-atelier-vermilion/30 bg-atelier-vermilion/5 px-4 py-2 text-xs text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/15 dark:text-atelier-vermilion">
             <AlertCircle size={14} className="mr-2 inline" /> {notice}
           </div>
         ) : null}
         {showQueueOverview && queueOverview ? (
-          <div className="z-20 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-400/35 dark:bg-amber-500/10 dark:text-amber-200">
+          <div className="z-20 border-b border-atelier-smoke/40 bg-atelier-kraft px-4 py-2 text-xs text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/10 dark:text-atelier-cream/70">
             {t("detail.queueOverview", {
               running: queueOverview.running_count,
               queued: queueOverview.queued_count,
@@ -2077,8 +2077,8 @@ export function ProductDetailPage() {
           </div>
         ) : null}
 
-        <div className="relative flex min-h-0 flex-1 overflow-hidden bg-slate-50 dark:bg-[#0b1220]">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-transparent to-indigo-50/40 dark:from-[#060a12]/78 dark:via-transparent dark:to-[#151f33]/70" />
+        <div className="relative flex min-h-0 flex-1 overflow-hidden bg-atelier-paper dark:bg-[#1F1812]">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-transparent to-atelier-vermilion/5 dark:from-[#1A1410]/78 dark:via-transparent dark:to-[#241B14]/70" />
           <section
             className="relative z-10 min-w-0 flex-1 overflow-hidden transition-[padding] duration-300 ease-out"
             style={{
@@ -2089,7 +2089,7 @@ export function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => setTopChromeCollapsed((collapsed) => !collapsed)}
-                className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white/90 text-zinc-600 shadow-sm backdrop-blur transition-colors active:scale-[0.98] hover:bg-white hover:text-zinc-900 dark:border-slate-700/80 dark:bg-[#151f33]/92 dark:text-slate-300 dark:shadow-black/20 dark:hover:bg-[#1a2740] dark:hover:text-white lg:h-9 lg:w-9 lg:rounded-lg"
+                className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-xl border border-atelier-smoke/30 bg-atelier-paper/90 text-atelier-sepia shadow-sm backdrop-blur transition-colors active:scale-[0.98] hover:bg-atelier-paper hover:text-atelier-ink dark:border-atelier-cream/15 dark:bg-[#241B14]/92 dark:text-atelier-smoke dark:shadow-paper-md dark:hover:bg-[#241B14] dark:hover:text-atelier-cream lg:h-9 lg:w-9 lg:rounded-lg"
                 aria-label={topChromeCollapsed ? t("detail.restoreCanvas") : t("detail.maximizeCanvas")}
                 title={topChromeCollapsed ? t("detail.restoreCanvas") : t("detail.maximizeCanvas")}
               >
@@ -2140,14 +2140,14 @@ export function ProductDetailPage() {
             />
             {selectedGroupCount > 1 ? (
               <div data-canvas-control className="pointer-events-none absolute bottom-[calc(12.75rem+env(safe-area-inset-bottom))] left-3 right-3 z-30 lg:bottom-auto lg:left-1/2 lg:right-auto lg:top-4 lg:-translate-x-1/2">
-                <div className="pointer-events-auto max-h-[calc(100dvh-16rem)] overflow-y-auto rounded-xl border border-indigo-200 bg-white/95 p-2.5 text-sm font-semibold text-indigo-700 shadow-lg shadow-indigo-950/10 backdrop-blur dark:border-violet-400/50 dark:bg-[#151f33]/95 dark:text-violet-100 dark:shadow-black/30 lg:max-h-none lg:min-w-[22rem] lg:overflow-visible">
+                <div className="pointer-events-auto max-h-[calc(100dvh-16rem)] overflow-y-auto rounded-xl border border-atelier-vermilion/30 bg-atelier-paper/95 p-2.5 text-sm font-semibold text-atelier-vermilion shadow-lg shadow-paper-md backdrop-blur dark:border-atelier-vermilion/40 dark:bg-[#241B14]/95 dark:text-atelier-cream dark:shadow-paper-md lg:max-h-none lg:min-w-[22rem] lg:overflow-visible">
                   <div className="flex items-center gap-2">
                     <Check size={16} strokeWidth={2.5} />
                     <span className="mr-auto">{t("detail.selectedCount", { count: selectedGroupCount })}</span>
                     <button
                       type="button"
                       onClick={clearMultiSelection}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-700 dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-200 dark:hover:border-red-400/60 dark:hover:bg-red-500/16 dark:hover:text-red-100 lg:h-8 lg:w-8"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 text-atelier-vermilion-dark shadow-sm transition-colors hover:border-atelier-vermilion-dark/40 hover:bg-atelier-vermilion-dark/15 hover:text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/15 dark:hover:text-atelier-cream lg:h-8 lg:w-8"
                       aria-label={t("detail.clearSelection")}
                       title={t("detail.clearSelection")}
                     >
@@ -2156,7 +2156,7 @@ export function ProductDetailPage() {
                   </div>
                   {templateSaveOpen ? (
                     <form
-                      className="mt-2 grid gap-2 border-t border-indigo-100 pt-2 dark:border-violet-400/20"
+                      className="mt-2 grid gap-2 border-t border-atelier-vermilion/30 pt-2 dark:border-atelier-vermilion/20"
                       onSubmit={(event) => {
                         event.preventDefault();
                         createUserTemplateGroupMutation.mutate();
@@ -2165,14 +2165,14 @@ export function ProductDetailPage() {
                       <input
                         value={templateSaveTitle}
                         onChange={(event) => setTemplateSaveTitle(event.target.value)}
-                        className="h-11 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-indigo-300 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-400 lg:h-9"
+                        className="h-11 rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-3 text-xs font-medium text-atelier-ink outline-none transition-colors placeholder:text-atelier-smoke focus:border-atelier-vermilion/30 dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-cream dark:placeholder:text-atelier-smoke dark:focus:border-atelier-vermilion lg:h-9"
                         placeholder={t("detail.templateName")}
                         maxLength={255}
                       />
                       <input
                         value={templateSaveDescription}
                         onChange={(event) => setTemplateSaveDescription(event.target.value)}
-                        className="h-11 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-indigo-300 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-400 lg:h-9"
+                        className="h-11 rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-3 text-xs font-medium text-atelier-ink outline-none transition-colors placeholder:text-atelier-smoke focus:border-atelier-vermilion/30 dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-cream dark:placeholder:text-atelier-smoke dark:focus:border-atelier-vermilion lg:h-9"
                         placeholder={t("detail.templateDescription")}
                         maxLength={1000}
                       />
@@ -2180,14 +2180,14 @@ export function ProductDetailPage() {
                         <button
                           type="button"
                           onClick={() => setTemplateSaveOpen(false)}
-                          className="h-11 rounded-lg px-3 text-xs font-semibold text-zinc-500 hover:bg-zinc-50 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white lg:h-8 lg:px-2.5"
+                          className="h-11 rounded-lg px-3 text-xs font-semibold text-atelier-smoke hover:bg-atelier-paper dark:text-atelier-smoke dark:hover:bg-atelier-paper/10 dark:hover:text-atelier-cream lg:h-8 lg:px-2.5"
                         >
                           {t("detail.cancel")}
                         </button>
                         <button
                           type="submit"
                           disabled={createUserTemplateGroupMutation.isPending}
-                          className="inline-flex h-11 items-center rounded-lg bg-zinc-950 px-3 text-xs font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400 lg:h-8"
+                          className="inline-flex h-11 items-center rounded-lg bg-atelier-ink px-3 text-xs font-semibold text-atelier-cream hover:bg-atelier-ink disabled:cursor-not-allowed disabled:opacity-50 dark:bg-atelier-vermilion dark:hover:bg-atelier-vermilion-dark lg:h-8"
                         >
                           {t("detail.save")}
                         </button>
@@ -2212,11 +2212,11 @@ export function ProductDetailPage() {
               <SidebarTabButton active={false} label={t("detail.tabRuns")} title={t("detail.runsTitle")} icon={<CircleDot size={17} />} onClick={() => openSidebarTab("runs")} />
               <SidebarTabButton active={false} label={t("detail.tabImages")} title={t("detail.tabImages")} icon={<ImageIcon size={17} />} onClick={() => openSidebarTab("images")} />
 
-              <div className="mt-auto flex w-full justify-center border-t border-slate-200/40 pt-2 dark:border-white/5">
+              <div className="mt-auto flex w-full justify-center border-t border-atelier-smoke/30/40 pt-2 dark:border-white/5">
                 <button
                   type="button"
                   onClick={() => setSidebarCollapsed(false)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all hover:scale-105 hover:bg-white/40 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-atelier-smoke transition-all hover:scale-105 hover:bg-atelier-paper/40 hover:text-atelier-ink dark:text-atelier-smoke dark:hover:bg-atelier-paper/5 dark:hover:text-atelier-cream"
                   title={t("detail.expandSidebar")}
                   aria-label={t("detail.expandSidebar")}
                 >
@@ -2236,10 +2236,10 @@ export function ProductDetailPage() {
               onPointerDown={startInspectorResize}
               className="group absolute left-0 top-0 z-30 flex h-full w-2.5 cursor-col-resize items-center justify-center"
             >
-              <div className="h-12 w-[4px] rounded-full bg-slate-300 opacity-40 transition-all duration-300 group-hover:h-20 group-hover:opacity-100 dark:bg-slate-700 animate-handle-glow" />
+              <div className="h-12 w-[4px] rounded-full bg-atelier-smoke/40 opacity-40 transition-all duration-300 group-hover:h-20 group-hover:opacity-100 dark:bg-atelier-cream/15 animate-handle-glow" />
             </div>
 
-            <div className="flex w-[72px] shrink-0 flex-col items-center gap-2 border-r border-slate-200/40 bg-white/5 px-2 py-4 dark:border-white/5 dark:bg-black/10">
+            <div className="flex w-[72px] shrink-0 flex-col items-center gap-2 border-r border-atelier-smoke/30/40 bg-atelier-paper/5 px-2 py-4 dark:border-white/5 dark:bg-black/10">
               {renderWorkflowToolbarButtons()}
               <SidebarTabButton
                 active={activeSidebarTab === "singleNode"}
@@ -2278,7 +2278,7 @@ export function ProductDetailPage() {
                 onClick={() => openSidebarTab("images")}
               />
 
-              <div className="mt-auto flex w-full justify-center border-t border-slate-200/40 pt-2 dark:border-white/5">
+              <div className="mt-auto flex w-full justify-center border-t border-atelier-smoke/30/40 pt-2 dark:border-white/5">
                 <button
                   type="button"
                   onClick={() => setSidebarCollapsed(true)}
@@ -2295,10 +2295,10 @@ export function ProductDetailPage() {
               className="relative flex shrink-0 flex-col bg-transparent"
               style={{ width: inspectorWidth }}
             >
-              <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200/50 px-4 dark:border-slate-800">
+              <div className="flex h-12 shrink-0 items-center justify-between border-b border-atelier-smoke/30/50 px-4 dark:border-atelier-cream/15">
                 <div className="flex items-center">
-                  <span className="mr-2 text-indigo-600 dark:text-violet-400">{activeSidebarTabItem.icon}</span>
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                  <span className="mr-2 text-atelier-vermilion dark:text-atelier-vermilion">{activeSidebarTabItem.icon}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-atelier-sepia dark:text-atelier-cream">
                     {activeSidebarTabItem.label}
                   </span>
                 </div>
@@ -2320,18 +2320,18 @@ export function ProductDetailPage() {
         style={{ bottom: topChromeCollapsed ? "calc(0.75rem + env(safe-area-inset-bottom))" : "calc(4.1rem + env(safe-area-inset-bottom))" }}
       >
         <div
-          className="mx-auto max-w-[28rem] rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_-6px_18px_rgba(15,23,42,0.12)] dark:border-slate-700 dark:bg-slate-950 dark:shadow-[0_-12px_28px_rgba(0,0,0,0.30)]"
+          className="mx-auto max-w-[28rem] rounded-2xl border border-atelier-smoke/30 bg-atelier-paper p-1.5 shadow-paper-sm dark:border-atelier-cream/15 dark:bg-atelier-ink dark:shadow-paper-md"
         >
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900/85">
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-atelier-cream p-1 dark:bg-[#1F1812]/85">
             {mobileCanvasModeItems.map((item) => (
               <button
                 key={item.key}
                 type="button"
                 onClick={() => setMobileCanvasMode(item.key)}
-                className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-xs font-semibold transition-colors active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-violet-400 ${
+                className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-xs font-semibold transition-colors active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:focus-visible:ring-atelier-vermilion ${
                   mobileCanvasMode === item.key
-                    ? "bg-white text-indigo-700 shadow-sm dark:bg-violet-500/18 dark:text-violet-100 dark:ring-1 dark:ring-violet-300/35"
-                    : "text-slate-500 hover:bg-white/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                    ? "bg-atelier-paper text-atelier-vermilion shadow-sm dark:bg-atelier-vermilion/15 dark:text-atelier-cream dark:ring-1 dark:ring-atelier-vermilion/30"
+                    : "text-atelier-smoke hover:bg-atelier-paper/70 hover:text-atelier-ink dark:text-atelier-smoke dark:hover:bg-[#241B14] dark:hover:text-atelier-cream"
                 }`}
                 aria-pressed={mobileCanvasMode === item.key}
                 aria-label={item.description}
@@ -2351,7 +2351,7 @@ export function ProductDetailPage() {
               type="button"
               onClick={() => void handleRunWorkflow(undefined)}
               disabled={fullWorkflowRunBusy || !workflow}
-              className="inline-flex min-h-14 min-w-0 flex-col items-center justify-center rounded-xl bg-indigo-600 px-1 text-[10px] font-semibold leading-[1.05] text-white shadow-lg shadow-indigo-600/20 transition-colors active:scale-[0.98] hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gradient-to-r dark:from-indigo-500 dark:via-violet-500 dark:to-fuchsia-500 dark:shadow-violet-900/45 dark:ring-1 dark:ring-violet-300/35"
+              className="inline-flex min-h-14 min-w-0 flex-col items-center justify-center rounded-xl bg-atelier-ink px-1 text-[10px] font-semibold leading-[1.05] text-atelier-cream shadow-lg shadow-paper-md transition-colors active:scale-[0.98] hover:bg-atelier-vermilion disabled:cursor-not-allowed disabled:opacity-60 dark:bg-atelier-vermilion dark:shadow-paper-md dark:ring-1 dark:ring-atelier-vermilion/30"
               title={fullWorkflowRunBusy ? t("detail.workflowRunning") : t("detail.runWorkflow")}
               aria-label={fullWorkflowRunBusy ? t("detail.workflowRunning") : t("detail.runWorkflow")}
             >
@@ -2363,10 +2363,10 @@ export function ProductDetailPage() {
               key={item.key}
               type="button"
               onClick={() => openMobileSidebarTab(item.key)}
-              className={`inline-flex min-h-14 min-w-0 flex-col items-center justify-center rounded-xl border px-1 text-[10px] font-semibold leading-[1.05] text-slate-600 transition-colors active:scale-[0.98] hover:border-indigo-200 hover:text-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-violet-400 ${
+              className={`inline-flex min-h-14 min-w-0 flex-col items-center justify-center rounded-xl border px-1 text-[10px] font-semibold leading-[1.05] text-atelier-sepia transition-colors active:scale-[0.98] hover:border-atelier-vermilion/30 hover:text-atelier-vermilion focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:focus-visible:ring-atelier-vermilion ${
                 activeSidebarTab === item.key
-                  ? "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-violet-400/55 dark:bg-violet-500/18 dark:text-violet-100"
-                  : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:border-violet-400/55 dark:hover:text-violet-100"
+                  ? "border-atelier-vermilion/30 bg-atelier-vermilion/5 text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/15 dark:text-atelier-cream"
+                  : "border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream"
               }`}
               aria-label={item.label}
               title={item.label}
@@ -2386,9 +2386,9 @@ export function ProductDetailPage() {
         onOpenChange={setMobileDetailsSheetOpen}
       >
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-[70] bg-slate-950/42 lg:hidden" />
+          <Drawer.Overlay className="fixed inset-0 z-[70] bg-atelier-ink/42 lg:hidden" />
           <Drawer.Content
-            className="fixed inset-x-0 bottom-0 z-[71] flex h-[80dvh] max-h-[80dvh] flex-col overflow-hidden rounded-t-[1.5rem] border-t border-slate-200 bg-white shadow-[0_-12px_34px_rgba(15,23,42,0.16)] outline-none dark:border-slate-700 dark:bg-[#0f1726] dark:shadow-[0_-18px_42px_rgba(0,0,0,0.34)] lg:hidden"
+            className="fixed inset-x-0 bottom-0 z-[71] flex h-[80dvh] max-h-[80dvh] flex-col overflow-hidden rounded-t-[1.5rem] border-t border-atelier-smoke/30 bg-atelier-paper shadow-paper-md outline-none dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-paper-md lg:hidden"
             onPointerDownOutside={(event) => {
               const target = event.target;
               if (target instanceof Element && target.closest("[data-template-preview-dialog]")) {
@@ -2397,19 +2397,19 @@ export function ProductDetailPage() {
             }}
           >
             <Drawer.Title className="sr-only">{t("detail.mobileDetailsSheet")}</Drawer.Title>
-            <Drawer.Handle className="mx-auto mt-2 flex h-7 w-24 items-center justify-center rounded-full text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-500 dark:focus-visible:ring-violet-400">
-              <span className="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <Drawer.Handle className="mx-auto mt-2 flex h-7 w-24 items-center justify-center rounded-full text-atelier-smoke focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:text-atelier-smoke dark:focus-visible:ring-atelier-vermilion">
+              <span className="h-1.5 w-12 rounded-full bg-atelier-smoke/40 dark:bg-atelier-cream/30" />
             </Drawer.Handle>
-            <div className="flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 pb-3 dark:border-slate-800">
+            <div className="flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-atelier-smoke/30 px-4 pb-3 dark:border-atelier-cream/15">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 text-indigo-600 dark:text-violet-200">{activeSidebarTabItem.icon}</span>
-                <span className="truncate text-sm font-semibold text-slate-950 dark:text-white">{activeSidebarTabItem.label}</span>
+                <span className="shrink-0 text-atelier-vermilion dark:text-atelier-vermilion">{activeSidebarTabItem.icon}</span>
+                <span className="truncate text-sm font-semibold text-atelier-ink dark:text-atelier-cream">{activeSidebarTabItem.label}</span>
               </div>
               <div className="ml-auto flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setMobileDetailsSheetOpen(false)}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition-colors active:scale-[0.98] hover:border-slate-300 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:border-violet-400/55 dark:hover:text-violet-100 dark:focus-visible:ring-violet-400"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia transition-colors active:scale-[0.98] hover:border-atelier-smoke/50 hover:text-atelier-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1A1410]/80 dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-cream dark:focus-visible:ring-atelier-vermilion"
                   aria-label={t("detail.closeMobileSheet")}
                 >
                   <X size={18} />

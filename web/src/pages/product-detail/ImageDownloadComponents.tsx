@@ -16,8 +16,8 @@ export function DownloadLink({
   const { t } = useI18n();
   const className =
     variant === "overlay"
-      ? "nodrag nopan nowheel absolute bottom-2 right-2 inline-flex items-center rounded bg-white/95 px-2 py-1 text-[10px] font-medium text-zinc-700 shadow-sm ring-1 ring-zinc-200 hover:bg-white dark:bg-slate-950/88 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900"
-      : "nodrag nopan nowheel inline-flex items-center rounded border border-zinc-200 bg-white px-2 py-1 text-[10px] font-medium text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300 dark:hover:border-violet-400/50 dark:hover:bg-violet-500/12 dark:hover:text-white";
+      ? "nodrag nopan nowheel absolute bottom-2 right-2 inline-flex items-center rounded bg-atelier-paper/95 px-2 py-1 text-[10px] font-medium text-atelier-sepia shadow-sm ring-1 ring-atelier-smoke/30 hover:bg-atelier-paper dark:bg-[#1A1410]/88 dark:text-atelier-cream dark:ring-atelier-cream/15 dark:hover:bg-[#1F1812]"
+      : "nodrag nopan nowheel inline-flex items-center rounded border border-atelier-smoke/30 bg-atelier-paper px-2 py-1 text-[10px] font-medium text-atelier-sepia hover:border-atelier-smoke/50 hover:bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:border-atelier-vermilion/40 dark:hover:bg-atelier-vermilion/10 dark:hover:text-atelier-cream";
   return (
     <a
       data-node-action
@@ -61,7 +61,7 @@ export function PosterThumb({
         className="block w-full"
         aria-label={t("detail.previewImage", { alt: image.alt })}
       >
-        <div className="aspect-square bg-zinc-100 dark:bg-[#0b1220]">
+        <div className="aspect-square bg-atelier-cream dark:bg-[#1F1812]">
           <img
             src={thumbnailImage.previewUrl}
             alt={image.alt}
@@ -69,7 +69,7 @@ export function PosterThumb({
           />
         </div>
       </button>
-      <div className="flex items-center justify-between gap-2 border-t border-zinc-100 px-2.5 py-1.5 text-[10px] text-zinc-500 dark:border-slate-800 dark:text-slate-400">
+      <div className="flex items-center justify-between gap-2 border-t border-atelier-smoke/20 px-2.5 py-1.5 text-[10px] text-atelier-smoke dark:border-atelier-cream/15 dark:text-atelier-smoke">
         <span className="min-w-0 truncate">
           {poster.kind === "main_image" ? t("detail.mainImage") : t("detail.promoImage")} ·{" "}
           {formatDateTime(poster.created_at)}
@@ -135,7 +135,7 @@ export function SourceAssetThumb({
         className="block w-full"
         aria-label={t("detail.previewImage", { alt: image.alt })}
       >
-        <div className="flex aspect-square items-center justify-center bg-zinc-100 p-2 dark:bg-[#0b1220]">
+        <div className="flex aspect-square items-center justify-center bg-atelier-cream p-2 dark:bg-[#1F1812]">
           <img
             src={thumbnailImage.previewUrl}
             alt={image.alt}
@@ -143,7 +143,7 @@ export function SourceAssetThumb({
           />
         </div>
       </button>
-      <div className="flex items-center justify-between gap-2 border-t border-zinc-100 px-2.5 py-1.5 text-[10px] text-zinc-500 dark:border-slate-800 dark:text-slate-400">
+      <div className="flex items-center justify-between gap-2 border-t border-atelier-smoke/20 px-2.5 py-1.5 text-[10px] text-atelier-smoke dark:border-atelier-cream/15 dark:text-atelier-smoke">
         <span className="min-w-0 truncate">
           {t("detail.referenceImage")} · {formatDateTime(asset.created_at)}
         </span>
@@ -167,8 +167,8 @@ export function SourceAssetThumb({
         </div>
       </div>
       {onUseAsReference ? (
-        <div className="flex items-center border-t border-slate-100 px-2 py-1.5 text-[10px] leading-4 text-zinc-500 dark:border-slate-800 dark:text-slate-300">
-          <Sparkles size={11} className="mr-1 shrink-0 text-indigo-500 dark:text-violet-400" />
+        <div className="flex items-center border-t border-atelier-smoke/20 px-2 py-1.5 text-[10px] leading-4 text-atelier-smoke dark:border-atelier-cream/15 dark:text-atelier-smoke">
+          <Sparkles size={11} className="mr-1 shrink-0 text-atelier-vermilion dark:text-atelier-vermilion" />
           {t("detail.canUseAsReference")}
         </div>
       ) : null}
