@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an improvement for the self-hosted ProductFlow project
+about: Suggest an improvement for the self-hosted Atelier project
 title: "[Feature]: "
 labels: enhancement
 assignees: ""

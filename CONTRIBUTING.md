@@ -1,8 +1,8 @@
-# Contributing to ProductFlow
+# Contributing to Atelier
 
 [中文](CONTRIBUTING.md) | [English](CONTRIBUTING.en.md)
 
-感谢你考虑为 ProductFlow 贡献代码、文档或问题反馈。ProductFlow 当前定位为开源自托管项目，优先保证本地可运行、文档真实、数据和密钥边界清晰。
+感谢你考虑为 Atelier 贡献代码、文档或问题反馈。Atelier 当前定位为开源自托管项目，优先保证本地可运行、文档真实、数据和密钥边界清晰。
 
 ## 开始前
 
@@ -78,7 +78,7 @@ just web-build
 正式版本 tag 使用 annotated tag，并写中英双语说明。tag message 应包含版本定位、主要包含内容、已验证命令和明确边界；不要把一次性的发布准备清单写进仓库文档。建议格式：
 
 ```text
-ProductFlow vX.Y.Z
+Atelier vX.Y.Z
 
 中文：
 <一句话版本定位>

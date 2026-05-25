@@ -1,19 +1,19 @@
 # New API SSO Deployment
 
-This deployment path runs ProductFlow as the New API image workspace on a server.
+This deployment path runs Atelier as the New API image workspace on a server.
 
 ## Images
 
 The GHCR workflow publishes:
 
-- `ghcr.io/zhuyihe/productflow-backend:new-api-sso`
-- `ghcr.io/zhuyihe/productflow-web:new-api-sso`
-- `ghcr.io/zhuyihe/productflow-backend:new-api-sso-<short-sha>`
-- `ghcr.io/zhuyihe/productflow-web:new-api-sso-<short-sha>`
+- `ghcr.io/zhuyihe/atelier-backend:new-api-sso`
+- `ghcr.io/zhuyihe/atelier-web:new-api-sso`
+- `ghcr.io/zhuyihe/atelier-backend:new-api-sso-<short-sha>`
+- `ghcr.io/zhuyihe/atelier-web:new-api-sso-<short-sha>`
 
 Use the short-sha tags when you want a pinned rollout. Use `new-api-sso` for the latest pushed branch build.
 
-## ProductFlow Server Env
+## Atelier Server Env
 
 Copy `.env.example` to `.env` beside `docker-compose.prod.yml`, then set at least:
 
@@ -48,17 +48,17 @@ Set the matching values in the New API deployment:
 
 ```env
 PRODUCTFLOW_BASE_URL=https://image.example.com
-PRODUCTFLOW_SSO_SECRET=replace-with-the-same-secret-used-by-productflow
+PRODUCTFLOW_SSO_SECRET=replace-with-the-same-secret-used-by-atelier
 ```
 
-The New API sidebar entry should open ProductFlow in a new browser tab.
+The New API sidebar entry should open Atelier in a new browser tab.
 
-## Start ProductFlow
+## Start Atelier
 
 ```bash
 docker login ghcr.io -u <github-user>
-mkdir -p /opt/productflow
-cd /opt/productflow
+mkdir -p /opt/atelier
+cd /opt/atelier
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps
@@ -76,12 +76,12 @@ Create a shared Docker network when Caddy runs in a separate compose stack:
 docker network create relay-edge
 ```
 
-Attach the Caddy service and `productflow-web` to `relay-edge`, then proxy by service name:
+Attach the Caddy service and `atelier-web` to `relay-edge`, then proxy by service name:
 
 ```caddyfile
 image.example.com {
-    reverse_proxy productflow-web:80
+    reverse_proxy atelier-web:80
 }
 ```
 
-Keep public ports `80` and `443` on Caddy. ProductFlow still binds `127.0.0.1:29281` by default for local smoke checks.
+Keep public ports `80` and `443` on Caddy. Atelier still binds `127.0.0.1:29281` by default for local smoke checks.

@@ -1,16 +1,20 @@
 # Changelog
 
-All notable changes for ProductFlow are recorded here.
+All notable changes for Atelier are recorded here.
+
+## 2026-05-24
+
+- Renamed the product brand from ProductFlow to Atelier while keeping internal code paths and protocol identifiers unchanged.
 
 ## 0.1.0 - 2026-05-02
 
-Initial public self-hosted release for ProductFlow. This entry is the durable release record for `v0.1.0`.
+Initial public self-hosted release for Atelier. This entry is the durable release record for `v0.1.0`.
 
 ### Added
 
 - Single-admin, self-hosted product creative workspace with access-key login and Cookie-session API access.
 - Product list, product creation, product detail workbench, source/reference image upload, and controlled download routes.
-- ProductFlow workbench DAG for product context, reference images, copy generation, and image generation.
+- Atelier workbench DAG for product context, reference images, copy generation, and image generation.
 - Persistent workflow nodes, edges, runs, node-run state, failure reasons, startup recovery, and lightweight workflow status polling.
 - Copy generation, editable copy fields, copy confirmation, product history, template poster output, and remote image-provider poster output.
 - Reference-image single-slot semantics: manual uploads or generated-image fills replace the current slot image while older assets remain in product history/assets.
@@ -23,7 +27,7 @@ Initial public self-hosted release for ProductFlow. This entry is the durable re
 
 ### Release Boundaries
 
-- ProductFlow 0.1.0 is not a hosted SaaS, public registration system, multi-tenant platform, or team-permission product.
+- Atelier 0.1.0 is not a hosted SaaS, public registration system, multi-tenant platform, or team-permission product.
 - No hosted model accounts, billing, store authorization, automatic ad/listing pipeline, or video-generation workflow is included.
 - No published container image, Helm chart, Kubernetes manifest, or cloud deployment package is included in `v0.1.0`.
 - Docker volumes are not deleted by release helpers; `docker compose down -v` is only a manual reset command.

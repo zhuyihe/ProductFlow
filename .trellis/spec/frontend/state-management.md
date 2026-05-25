@@ -1,12 +1,12 @@
 # Frontend State Management
 
-> Actual state management choices in ProductFlow.
+> Actual state management choices in Atelier.
 
 ---
 
 ## Overview
 
-ProductFlow uses four state categories:
+Atelier uses four state categories:
 
 1. Server state: TanStack Query in pages and `AppRoutes()`.
 2. Local UI/form state: React `useState`, `useMemo`, and `useEffect` inside page components.
@@ -78,8 +78,8 @@ Do not introduce a global store just to track current page or product ID; use th
 Locale and theme are the only durable browser-local UI preferences currently supported:
 
 - Provider: `PreferencesProvider` in `web/src/lib/preferences.tsx`, mounted once in `App.tsx` inside `BrowserRouter`.
-- Locale storage key: `productflow.locale`; default locale is `zh-CN`.
-- Theme storage key: `productflow.theme`; default preference is `system`.
+- Locale storage key: `atelier.locale`; default locale is `zh-CN`.
+- Theme storage key: `atelier.theme`; default preference is `system`.
 - Supported theme preferences are `light`, `dark`, and `system`; `system` resolves from `prefers-color-scheme`.
 - The provider updates `document.documentElement.lang`, root `class="dark"` when the resolved theme is dark, and root
   `data-theme` / `data-theme-preference` attributes.
@@ -99,7 +99,7 @@ return <button type="button">{t("nav.settings")}</button>;
 Bad:
 
 ```tsx
-const [locale] = useState(window.localStorage.getItem("productflow.locale"));
+const [locale] = useState(window.localStorage.getItem("atelier.locale"));
 return <button type="button">{locale === "en-US" ? "Settings" : "配置"}</button>;
 ```
 

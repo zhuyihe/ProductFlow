@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="docs/assets/productflow-brand-concept.png" alt="ProductFlow brand concept: product card connected to AI copy and image workflow nodes" width="168">
+  <img src="docs/assets/productflow-brand-concept.png" alt="Atelier brand concept: product card connected to AI copy and image workflow nodes" width="168">
 </p>
 
-# ProductFlow
+# Atelier
 
 [中文](README.md) | [English](README.en.md)
 <p align="center">
   <a href="https://draw.devbin.de"><strong>体验站 / Live Demo</strong></a>
 </p>
 
-ProductFlow 是面向单人或小团队商家的开源自托管商品素材工作台。核心链路覆盖商品资料、参考图、AI 文案、AI/模板海报、连续生图会话、生成图画廊和可视化工作流。
+Atelier 是面向单人或小团队商家的开源自托管商品素材工作台。核心链路覆盖商品资料、参考图、AI 文案、AI/模板海报、连续生图会话、生成图画廊和可视化工作流。
 
 当前形态为私有单管理员实例。自托管部署需要 PostgreSQL、Redis、后端 API、Dramatiq worker、Web 前端，以及可用的文本/图片模型供应商。
 
@@ -94,7 +94,7 @@ ProductFlow 是面向单人或小团队商家的开源自托管商品素材工�
 
 ## 开源依赖与致谢
 
-ProductFlow 的应用代码之外，仓库还保留了一套面向 AI 协作的项目工作流资产。特别感谢**真诚、友善、团结、专业**的 Linuxdo 社区。
+Atelier 的应用代码之外，仓库还保留了一套面向 AI 协作的项目工作流资产。特别感谢**真诚、友善、团结、专业**的 Linuxdo 社区。
 <p>
   <a href="https://linux.do">
     <img src="https://img.shields.io/badge/LinuxDo-community-1f6feb" alt="LinuxDo">
@@ -122,7 +122,7 @@ ProductFlow 的应用代码之外，仓库还保留了一套面向 AI 协作的�
 ## 仓库结构
 
 ```text
-ProductFlow/
+Atelier/
   README.md
   LICENSE
   CONTRIBUTING.md
@@ -202,35 +202,35 @@ docker compose up -d --build
 
 Compose 默认启动：
 
-- PostgreSQL：服务名 `productflow-postgres`，Compose volume `productflow-postgres-data`，宿主机端口 `${POSTGRES_HOST_PORT:-15432}`。
-- Redis：服务名 `productflow-redis`，AOF 持久化 Compose volume `productflow-redis-data`，宿主机端口 `${REDIS_HOST_PORT:-16379}`。
-- 后端 API：服务名 `productflow-backend`，宿主机端口 `${APP_HOST_PORT:-29280}`。
-- Dramatiq worker：服务名 `productflow-worker`，与 API 共享数据库、Redis 和 storage 卷。
-- Web：服务名 `productflow-web`，nginx 静态服务，宿主机端口 `${WEB_PORT:-29281}`。
+- PostgreSQL：服务名 `atelier-postgres`，Compose volume `atelier-postgres-data`，宿主机端口 `${POSTGRES_HOST_PORT:-15432}`。
+- Redis：服务名 `atelier-redis`，AOF 持久化 Compose volume `atelier-redis-data`，宿主机端口 `${REDIS_HOST_PORT:-16379}`。
+- 后端 API：服务名 `atelier-backend`，宿主机端口 `${APP_HOST_PORT:-29280}`。
+- Dramatiq worker：服务名 `atelier-worker`，与 API 共享数据库、Redis 和 storage 卷。
+- Web：服务名 `atelier-web`，nginx 静态服务，宿主机端口 `${WEB_PORT:-29281}`。
 
 如端口已被占用，可在 `.env` 中修改 `APP_HOST_PORT`、`WEB_PORT`、`POSTGRES_HOST_PORT` 或 `REDIS_HOST_PORT`，再重新执行 `docker compose up -d --build`。容器内部仍通过服务名互联，无需修改应用内的 `DATABASE_URL` / `REDIS_URL`。
 
 容器内应用会使用 Compose 网络服务名连接依赖：
 
 ```text
-DATABASE_URL=postgresql+psycopg://productflow:<POSTGRES_PASSWORD>@productflow-postgres:5432/productflow
-REDIS_URL=redis://productflow-redis:6379/0
+DATABASE_URL=postgresql+psycopg://atelier:<POSTGRES_PASSWORD>@atelier-postgres:5432/atelier
+REDIS_URL=redis://atelier-redis:6379/0
 STORAGE_ROOT=/app/storage
 ```
 
-容器运行时 `STORAGE_ROOT` 固定为 `/app/storage`，不要写入宿主机路径。默认上传和生成文件存入 Docker named volume `productflow-storage`，容器重启后数据保留。
+容器运行时 `STORAGE_ROOT` 固定为 `/app/storage`，不要写入宿主机路径。默认上传和生成文件存入 Docker named volume `atelier-storage`，容器重启后数据保留。
 
-从旧 systemd 生产环境迁移到 Compose 时，如已有生产文件目录（例如 `/home/cot/ProductFlow-release/shared/storage`），可在 `.env` 中设置 host-only 变量复用旧文件：
+从旧 systemd 生产环境迁移到 Compose 时，如已有生产文件目录（例如 `/home/cot/Atelier-release/shared/storage`），可在 `.env` 中设置 host-only 变量复用旧文件：
 
 ```bash
-STORAGE_HOST_PATH=/home/cot/ProductFlow-release/shared/storage
+STORAGE_HOST_PATH=/home/cot/Atelier-release/shared/storage
 ```
 
-`STORAGE_HOST_PATH` 仅用于 Compose bind mount 的宿主机路径；API/worker 容器内仍使用 `STORAGE_ROOT=/app/storage`。留空或不设置时使用 `productflow-storage` named volume。普通更新不要执行 `docker compose down -v`，也不要为切换 storage 挂载删除 Docker volume；如需回到 named volume，移除 `STORAGE_HOST_PATH` 后重新执行 `docker compose up -d`。
+`STORAGE_HOST_PATH` 仅用于 Compose bind mount 的宿主机路径；API/worker 容器内仍使用 `STORAGE_ROOT=/app/storage`。留空或不设置时使用 `atelier-storage` named volume。普通更新不要执行 `docker compose down -v`，也不要为切换 storage 挂载删除 Docker volume；如需回到 named volume，移除 `STORAGE_HOST_PATH` 后重新执行 `docker compose up -d`。
 
 ### 3. 数据库迁移
 
-`productflow-backend` 启动命令会先执行：
+`atelier-backend` 启动命令会先执行：
 
 ```bash
 alembic upgrade head
@@ -239,7 +239,7 @@ alembic upgrade head
 迁移成功后才会启动 `uvicorn`。升级代码后如需手动重跑迁移，执行：
 
 ```bash
-docker compose run --rm productflow-backend alembic upgrade head
+docker compose run --rm atelier-backend alembic upgrade head
 ```
 
 ### 4. 访问与健康检查
@@ -265,12 +265,12 @@ curl "http://127.0.0.1:<WEB_PORT>/api/healthz"
 {"status":"ok"}
 ```
 
-Web 默认入口：`http://127.0.0.1:29281`（改过端口时使用 `.env` 中的 `WEB_PORT`）。使用 `.env` 中的 `ADMIN_ACCESS_KEY` 登录。Web 镜像提供 Vite build 后的静态资源，nginx 将同源 `/api/*` 请求反向代理到 `productflow-backend:29280`。
+Web 默认入口：`http://127.0.0.1:29281`（改过端口时使用 `.env` 中的 `WEB_PORT`）。使用 `.env` 中的 `ADMIN_ACCESS_KEY` 登录。Web 镜像提供 Vite build 后的静态资源，nginx 将同源 `/api/*` 请求反向代理到 `atelier-backend:29280`。
 
 ### 5. 日志、停止与清理
 
 ```bash
-docker compose logs -f productflow-backend productflow-worker productflow-web
+docker compose logs -f atelier-backend atelier-worker atelier-web
 docker compose down
 ```
 
@@ -317,7 +317,7 @@ cp web/.env.example web/.env
 本地热重载开发只用 Compose 启动 PostgreSQL 和 Redis；API、worker 和 Web 由下一步的本机命令启动。完整自托管栈使用上文的 `docker compose up -d --build`。
 
 ```bash
-docker compose up -d productflow-postgres productflow-redis
+docker compose up -d atelier-postgres atelier-redis
 ```
 
 ### 4. 安装依赖并迁移数据库
@@ -377,7 +377,7 @@ curl http://127.0.0.1:29282/healthz
 
 ## 模型与供应商配置
 
-ProductFlow 把文本和图片能力分开配置。基础设施配置（数据库、Redis、session、管理员密钥）仍然只从环境变量读取；业务配置可在前端 `/settings` 页面写入数据库并覆盖环境变量默认值。
+Atelier 把文本和图片能力分开配置。基础设施配置（数据库、Redis、session、管理员密钥）仍然只从环境变量读取；业务配置可在前端 `/settings` 页面写入数据库并覆盖环境变量默认值。
 
 登录门禁 `admin_access_required` 默认开启。普通工作台和私有 API 需要 `ADMIN_ACCESS_KEY` 登录。二次解锁 `/settings` 后可关闭该开关，让普通工作台/API 免登录访问。`ADMIN_ACCESS_KEY` 仍必须保留在环境变量中，作为重新开启登录后的管理员入口。`SETTINGS_ACCESS_TOKEN` 始终独立保护配置页读取和写入。
 
@@ -389,8 +389,8 @@ ProductFlow 把文本和图片能力分开配置。基础设施配置（数据�
 - `TEXT_PROVIDER_KIND`、`TEXT_API_KEY`、`TEXT_BASE_URL`、`TEXT_BRIEF_MODEL`、`TEXT_COPY_MODEL`、`IMAGE_PROVIDER_KIND`、`IMAGE_API_KEY`、`IMAGE_BASE_URL`、`IMAGE_GENERATE_MODEL`、`IMAGE_RESPONSES_BACKGROUND_ENABLED`、`IMAGE_IMAGES_QUALITY`、`IMAGE_IMAGES_STYLE` 是升级迁移输入。升级后的首次启动会读取这些值并创建 `provider_profiles` / `provider_bindings`；新配置请在 `/settings` 修改。
 - Docker Compose 会把上述 legacy provider 变量传入 backend 和 worker 容器，保证旧 `.env` 中的真实 provider 能参与首次 bootstrap。默认值保持 mock，适合本地开发和无外部 API Key 的部署。
 - 文案用途支持 `mock` 和 `openai`。图片用途支持 `mock`、`openai_responses`、`openai_images`。
-- `openai_responses` 使用 OpenAI Responses `image_generation` 工具，支持参考图输入。ProductFlow 当前的连续生图分支上下文由用户显式选择的基图和参考图决定，不会自动把整段历史图片都传给 provider。
-- `openai_images` 使用 OpenAI Images API 兼容接口，适合直接生成/编辑图片；连续生图由 ProductFlow 显式传入所选基图和参考图，不使用 `previous_response_id`。
+- `openai_responses` 使用 OpenAI Responses `image_generation` 工具，支持参考图输入。Atelier 当前的连续生图分支上下文由用户显式选择的基图和参考图决定，不会自动把整段历史图片都传给 provider。
+- `openai_images` 使用 OpenAI Images API 兼容接口，适合直接生成/编辑图片；连续生图由 Atelier 显式传入所选基图和参考图，不使用 `previous_response_id`。
 - 图片尺寸默认值仍可通过 `IMAGE_MAIN_IMAGE_SIZE`、`IMAGE_PROMO_POSTER_SIZE` 提供，并可在 `/settings` 中覆盖。
 - 高级 tool 参数：`IMAGE_TOOL_ALLOWED_FIELDS` 控制前端可展示、后端可持久化并发送给 provider 的 tool 字段；可选默认值还包括 `IMAGE_TOOL_MODEL`、`IMAGE_TOOL_QUALITY`、`IMAGE_TOOL_OUTPUT_FORMAT`、`IMAGE_TOOL_OUTPUT_COMPRESSION`、`IMAGE_TOOL_BACKGROUND`、`IMAGE_TOOL_MODERATION`、`IMAGE_TOOL_ACTION`、`IMAGE_TOOL_INPUT_FIDELITY`、`IMAGE_TOOL_PARTIAL_IMAGES`、`IMAGE_TOOL_N`。
 
@@ -421,7 +421,7 @@ ProductFlow 把文本和图片能力分开配置。基础设施配置（数据�
 | 发布 dry run | `just release-dry-run` | `DRY_RUN=1 bash scripts/release.sh` |
 | 生产更新 | `just release` | `bash scripts/release.sh` |
 
-`just release` / `bash scripts/release.sh` 是 Docker Compose 生产更新入口。流程包括 `docker compose config --quiet`、停止可能占用 `29280/29281` 的 legacy user-level systemd 服务、`docker compose up -d --build --remove-orphans`，以及 backend `/healthz`、web `/healthz`、web 代理 `/api/healthz` 检查。该流程不会删除 Docker volumes；普通更新不要执行 `docker compose down -v`。复用旧 systemd 生产文件时，在 `.env` 中设置 `STORAGE_HOST_PATH=/home/cot/ProductFlow-release/shared/storage`。已手动迁走旧服务时，可临时执行 `LEGACY_SYSTEMD_ACTION=skip bash scripts/release.sh`，或使用 `LEGACY_SYSTEMD_ACTION=skip just release`。
+`just release` / `bash scripts/release.sh` 是 Docker Compose 生产更新入口。流程包括 `docker compose config --quiet`、停止可能占用 `29280/29281` 的 legacy user-level systemd 服务、`docker compose up -d --build --remove-orphans`，以及 backend `/healthz`、web `/healthz`、web 代理 `/api/healthz` 检查。该流程不会删除 Docker volumes；普通更新不要执行 `docker compose down -v`。复用旧 systemd 生产文件时，在 `.env` 中设置 `STORAGE_HOST_PATH=/home/cot/Atelier-release/shared/storage`。已手动迁走旧服务时，可临时执行 `LEGACY_SYSTEMD_ACTION=skip bash scripts/release.sh`，或使用 `LEGACY_SYSTEMD_ACTION=skip just release`。
 
 `just release-dry-run` / `DRY_RUN=1 bash scripts/release.sh` 只校验 Compose 配置并打印实际发布会执行的步骤；不会停止 systemd 服务、不会构建镜像，也不会启动或切换运行中的服务。
 

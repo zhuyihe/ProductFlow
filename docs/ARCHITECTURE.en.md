@@ -1,4 +1,4 @@
-# ProductFlow Architecture
+# Atelier Architecture
 
 [中文](ARCHITECTURE.md) | English
 
@@ -6,7 +6,7 @@ Current architecture health, completed cleanup, and remaining risks are tracked 
 
 ## 1. System Overview
 
-ProductFlow consists of the frontend, backend API, background worker, PostgreSQL, Redis, and local file storage:
+Atelier consists of the frontend, backend API, background worker, PostgreSQL, Redis, and local file storage:
 
 ```text
 React/Vite web
@@ -19,11 +19,11 @@ React/Vite web
     -> same database, queue, storage and providers
 ```
 
-The default self-hosted path is driven by the root `docker-compose.yml`. `docker compose up -d --build` builds and starts PostgreSQL, Redis, the FastAPI backend, the Dramatiq worker, and the nginx-served Web static site. API/worker containers connect to dependencies through `productflow-postgres:5432` and `productflow-redis:6379`, and share persistent storage mounted at `/app/storage`. When `STORAGE_HOST_PATH` is not set, storage uses the Docker named volume `productflow-storage`. When migrating from an older systemd production environment, you can set the host-only variable `STORAGE_HOST_PATH=/home/cot/ProductFlow-release/shared/storage` to bind-mount an existing host storage directory to `/app/storage`; the runtime container still keeps `STORAGE_ROOT=/app/storage`. The backend container runs Alembic migrations before starting `uvicorn`.
+The default self-hosted path is driven by the root `docker-compose.yml`. `docker compose up -d --build` builds and starts PostgreSQL, Redis, the FastAPI backend, the Dramatiq worker, and the nginx-served Web static site. API/worker containers connect to dependencies through `atelier-postgres:5432` and `atelier-redis:6379`, and share persistent storage mounted at `/app/storage`. When `STORAGE_HOST_PATH` is not set, storage uses the Docker named volume `atelier-storage`. When migrating from an older systemd production environment, you can set the host-only variable `STORAGE_HOST_PATH=/home/cot/Atelier-release/shared/storage` to bind-mount an existing host storage directory to `/app/storage`; the runtime container still keeps `STORAGE_ROOT=/app/storage`. The backend container runs Alembic migrations before starting `uvicorn`.
 
-The production update entrypoint is `just release`, which calls `scripts/release.sh` to validate Compose configuration, stop legacy user-level systemd services (`productflow-backend.service`, `productflow-worker.service`, `productflow-web.service`, used to free old release ports 29280/29281), run `docker compose up -d --build --remove-orphans`, and perform HTTP health checks. `just release-dry-run` only validates configuration and prints the plan; it does not stop old services, build, or start containers. Normal updates do not delete Docker volumes.
+The production update entrypoint is `just release`, which calls `scripts/release.sh` to validate Compose configuration, stop legacy user-level systemd services (`atelier-backend.service`, `atelier-worker.service`, `atelier-web.service`, used to free old release ports 29280/29281), run `docker compose up -d --build --remove-orphans`, and perform HTTP health checks. `just release-dry-run` only validates configuration and prints the plan; it does not stop old services, build, or start containers. Normal updates do not delete Docker volumes.
 
-Local hot-reload development is still driven by the root `justfile`: you can start only `productflow-postgres` and `productflow-redis`, then run the API, worker, and frontend separately with `just backend-run`, `just backend-worker`, and `just web-dev`. The development environment uses `STORAGE_ROOT=./backend/storage-dev` from `.env.dev`, isolated from production Compose storage. Do not start local development processes by shell-sourcing production `.env`.
+Local hot-reload development is still driven by the root `justfile`: you can start only `atelier-postgres` and `atelier-redis`, then run the API, worker, and frontend separately with `just backend-run`, `just backend-worker`, and `just web-dev`. The development environment uses `STORAGE_ROOT=./backend/storage-dev` from `.env.dev`, isolated from production Compose storage. Do not start local development processes by shell-sourcing production `.env`.
 
 ## 2. Backend Layering
 
@@ -54,7 +54,7 @@ The frontend uses TanStack Query for server state. The product detail page and i
 
 Do not reintroduce active polling for complete `ImageSessionDetailResponse` or complete `ProductWorkflowResponse`; those payloads include image history, node configuration, artifact references, and run records, and high-frequency refresh increases frontend render cost and backend serialization work.
 
-The product detail page is currently the ProductFlow workbench: the canvas handles nodes, edges, zoom, pan, node dragging, box selection, and multi-select. On desktop, the right sidebar handles Details, Runs, Library, and Templates. On mobile, a bottom toolbar carries the workflow run entrypoint plus Single node, Templates, Details, Runs, and Library entrypoints, and a bottom sheet renders those panel contents. The mobile canvas has local `browse` / `edit` / `select` interaction modes: `browse` handles one-finger pan, node tap selection, and two-finger pinch zoom; `edit` allows touch/pen node dragging and edge creation; `select` toggles multi-select by tapping nodes. Canvas zoom ratio and desktop sidebar width are browser-local preferences, while mobile mode and sheet openness are page-local UI state. Workflow nodes, edges, run state, and artifacts remain database-backed.
+The product detail page is currently the Atelier workbench: the canvas handles nodes, edges, zoom, pan, node dragging, box selection, and multi-select. On desktop, the right sidebar handles Details, Runs, Library, and Templates. On mobile, a bottom toolbar carries the workflow run entrypoint plus Single node, Templates, Details, Runs, and Library entrypoints, and a bottom sheet renders those panel contents. The mobile canvas has local `browse` / `edit` / `select` interaction modes: `browse` handles one-finger pan, node tap selection, and two-finger pinch zoom; `edit` allows touch/pen node dragging and edge creation; `select` toggles multi-select by tapping nodes. Canvas zoom ratio and desktop sidebar width are browser-local preferences, while mobile mode and sheet openness are page-local UI state. Workflow nodes, edges, run state, and artifacts remain database-backed.
 
 ## 4. Main Data Model Lines
 
@@ -146,7 +146,7 @@ Related entrypoints:
 
 ## 6. Provider Architecture
 
-ProductFlow separates model capabilities by modality.
+Atelier separates model capabilities by modality.
 
 Text providers live under `infrastructure/text/` with a unified interface:
 
@@ -162,8 +162,8 @@ Image providers live under `infrastructure/image/` and serve poster generation a
 
 - `mock`
 - `openai_responses` (Responses API `image_generation` tool, supporting `input_image`; iterative image generation prefers background response + retrieve polling and writes provider status into task progress)
-- `openai_images` (Images API `images.generate` / `images.edit` compatible interface; it does not use Responses `previous_response_id`, and ProductFlow explicitly sends the selected base image plus references for iterative image sessions)
-- `google_gemini_image` (Google Gemini native `generateContent` image API through the official `google-genai` SDK; ProductFlow explicitly sends the selected base image plus references for iterative image sessions)
+- `openai_images` (Images API `images.generate` / `images.edit` compatible interface; it does not use Responses `previous_response_id`, and Atelier explicitly sends the selected base image plus references for iterative image sessions)
+- `google_gemini_image` (Google Gemini native `generateContent` image API through the official `google-genai` SDK; Atelier explicitly sends the selected base image plus references for iterative image sessions)
 
 Provider selection is controlled by `provider_profiles`, `provider_bindings`, and corresponding factories. Legacy
 `TEXT_*` / `IMAGE_*` environment values are only first-migration input; runtime resolvers read interface kind,

@@ -108,6 +108,18 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
         session.close()
 
 
+def test_health_sso_uses_runtime_settings(configured_env) -> None:
+    from productflow_backend.presentation.api import create_app
+
+    _seed_new_api_sso_settings(base_url="https://api.example.test", shared_secret="server-secret")
+
+    client = TestClient(create_app())
+    response = client.get("/api/health/sso")
+
+    assert response.status_code == 200
+    assert response.json()["supports_sso"] is True
+
+
 def test_new_api_sso_callback_rejects_guest_role(configured_env, monkeypatch) -> None:
     from productflow_backend.presentation.api import create_app
 

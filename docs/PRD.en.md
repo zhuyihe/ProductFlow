@@ -1,10 +1,10 @@
-# ProductFlow PRD
+# Atelier PRD
 
 [中文](PRD.md) | English
 
 ## 1. Product Positioning
 
-ProductFlow is an open-source, self-hosted product creative workspace for solo merchants, small operations teams, and developers who want to manage AI creative workflows on their own infrastructure.
+Atelier is an open-source, self-hosted product creative workspace for solo merchants, small operations teams, and developers who want to manage AI creative workflows on their own infrastructure.
 
 It is not a hosted SaaS product, not a multi-tenant open platform, and does not promise to replace human operational judgment. The current core goal is:
 

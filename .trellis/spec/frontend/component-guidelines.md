@@ -1,12 +1,12 @@
 # Frontend Component Guidelines
 
-> Component patterns currently used in ProductFlow.
+> Component patterns currently used in Atelier.
 
 ---
 
 ## Overview
 
-ProductFlow components are simple React function components with TypeScript props, Tailwind CSS classes, and named exports.
+Atelier components are simple React function components with TypeScript props, Tailwind CSS classes, and named exports.
 Route-level pages own data fetching and mutations; shared components stay mostly presentational.
 
 Real examples:

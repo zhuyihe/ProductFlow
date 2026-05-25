@@ -1,6 +1,6 @@
 # Frontend Hook Guidelines
 
-> How React hooks and TanStack Query are currently used in ProductFlow.
+> How React hooks and TanStack Query are currently used in Atelier.
 
 ---
 

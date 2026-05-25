@@ -1,6 +1,6 @@
 # Frontend Development Guidelines
 
-> Project-specific frontend conventions for ProductFlow.
+> Project-specific frontend conventions for Atelier.
 
 ---
 

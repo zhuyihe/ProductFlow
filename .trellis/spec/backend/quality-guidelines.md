@@ -1,6 +1,6 @@
 # Backend Quality Guidelines
 
-> Backend quality standards reflected by ProductFlow's current code, tests, and tooling.
+> Backend quality standards reflected by Atelier's current code, tests, and tooling.
 
 ---
 
@@ -36,19 +36,19 @@ Use the root `justfile` where possible so local env loading and ports match the 
 #### 2. Signatures
 
 - One-click start: `docker compose up -d --build`.
-- Manual migration path: `docker compose run --rm productflow-backend alembic upgrade head`.
+- Manual migration path: `docker compose run --rm atelier-backend alembic upgrade head`.
 - Direct API health: `GET /healthz` returns `{"status":"ok"}`.
 - Web proxy smoke path: `GET /api/healthz` through nginx proxies to backend `GET /healthz`.
 
 #### 3. Contracts
 
-- `productflow-backend` and `productflow-worker` must use Compose service names for runtime dependencies:
-  - `DATABASE_URL=postgresql+psycopg://productflow:<password>@productflow-postgres:5432/productflow`
-  - `REDIS_URL=redis://productflow-redis:6379/0`
+- `atelier-backend` and `atelier-worker` must use Compose service names for runtime dependencies:
+  - `DATABASE_URL=postgresql+psycopg://atelier:<password>@atelier-postgres:5432/atelier`
+  - `REDIS_URL=redis://atelier-redis:6379/0`
 - Container storage must use a shared in-container path `STORAGE_ROOT=/app/storage`.
 - `STORAGE_HOST_PATH` is host-only Compose interpolation for production bind mounts. When unset, `/app/storage` is backed
-  by the named volume `productflow-storage`; when set, it may point at an existing host directory such as
-  `/home/cot/ProductFlow-release/shared/storage` for old systemd production storage reuse.
+  by the named volume `atelier-storage`; when set, it may point at an existing host directory such as
+  `/home/cot/Atelier-release/shared/storage` for old systemd production storage reuse.
 - Local hot-reload development must stay isolated on `.env.dev` / `STORAGE_ROOT=./backend/storage-dev`; do not depend on
   shell-sourcing production `.env` for development commands.
 - Web self-host runtime must serve Vite build output as static files and proxy same-origin `/api/*` to the backend service.
@@ -69,11 +69,11 @@ Use the root `justfile` where possible so local env loading and ports match the 
 #### 5. Good/Base/Bad Cases
 
 - Good: `docker compose up -d --build` starts all five services, API health is OK, and web `/api/healthz` returns backend health.
-- Good: `STORAGE_HOST_PATH=/home/cot/ProductFlow-release/shared/storage docker compose up -d --build` bind-mounts old
+- Good: `STORAGE_HOST_PATH=/home/cot/Atelier-release/shared/storage docker compose up -d --build` bind-mounts old
   production files while API/worker still run with `STORAGE_ROOT=/app/storage`.
-- Base: local development starts only `productflow-postgres` and `productflow-redis`, while host `just` commands run API/worker/web.
+- Base: local development starts only `atelier-postgres` and `atelier-redis`, while host `just` commands run API/worker/web.
 - Bad: `DATABASE_URL` points at `localhost` from inside containers; that targets the app container itself, not Postgres.
-- Bad: setting container `STORAGE_ROOT=/home/cot/ProductFlow-release/shared/storage`; that host path does not exist inside
+- Bad: setting container `STORAGE_ROOT=/home/cot/Atelier-release/shared/storage`; that host path does not exist inside
   the container and bypasses the stable `/app/storage` contract.
 - Bad: using Vite dev server or host `pnpm` as the documented production-style self-host web runtime.
 
@@ -82,7 +82,7 @@ Use the root `justfile` where possible so local env loading and ports match the 
 - Run `docker compose config --quiet` after Compose/env edits.
 - For storage-related Compose changes, render config with `STORAGE_HOST_PATH` both unset and set; assert backend/worker
   mount `/app/storage`, keep `STORAGE_ROOT=/app/storage`, and do not expose `STORAGE_HOST_PATH` in container env.
-- Build container images with `docker compose build productflow-backend productflow-web` or a full `docker compose up -d --build` smoke.
+- Build container images with `docker compose build atelier-backend atelier-web` or a full `docker compose up -d --build` smoke.
 - Smoke a disposable or safe project with direct API health, web health, and web `/api/healthz` proxy checks when practical.
 - Keep normal backend/frontend gates green when Dockerfiles or docs depend on package commands: backend tests/ruff and frontend lint/test/build.
 
@@ -91,22 +91,22 @@ Use the root `justfile` where possible so local env loading and ports match the 
 Wrong:
 
 ```yaml
-DATABASE_URL: postgresql+psycopg://productflow:password@localhost:15432/productflow
+DATABASE_URL: postgresql+psycopg://atelier:password@localhost:15432/atelier
 ```
 
 Correct:
 
 ```yaml
-DATABASE_URL: postgresql+psycopg://productflow:${POSTGRES_PASSWORD}@productflow-postgres:5432/productflow
+DATABASE_URL: postgresql+psycopg://atelier:${POSTGRES_PASSWORD}@atelier-postgres:5432/atelier
 ```
 
 Wrong:
 
 ```yaml
 environment:
-  STORAGE_ROOT: /home/cot/ProductFlow-release/shared/storage
+  STORAGE_ROOT: /home/cot/Atelier-release/shared/storage
 volumes:
-  - productflow-storage:/app/storage
+  - atelier-storage:/app/storage
 ```
 
 Correct:
@@ -115,7 +115,7 @@ Correct:
 environment:
   STORAGE_ROOT: /app/storage
 volumes:
-  - ${STORAGE_HOST_PATH:-productflow-storage}:/app/storage
+  - ${STORAGE_HOST_PATH:-atelier-storage}:/app/storage
 ```
 
 ### Scenario: Keep Compose release and open-source examples clean
@@ -133,7 +133,7 @@ volumes:
   symlinks, or delete volumes.
 - The actual release path validates Compose config, stops legacy user-level systemd services when present, runs
   `docker compose up -d --build --remove-orphans`, and performs HTTP health checks.
-- Legacy services are `productflow-backend.service`, `productflow-worker.service`, and `productflow-web.service`.
+- Legacy services are `atelier-backend.service`, `atelier-worker.service`, and `atelier-web.service`.
 - Supported override: `LEGACY_SYSTEMD_ACTION=skip` skips the legacy service stop step after the operator has handled port
   ownership manually.
 
@@ -168,7 +168,7 @@ volumes:
 - Good: `just release` stops legacy services, recreates Compose services, passes backend and web `/api/healthz` checks, and leaves volumes intact.
 - Base: `.env.dev.example` uses local service ports and mock providers while allowing contributors to opt into real
   providers by setting their own untracked env file.
-- Bad: release script creates tar snapshots, flips a `.release/current` symlink, or restarts `productflow-*.service` after
+- Bad: release script creates tar snapshots, flips a `.release/current` symlink, or restarts `atelier-*.service` after
   Compose has become the production runtime.
 
 #### 6. Tests Required
@@ -187,13 +187,13 @@ volumes:
 Wrong:
 
 ```bash
-systemctl --user restart productflow-backend.service productflow-worker.service productflow-web.service
+systemctl --user restart atelier-backend.service atelier-worker.service atelier-web.service
 ```
 
 Correct:
 
 ```bash
-systemctl --user stop productflow-backend.service productflow-worker.service productflow-web.service || true
+systemctl --user stop atelier-backend.service atelier-worker.service atelier-web.service || true
 docker compose up -d --build --remove-orphans
 ```
 

@@ -18,7 +18,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from productflow_backend.application.new_api_sso import is_new_api_sso_configured
-from productflow_backend.config import get_settings
+from productflow_backend.config import get_runtime_settings
 
 # Module-level limiter so the wiring code in presentation/api.py can attach
 # the same instance to app.state. Sharing one limiter across modules keeps
@@ -32,7 +32,7 @@ router = APIRouter()
 @limiter.limit("6/minute")
 async def health_sso(request: Request) -> dict[str, object]:
     """Return the SSO readiness snapshot consumed by new-api Test Connection."""
-    settings = get_settings()
+    settings = get_runtime_settings()
     return {
         "ok": True,
         "version": "0.1.0",

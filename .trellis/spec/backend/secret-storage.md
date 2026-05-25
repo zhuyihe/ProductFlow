@@ -9,7 +9,7 @@ secrets, encryption keys) must comply.
   `image_session_generation_tasks`.
 - The new-api SSO shared secret stored in admin runtime settings.
 - The token master key sourced from `PRODUCTFLOW_TOKEN_KEY`.
-- Any future secret that hits ProductFlow's database or logs.
+- Any future secret that hits Atelier's database or logs.
 
 ## Token-at-Rest Encryption
 
@@ -58,7 +58,7 @@ Wave 3 work for KMS-backed rotation.
 ## Shared Secrets
 
 The new-api SSO shared secret (`new_api_sso_shared_secret`) is stored in
-ProductFlow's `app_settings` table, not in environment. The bootstrap secrets
+Atelier's `app_settings` table, not in environment. The bootstrap secrets
 (`SESSION_SECRET`, `PRODUCTFLOW_TOKEN_KEY`, `SETTINGS_ACCESS_TOKEN`) stay in
 env because they are needed before the database can be read.
 
@@ -109,19 +109,19 @@ The reverse proxy (Caddy on `image.aync.cc.cd`) must forward at least:
 ## New API Relay Credential Use
 
 Interactive provider calls use the current SSO principal's New API token as the relay credential. This applies to both
-ordinary users and ProductFlow admins. Admin status grants ProductFlow authorization, moderation, and settings access; it
+ordinary users and Atelier admins. Admin status grants Atelier authorization, moderation, and settings access; it
 must not bypass New API token billing, token model limits, quota, or usage attribution.
 
 Rules:
 
 - `ProviderExecutionContext` may carry `new_api_user_id`, token metadata, and the decrypted `new_api_token`; the token
   field must stay `repr=False` and must never be returned through API responses.
-- ProductFlow provider profiles supply model names and provider-specific settings. For interactive SSO generation, the
+- Atelier provider profiles supply model names and provider-specific settings. For interactive SSO generation, the
   API key and base URL must be overridden with `new_api_token` and the configured New API relay URL.
 - Durable `workflow_runs` and `image_session_generation_tasks` store the token snapshot chosen at submit time so retries
   keep the original billing identity.
 - A CLI/bootstrap admin session has no New API token. It may be used to recover settings, but it must not silently fall
-  back to ProductFlow shared provider credentials for user-initiated generation.
+  back to Atelier shared provider credentials for user-initiated generation.
 - A missing token in an interactive relay path is an expected safe failure, not permission to use a shared provider key.
 
 ## Reviewing New Code
@@ -137,7 +137,7 @@ A change that touches secrets is in scope. Ask:
 4. Does any new environment variable hold a secret? If yes, is it required by
    the production-mode validator?
 5. Does an interactive provider call have an SSO principal? If yes, does it use
-   that principal's New API token rather than ProductFlow's shared provider key?
+   that principal's New API token rather than Atelier's shared provider key?
 
 ## Anti-Patterns (Do Not Reintroduce)
 

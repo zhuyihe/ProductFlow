@@ -1,6 +1,6 @@
 # Backend Product Workflow DAG Guidelines
 
-> Executable contracts for the ProductFlow-native product workbench DAG.
+> Executable contracts for the Atelier-native product workbench DAG.
 
 ## Scenario: Canvas template v1 contract
 

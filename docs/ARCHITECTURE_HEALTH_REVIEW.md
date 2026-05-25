@@ -1,4 +1,4 @@
-# ProductFlow 架构健康度复审
+# Atelier 架构健康度复审
 
 > 复审日期：2026-04-28
 > 范围：当前仓库 live facts、已落地治理、仍未实现的边界和下一步架构风险。
@@ -8,7 +8,7 @@
 
 **当前健康度：8.0 / 10。**
 
-ProductFlow 当前架构处在“单商家自托管工作台已经可持续迭代”的状态。后端保持 FastAPI presentation /
+Atelier 当前架构处在“单商家自托管工作台已经可持续迭代”的状态。后端保持 FastAPI presentation /
 application / domain / infrastructure 四层结构，商品 DAG 工作流和连续生图 durable task 都以 PostgreSQL 状态为
 权威，Redis/Dramatiq 只承担投递和后台执行。前端使用 React、TypeScript、TanStack Query，API client 和 DTO
 集中在 `web/src/lib/`，商品详情页已经开始按 page-local 组件和工具拆分。
@@ -89,7 +89,7 @@ ProductWorkflow application 当前已经不是单文件承载全部职责。当�
 `README.md`、`docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/ROADMAP.md`、`docs/USER_GUIDE.md` 已经覆盖当前主线：
 
 - 单管理员自托管，而不是多租户 SaaS。
-- ProductFlow workbench、连续生图、画廊、设置页和运行时配置。
+- Atelier workbench、连续生图、画廊、设置页和运行时配置。
 - 三类异步执行入口和轻量 status polling。
 - Docker Compose 自托管路径和本地开发路径。
 - 当前明确不包含多租户、支付、自动投放、对象存储、Helm 或发布版镜像。

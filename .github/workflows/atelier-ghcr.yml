@@ -1,4 +1,4 @@
-name: Build ProductFlow GHCR images
+name: Build Atelier GHCR images
 
 on:
   push:
@@ -26,8 +26,8 @@ jobs:
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           short_sha="${GITHUB_SHA::7}"
-          echo "backend=ghcr.io/${owner}/productflow-backend" >> "$GITHUB_OUTPUT"
-          echo "web=ghcr.io/${owner}/productflow-web" >> "$GITHUB_OUTPUT"
+          echo "backend=ghcr.io/${owner}/atelier-backend" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/${owner}/atelier-web" >> "$GITHUB_OUTPUT"
           echo "sha_tag=new-api-sso-${short_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -52,8 +52,8 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha,scope=productflow-backend
-          cache-to: type=gha,mode=max,scope=productflow-backend
+          cache-from: type=gha,scope=atelier-backend
+          cache-to: type=gha,mode=max,scope=atelier-backend
 
       - name: Build web image
         uses: docker/build-push-action@v6
@@ -69,5 +69,5 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha,scope=productflow-web
-          cache-to: type=gha,mode=max,scope=productflow-web
+          cache-from: type=gha,scope=atelier-web
+          cache-to: type=gha,mode=max,scope=atelier-web

@@ -1,12 +1,12 @@
 # Backend Database Guidelines
 
-> Actual database, ORM, migration, and query patterns used by ProductFlow.
+> Actual database, ORM, migration, and query patterns used by Atelier.
 
 ---
 
 ## Overview
 
-ProductFlow uses SQLAlchemy 2.x typed declarative models, Alembic migrations, PostgreSQL in normal development/runtime,
+Atelier uses SQLAlchemy 2.x typed declarative models, Alembic migrations, PostgreSQL in normal development/runtime,
 and SQLite in tests. The main database files are:
 
 - `backend/src/productflow_backend/infrastructure/db/models.py`
@@ -351,7 +351,7 @@ client = genai.Client(
 - CLI bootstrap writes a temporary admin session directly in the database and prints a signed session cookie value to
   stderr with a warning; it is the only break-glass replacement for the deleted password-admin path.
 - CLI bootstrap admin sessions have no New API token. They are for recovery/configuration and must not silently use
-  ProductFlow shared provider credentials for interactive generation.
+  Atelier shared provider credentials for interactive generation.
 - Private workspace routes are gated only by authenticated session presence and principal kind; there is no
   `admin_access_required` toggle any more.
 
@@ -366,7 +366,7 @@ client = genai.Client(
 
 ### 5. Good/Base/Bad Cases
 
-- Good: a role-10 new-api user signs in through SSO and gets an admin ProductFlow session with a short TTL.
+- Good: a role-10 new-api user signs in through SSO and gets an admin Atelier session with a short TTL.
 - Good: break-glass bootstrap creates a temporary admin session directly in the DB for containerized recovery and settings
   repair.
 - Base: a role-1 new-api user gets a normal workspace session and can browse the public gallery.
@@ -895,7 +895,7 @@ failures into safe persisted failure reasons instead of leaking provider details
   parsing must accept it for compatibility and normalize it away.
 - Continuous image session `tool_options` override only the matching tool fields for that generation; omitted request
   fields fall back to runtime defaults.
-- ProductFlow `generation_count` is the image-chat generation count. With the Images API, backend sends the same count as
+- Atelier `generation_count` is the image-chat generation count. With the Images API, backend sends the same count as
   request `n` (chunked at the provider max when necessary); with Responses image-generation, backend submits separate
   one-image requests because the Responses tool has no `n` parameter.
 - Workflow image-generation output count is the number of downstream `reference_image` receiver nodes. Batch-capable

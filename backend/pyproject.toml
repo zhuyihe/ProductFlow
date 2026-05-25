@@ -1,7 +1,7 @@
 [project]
-name = "productflow-backend"
+name = "atelier-backend"
 version = "0.1.0"
-description = "Backend API for ProductFlow"
+description = "Backend API for Atelier"
 readme = "../README.md"
 requires-python = ">=3.12"
 dependencies = [

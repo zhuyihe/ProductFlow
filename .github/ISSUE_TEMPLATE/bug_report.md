@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible ProductFlow bug
+about: Report a reproducible Atelier bug
 title: "[Bug]: "
 labels: bug
 assignees: ""
@@ -12,7 +12,7 @@ What went wrong?
 
 ## Environment
 
-- ProductFlow commit:
+- Atelier commit:
 - OS:
 - Python version:
 - Node/pnpm version:

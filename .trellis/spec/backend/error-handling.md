@@ -1,12 +1,12 @@
 # Backend Error Handling
 
-> Actual error propagation and API error response patterns used by ProductFlow.
+> Actual error propagation and API error response patterns used by Atelier.
 
 ---
 
 ## Overview
 
-ProductFlow keeps business validation in the application layer and HTTP status mapping in the presentation layer.
+Atelier keeps business validation in the application layer and HTTP status mapping in the presentation layer.
 API error details are currently Chinese strings because the private workspace UI is Chinese.
 
 Key files:
@@ -459,11 +459,11 @@ image-session task rows for async product flows.
 `config.py::_load_database_config_overrides()` intentionally tolerates missing `app_settings` tables during fresh startup
 by returning `{}` for operational/programming SQLAlchemy errors, but it re-raises unexpected non-SQLAlchemy exceptions.
 
-New API relay failures are provider failures from ProductFlow's point of view. Keep the user-facing detail safe and
+New API relay failures are provider failures from Atelier's point of view. Keep the user-facing detail safe and
 actionable:
 
 - Missing New API token for an interactive SSO generation path is an expected validation failure; do not fall back to a
-  shared ProductFlow provider key and do not expose raw token fields.
+  shared Atelier provider key and do not expose raw token fields.
 - New API quota/insufficient balance/rate-limit responses should classify as quota/rate-limit safe reasons.
 - New API model whitelist/model-disabled responses should classify as unsupported/request-rejected safe reasons.
 - New API auth failures for the stored token should classify as a safe account/session problem and should not include the

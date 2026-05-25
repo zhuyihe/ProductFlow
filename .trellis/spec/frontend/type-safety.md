@@ -1,6 +1,6 @@
 # Frontend Type Safety
 
-> TypeScript and API typing conventions used by ProductFlow.
+> TypeScript and API typing conventions used by Atelier.
 
 ---
 

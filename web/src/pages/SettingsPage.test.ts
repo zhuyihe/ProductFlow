@@ -357,8 +357,8 @@ describe("SettingsPage import/export helpers", () => {
   });
 
   it("builds a stable JSON export filename from the export timestamp", () => {
-    expect(settingsExportFilename("2026-05-14T01:02:03Z")).toBe("productflow-settings-2026-05-14-010203.json");
-    expect(settingsExportFilename(null)).toBe("productflow-settings.json");
+    expect(settingsExportFilename("2026-05-14T01:02:03Z")).toBe("atelier-settings-2026-05-14-010203.json");
+    expect(settingsExportFilename(null)).toBe("atelier-settings.json");
   });
 
   it("normalizes import preview summary counts for confirmation copy", () => {

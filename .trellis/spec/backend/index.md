@@ -1,6 +1,6 @@
 # Backend Development Guidelines
 
-> Project-specific backend conventions for ProductFlow.
+> Project-specific backend conventions for Atelier.
 
 ---
 

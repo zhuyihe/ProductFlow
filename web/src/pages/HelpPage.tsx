@@ -81,18 +81,18 @@ interface SearchResult {
 const DOC_PAGES: DocPage[] = [
   {
     slug: "overview",
-    title: "ProductFlow 文档概览",
-    description: "ProductFlow 是单管理员自托管的商品素材工作台，用于把商品资料、参考图、文案和图片生成流程组织在一个可追踪的工作台中。",
+    title: "Atelier 文档概览",
+    description: "Atelier 是单管理员自托管的商品素材工作台，用于把商品资料、参考图、文案和图片生成流程组织在一个可追踪的工作台中。",
     category: "入门",
     icon: BookOpen,
     sections: [
       {
         id: "what-is-productflow",
-        title: "ProductFlow 是什么",
+        title: "Atelier 是什么",
         blocks: [
           {
             type: "paragraph",
-            text: "ProductFlow 面向单人商家、小团队运营者和希望自托管 AI 素材链路的开发者。它把商品信息、图片素材、文案生成、图片生成、运行状态和画廊收藏放在同一个私有工作台中。",
+            text: "Atelier 面向单人商家、小团队运营者和希望自托管 AI 素材链路的开发者。它把商品信息、图片素材、文案生成、图片生成、运行状态和画廊收藏放在同一个私有工作台中。",
           },
           {
             type: "paragraph",
@@ -200,7 +200,7 @@ const DOC_PAGES: DocPage[] = [
   {
     slug: "workbench",
     title: "商品工作台",
-    description: "商品工作台是 ProductFlow 的核心操作界面。桌面端中间是画布、右侧是检查器和辅助面板；移动端保留画布为主界面。",
+    description: "商品工作台是 Atelier 的核心操作界面。桌面端中间是画布、右侧是检查器和辅助面板；移动端保留画布为主界面。",
     category: "画布工作台",
     icon: GitBranch,
     sections: [
@@ -837,7 +837,7 @@ const DOC_PAGES: DocPage[] = [
               ["Partial", "0-3；留空不发送。用于支持 partial images 的 provider。"],
               [
                 "Images API n（自动）",
-                "Images API 内部字段。ProductFlow 会按文/图生图候选数量或工作流下游 reference_image 承接数量自动计算；Responses `image_generation` tool 没有 n，会逐张请求。",
+                "Images API 内部字段。Atelier 会按文/图生图候选数量或工作流下游 reference_image 承接数量自动计算；Responses `image_generation` tool 没有 n，会逐张请求。",
               ],
             ],
           },
@@ -1014,16 +1014,16 @@ const NAV_GROUPS: NavGroup[] = [
 const DOC_PAGES_EN: DocPage[] = [
   {
     slug: "overview",
-    title: "ProductFlow Docs Overview",
-    description: "ProductFlow is a self-hosted, single-admin product asset workbench for organizing product data, references, copy, and image generation in one traceable workspace.",
+    title: "Atelier Docs Overview",
+    description: "Atelier is a self-hosted, single-admin product asset workbench for organizing product data, references, copy, and image generation in one traceable workspace.",
     category: "Getting started",
     icon: BookOpen,
     sections: [
       {
         id: "what-is-productflow",
-        title: "What ProductFlow is",
+        title: "What Atelier is",
         blocks: [
-          { type: "paragraph", text: "ProductFlow is built for solo merchants, small operations teams, and developers who want a private AI asset pipeline. It keeps product information, image assets, copy generation, image generation, run state, and gallery saves in one private workbench." },
+          { type: "paragraph", text: "Atelier is built for solo merchants, small operations teams, and developers who want a private AI asset pipeline. It keeps product information, image assets, copy generation, image generation, run state, and gallery saves in one private workbench." },
           { type: "paragraph", text: "This version is not a public registration platform or a multi-tenant SaaS product. The deployer manages the database, Redis, storage directory, and model credentials." },
         ],
       },
@@ -1214,7 +1214,7 @@ const DOC_PAGES_EN: DocPage[] = [
     category: "Settings",
     icon: Settings,
     sections: [
-      { id: "tool-settings", title: "Fields", blocks: [{ type: "paragraph", text: "Image tool parameters mainly cover advanced fields for the Responses `image_generation` tool. The available tool fields in Settings decide which advanced controls appear in the frontend and which fields the backend can persist; compatibility fields are filtered by provider capability." }, { type: "table", headers: ["Field", "Description"], rows: [["Available tool fields", "Multi-select field. Unselected advanced fields are hidden in the frontend and are not sent to the provider."], ["Tool model", "Model field sent inside the image_generation tool. Leave blank to omit; requires provider support."], ["Quality", "Optional default, Auto, Low, Medium, or High for providers that support quality."], ["Format", "Optional default, PNG, JPEG, or WebP. Affects provider output format."], ["Compression", "0-100; blank means not sent. Usually meaningful only for JPEG/WebP."], ["Background", "Optional default, Auto, Opaque, or Transparent. Sent only when background is enabled in available tool fields."], ["Moderation", "Optional default, Auto, or Low. Effect depends on provider support."], ["Action", "Optional default, Auto, Generate, or Edit. Hints whether the task is closer to generation or editing."], ["Input fidelity", "Optional default, Low, or High for controlling reference image fidelity when supported."], ["Partial", "0-3; blank means not sent. Used by providers that support partial images."], ["Images API n (auto)", "Internal Images API field. ProductFlow calculates it from the image chat candidate count or workflow downstream reference_image receiver count. The Responses `image_generation` tool has no n and is requested one image at a time."]] }, { type: "callout", title: "Candidate count and Images API n", text: "The candidate count in image chat is the generation count for that round. With the Images API, the backend sends the same count as request `n`; with Responses, it sends separate one-image requests. Workflow image-generation nodes generate and fill the number of downstream reference_image nodes; Images API providers use a batch request, while Responses providers request images one by one." }] },
+      { id: "tool-settings", title: "Fields", blocks: [{ type: "paragraph", text: "Image tool parameters mainly cover advanced fields for the Responses `image_generation` tool. The available tool fields in Settings decide which advanced controls appear in the frontend and which fields the backend can persist; compatibility fields are filtered by provider capability." }, { type: "table", headers: ["Field", "Description"], rows: [["Available tool fields", "Multi-select field. Unselected advanced fields are hidden in the frontend and are not sent to the provider."], ["Tool model", "Model field sent inside the image_generation tool. Leave blank to omit; requires provider support."], ["Quality", "Optional default, Auto, Low, Medium, or High for providers that support quality."], ["Format", "Optional default, PNG, JPEG, or WebP. Affects provider output format."], ["Compression", "0-100; blank means not sent. Usually meaningful only for JPEG/WebP."], ["Background", "Optional default, Auto, Opaque, or Transparent. Sent only when background is enabled in available tool fields."], ["Moderation", "Optional default, Auto, or Low. Effect depends on provider support."], ["Action", "Optional default, Auto, Generate, or Edit. Hints whether the task is closer to generation or editing."], ["Input fidelity", "Optional default, Low, or High for controlling reference image fidelity when supported."], ["Partial", "0-3; blank means not sent. Used by providers that support partial images."], ["Images API n (auto)", "Internal Images API field. Atelier calculates it from the image chat candidate count or workflow downstream reference_image receiver count. The Responses `image_generation` tool has no n and is requested one image at a time."]] }, { type: "callout", title: "Candidate count and Images API n", text: "The candidate count in image chat is the generation count for that round. With the Images API, the backend sends the same count as request `n`; with Responses, it sends separate one-image requests. Workflow image-generation nodes generate and fill the number of downstream reference_image nodes; Images API providers use a batch request, while Responses providers request images one by one." }] },
     ],
   },
   {
@@ -1271,13 +1271,13 @@ const NAV_GROUPS_EN: NavGroup[] = [
 ];
 
 const HELP_DOC_JA_TRANSLATIONS: Record<string, string> = {
-  "ProductFlow 文档概览": "ProductFlow ドキュメント概要",
-  "ProductFlow 是单管理员自托管的商品素材工作台，用于把商品资料、参考图、文案和图片生成流程组织在一个可追踪的工作台中。":
-    "ProductFlow は単一管理者で自ホストする商品素材ワークベンチです。商品データ、参考画像、コピー、画像生成フローを、追跡できる1つのワークスペースに整理します。",
+  "Atelier 文档概览": "Atelier ドキュメント概要",
+  "Atelier 是单管理员自托管的商品素材工作台，用于把商品资料、参考图、文案和图片生成流程组织在一个可追踪的工作台中。":
+    "Atelier は単一管理者で自ホストする商品素材ワークベンチです。商品データ、参考画像、コピー、画像生成フローを、追跡できる1つのワークスペースに整理します。",
   "入门": "はじめに",
-  "ProductFlow 是什么": "ProductFlow とは",
-  "ProductFlow 面向单人商家、小团队运营者和希望自托管 AI 素材链路的开发者。它把商品信息、图片素材、文案生成、图片生成、运行状态和画廊收藏放在同一个私有工作台中。":
-    "ProductFlow は、個人商店、小規模運用チーム、自ホストの AI 素材パイプラインを求める開発者向けです。商品情報、画像素材、コピー生成、画像生成、実行状態、ギャラリー保存を1つの非公開ワークベンチで扱えます。",
+  "Atelier 是什么": "Atelier とは",
+  "Atelier 面向单人商家、小团队运营者和希望自托管 AI 素材链路的开发者。它把商品信息、图片素材、文案生成、图片生成、运行状态和画廊收藏放在同一个私有工作台中。":
+    "Atelier は、個人商店、小規模運用チーム、自ホストの AI 素材パイプラインを求める開発者向けです。商品情報、画像素材、コピー生成、画像生成、実行状態、ギャラリー保存を1つの非公開ワークベンチで扱えます。",
   "当前版本不是公开注册平台，也不是多租户 SaaS。部署者自己管理数据库、Redis、存储目录和模型密钥。":
     "現在のバージョンは公開登録型プラットフォームでもマルチテナント SaaS でもありません。デプロイする人がデータベース、Redis、保存ディレクトリ、モデル認証情報を管理します。",
   "主要页面": "主要ページ",
@@ -1340,8 +1340,8 @@ const HELP_DOC_JA_TRANSLATIONS: Record<string, string> = {
   "在下游参考图节点或右侧“图库”面板查看并下载结果。":
     "下流の参考画像ノードまたは右側の「ライブラリ」パネルで結果を確認し、ダウンロードします。",
   "商品工作台": "商品ワークベンチ",
-  "商品工作台是 ProductFlow 的核心操作界面。桌面端中间是画布、右侧是检查器和辅助面板；移动端保留画布为主界面。":
-    "商品ワークベンチは ProductFlow の中心的な操作画面です。デスクトップでは中央にキャンバス、右側にインスペクターと補助パネルを配置し、モバイルではキャンバスを主画面として保持します。",
+  "商品工作台是 Atelier 的核心操作界面。桌面端中间是画布、右侧是检查器和辅助面板；移动端保留画布为主界面。":
+    "商品ワークベンチは Atelier の中心的な操作画面です。デスクトップでは中央にキャンバス、右側にインスペクターと補助パネルを配置し、モバイルではキャンバスを主画面として保持します。",
   "画布工作台": "キャンバスワークベンチ",
   "界面结构": "画面構成",
   "区域": "領域",
@@ -1810,8 +1810,8 @@ const HELP_DOC_JA_TRANSLATIONS: Record<string, string> = {
   "0-3；留空不发送。用于支持 partial images 的 provider。":
     "0〜3。空欄の場合は送信しません。partial images に対応するプロバイダーで使います。",
   "Images API n（自动）": "Images API n（自動）",
-  "Images API 内部字段。ProductFlow 会按文/图生图候选数量或工作流下游 reference_image 承接数量自动计算；Responses `image_generation` tool 没有 n，会逐张请求。":
-    "Images API の内部フィールドです。ProductFlow が画像チャットの候補数またはワークフロー下流の reference_image 受け取り数から自動計算します。Responses `image_generation` tool には n がないため 1 枚ずつリクエストします。",
+  "Images API 内部字段。Atelier 会按文/图生图候选数量或工作流下游 reference_image 承接数量自动计算；Responses `image_generation` tool 没有 n，会逐张请求。":
+    "Images API の内部フィールドです。Atelier が画像チャットの候補数またはワークフロー下流の reference_image 受け取り数から自動計算します。Responses `image_generation` tool には n がないため 1 枚ずつリクエストします。",
   "候选数量和 Images API n": "候補数と Images API n",
   "文/图生图右侧的“候选数量”就是本轮生成张数；使用 Images API 时后端把这个数量作为请求 `n`，使用 Responses 时后端按数量逐张请求。工作流生图节点按下游 reference_image 节点数量生成并填充，Images API 会批量请求，Responses 会逐张请求。":
     "画像チャット右側の「候補数」はそのラウンドの生成枚数です。Images API ではバックエンドが同じ数をリクエスト `n` として送ります。Responses では枚数分だけ 1 枚ずつリクエストします。ワークフローの画像生成ノードは下流の reference_image ノード数に合わせて生成して埋めます。Images API はバッチリクエストを使い、Responses は 1 枚ずつリクエストします。",

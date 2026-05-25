@@ -504,13 +504,13 @@ function itemsForSection(config: ConfigResponse | undefined, section: SettingsSe
 
 export function settingsExportFilename(exportedAt: string | null | undefined): string {
   if (!exportedAt) {
-    return "productflow-settings.json";
+    return "atelier-settings.json";
   }
   const date = new Date(exportedAt);
   if (Number.isNaN(date.getTime())) {
-    return "productflow-settings.json";
+    return "atelier-settings.json";
   }
-  return `productflow-settings-${date.toISOString().slice(0, 19).replace("T", "-").replace(/:/g, "")}.json`;
+  return `atelier-settings-${date.toISOString().slice(0, 19).replace("T", "-").replace(/:/g, "")}.json`;
 }
 
 export function settingsImportSummaryCounts(preview: SettingsImportPreviewResponse): {

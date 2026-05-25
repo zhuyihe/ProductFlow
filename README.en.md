@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="docs/assets/productflow-brand-concept.png" alt="ProductFlow brand concept: product card connected to AI copy and image workflow nodes" width="168">
+  <img src="docs/assets/productflow-brand-concept.png" alt="Atelier brand concept: product card connected to AI copy and image workflow nodes" width="168">
 </p>
 
-# ProductFlow
+# Atelier
 
 [中文](README.md) | English
 <p align="center">
   <a href="https://draw.devbin.de"><strong>Live Demo / 体验站</strong></a>
 </p>
 
-ProductFlow is an open-source, self-hosted product creative workspace for solo merchants and small teams. Its core flow covers product information, reference images, AI copywriting, AI/template posters, iterative image sessions, a generated image gallery, and a visual workflow.
+Atelier is an open-source, self-hosted product creative workspace for solo merchants and small teams. Its core flow covers product information, reference images, AI copywriting, AI/template posters, iterative image sessions, a generated image gallery, and a visual workflow.
 
 The current form is a private single-admin instance. A self-hosted deployment requires PostgreSQL, Redis, the backend API, Dramatiq worker, Web frontend, and usable text/image model providers.
 
@@ -72,7 +72,7 @@ The current form is a private single-admin instance. A self-hosted deployment re
 
 ## Current Boundaries
 
-ProductFlow does not currently provide multi-user/multi-tenant support, team permissions, payments, hosted account systems, automatic ad placement/listing, video generation, Kubernetes/Helm/released container images, or other production orchestration packages. The in-repository Docker Compose self-hosting path is available.
+Atelier does not currently provide multi-user/multi-tenant support, team permissions, payments, hosted account systems, automatic ad placement/listing, video generation, Kubernetes/Helm/released container images, or other production orchestration packages. The in-repository Docker Compose self-hosting path is available.
 
 ## Product Entry Points and Docs
 
@@ -94,7 +94,7 @@ ProductFlow does not currently provide multi-user/multi-tenant support, team per
 
 ## Open Source Dependencies and Thanks
 
-Beyond ProductFlow's application code, this repository keeps a set of project workflow assets for AI-assisted collaboration. Special thanks first to the sincere, kind, united, and professional Linuxdo community.
+Beyond Atelier's application code, this repository keeps a set of project workflow assets for AI-assisted collaboration. Special thanks first to the sincere, kind, united, and professional Linuxdo community.
 
 <p>
   <a href="https://linux.do">
@@ -123,7 +123,7 @@ Thanks also to the open-source projects that most influenced this repository's s
 ## Repository Structure
 
 ```text
-ProductFlow/
+Atelier/
   README.md
   README.en.md
   LICENSE
@@ -206,35 +206,35 @@ Do not append service names to this command; adding a service name starts only t
 
 Compose starts these services by default:
 
-- PostgreSQL: service name `productflow-postgres`, Compose volume `productflow-postgres-data`, host port `${POSTGRES_HOST_PORT:-15432}`.
-- Redis: service name `productflow-redis`, AOF persistence volume `productflow-redis-data`, host port `${REDIS_HOST_PORT:-16379}`.
-- Backend API: service name `productflow-backend`, host port `${APP_HOST_PORT:-29280}`.
-- Dramatiq worker: service name `productflow-worker`, sharing database, Redis, and storage volumes with the API.
-- Web: service name `productflow-web`, nginx static service, host port `${WEB_PORT:-29281}`.
+- PostgreSQL: service name `atelier-postgres`, Compose volume `atelier-postgres-data`, host port `${POSTGRES_HOST_PORT:-15432}`.
+- Redis: service name `atelier-redis`, AOF persistence volume `atelier-redis-data`, host port `${REDIS_HOST_PORT:-16379}`.
+- Backend API: service name `atelier-backend`, host port `${APP_HOST_PORT:-29280}`.
+- Dramatiq worker: service name `atelier-worker`, sharing database, Redis, and storage volumes with the API.
+- Web: service name `atelier-web`, nginx static service, host port `${WEB_PORT:-29281}`.
 
 If a port is already occupied, edit `APP_HOST_PORT`, `WEB_PORT`, `POSTGRES_HOST_PORT`, or `REDIS_HOST_PORT` in `.env`, then run `docker compose up -d --build` again. Containers still connect to one another through service names, so you do not need to change application `DATABASE_URL` / `REDIS_URL`.
 
 The in-container application uses Compose network service names:
 
 ```text
-DATABASE_URL=postgresql+psycopg://productflow:<POSTGRES_PASSWORD>@productflow-postgres:5432/productflow
-REDIS_URL=redis://productflow-redis:6379/0
+DATABASE_URL=postgresql+psycopg://atelier:<POSTGRES_PASSWORD>@atelier-postgres:5432/atelier
+REDIS_URL=redis://atelier-redis:6379/0
 STORAGE_ROOT=/app/storage
 ```
 
-At runtime, container `STORAGE_ROOT` is fixed to `/app/storage`; do not write host paths into it. By default, uploaded and generated files are stored in the Docker named volume `productflow-storage` and persist across container restarts.
+At runtime, container `STORAGE_ROOT` is fixed to `/app/storage`; do not write host paths into it. By default, uploaded and generated files are stored in the Docker named volume `atelier-storage` and persist across container restarts.
 
-When migrating from an older systemd production environment, if you already have a production file directory such as `/home/cot/ProductFlow-release/shared/storage`, set this host-only variable in `.env` to reuse it:
+When migrating from an older systemd production environment, if you already have a production file directory such as `/home/cot/Atelier-release/shared/storage`, set this host-only variable in `.env` to reuse it:
 
 ```bash
-STORAGE_HOST_PATH=/home/cot/ProductFlow-release/shared/storage
+STORAGE_HOST_PATH=/home/cot/Atelier-release/shared/storage
 ```
 
-`STORAGE_HOST_PATH` is only the host path used by the Compose bind mount. API/worker containers still use `STORAGE_ROOT=/app/storage`. If empty or unset, Compose uses the `productflow-storage` named volume. Do not run `docker compose down -v` for normal updates, and do not delete Docker volumes just to switch storage mounts. To return to the named volume, remove `STORAGE_HOST_PATH` and run `docker compose up -d`.
+`STORAGE_HOST_PATH` is only the host path used by the Compose bind mount. API/worker containers still use `STORAGE_ROOT=/app/storage`. If empty or unset, Compose uses the `atelier-storage` named volume. Do not run `docker compose down -v` for normal updates, and do not delete Docker volumes just to switch storage mounts. To return to the named volume, remove `STORAGE_HOST_PATH` and run `docker compose up -d`.
 
 ### 3. Database migration
 
-The `productflow-backend` startup command first runs:
+The `atelier-backend` startup command first runs:
 
 ```bash
 alembic upgrade head
@@ -243,7 +243,7 @@ alembic upgrade head
 `uvicorn` starts only after migrations succeed. After upgrading code, if you need to rerun migrations manually:
 
 ```bash
-docker compose run --rm productflow-backend alembic upgrade head
+docker compose run --rm atelier-backend alembic upgrade head
 ```
 
 ### 4. Access and health checks
@@ -269,12 +269,12 @@ Expected API response:
 {"status":"ok"}
 ```
 
-Default Web entrypoint: `http://127.0.0.1:29281` (or the `WEB_PORT` from `.env` if changed). Log in with `ADMIN_ACCESS_KEY` from `.env`. The Web image serves Vite-built static assets through nginx, and nginx reverse-proxies same-origin `/api/*` requests to `productflow-backend:29280`.
+Default Web entrypoint: `http://127.0.0.1:29281` (or the `WEB_PORT` from `.env` if changed). Log in with `ADMIN_ACCESS_KEY` from `.env`. The Web image serves Vite-built static assets through nginx, and nginx reverse-proxies same-origin `/api/*` requests to `atelier-backend:29280`.
 
 ### 5. Logs, stop, and cleanup
 
 ```bash
-docker compose logs -f productflow-backend productflow-worker productflow-web
+docker compose logs -f atelier-backend atelier-worker atelier-web
 docker compose down
 ```
 
@@ -321,7 +321,7 @@ The `DATABASE_URL` / `REDIS_URL` in `.env.example` target the Compose container 
 For local hot reload, use Compose only for PostgreSQL and Redis. The API, worker, and Web are started by host commands in the next step. The complete self-hosted stack uses `docker compose up -d --build` from the previous section.
 
 ```bash
-docker compose up -d productflow-postgres productflow-redis
+docker compose up -d atelier-postgres atelier-redis
 ```
 
 ### 4. Install dependencies and migrate the database
@@ -381,7 +381,7 @@ Expected response:
 
 ## Model and Provider Configuration
 
-ProductFlow configures text and image capabilities separately. Infrastructure configuration (database, Redis, session, admin key) is still read only from environment variables. Business configuration can be written to the database from the frontend `/settings` page and override environment defaults.
+Atelier configures text and image capabilities separately. Infrastructure configuration (database, Redis, session, admin key) is still read only from environment variables. Business configuration can be written to the database from the frontend `/settings` page and override environment defaults.
 
 The login gate `admin_access_required` is enabled by default: normal workspace pages and private APIs require login with `ADMIN_ACCESS_KEY` first. Administrators can disable this gate after the secondary `/settings` unlock, allowing the ordinary workspace/API to be used without the admin key. `ADMIN_ACCESS_KEY` still must remain in the environment for future re-enabling, and `SETTINGS_ACCESS_TOKEN` always protects settings reads and writes independently.
 
@@ -396,7 +396,7 @@ Text providers:
 Image providers:
 
 - `IMAGE_PROVIDER_KIND=mock`: local fake image implementation.
-- `IMAGE_PROVIDER_KIND=openai_responses`: OpenAI Responses `image_generation` tool with reference image input. ProductFlow's current iterative image branch context is determined by the base image and reference images explicitly selected by the user; it does not automatically send the entire historical image chain to the provider.
+- `IMAGE_PROVIDER_KIND=openai_responses`: OpenAI Responses `image_generation` tool with reference image input. Atelier's current iterative image branch context is determined by the base image and reference images explicitly selected by the user; it does not automatically send the entire historical image chain to the provider.
 - Related variables: `IMAGE_API_KEY`, `IMAGE_BASE_URL`, `IMAGE_GENERATE_MODEL`, `IMAGE_RESPONSES_BACKGROUND_ENABLED`, `IMAGE_GENERATION_MAX_DIMENSION`, `IMAGE_MAIN_IMAGE_SIZE`, `IMAGE_PROMO_POSTER_SIZE`.
 - Advanced tool parameters: `IMAGE_TOOL_ALLOWED_FIELDS` controls which tool fields the frontend can show, the backend can persist, and the provider request can include. Optional defaults also include `IMAGE_TOOL_MODEL`, `IMAGE_TOOL_QUALITY`, `IMAGE_TOOL_OUTPUT_FORMAT`, `IMAGE_TOOL_OUTPUT_COMPRESSION`, `IMAGE_TOOL_BACKGROUND`, `IMAGE_TOOL_MODERATION`, `IMAGE_TOOL_ACTION`, `IMAGE_TOOL_INPUT_FIDELITY`, `IMAGE_TOOL_PARTIAL_IMAGES`, and `IMAGE_TOOL_N`.
 
@@ -427,7 +427,7 @@ Prompt templates:
 | Release dry run | `just release-dry-run` | `DRY_RUN=1 bash scripts/release.sh` |
 | Production update | `just release` | `bash scripts/release.sh` |
 
-`just release` / `bash scripts/release.sh` is the Docker Compose production update entrypoint. It first runs `docker compose config --quiet`, then attempts to stop legacy user-level systemd services that may occupy ports `29280/29281` (`productflow-backend.service`, `productflow-worker.service`, `productflow-web.service`), then runs `docker compose up -d --build --remove-orphans` and checks backend `/healthz`, web `/healthz`, and web proxy `/api/healthz`. This process does not delete Docker volumes; do not use `docker compose down -v` for normal updates. To reuse files from an old systemd production setup, set `STORAGE_HOST_PATH=/home/cot/ProductFlow-release/shared/storage` in `.env` first. If you have already manually moved old services away, you can temporarily run `LEGACY_SYSTEMD_ACTION=skip bash scripts/release.sh`, or `LEGACY_SYSTEMD_ACTION=skip just release`.
+`just release` / `bash scripts/release.sh` is the Docker Compose production update entrypoint. It first runs `docker compose config --quiet`, then attempts to stop legacy user-level systemd services that may occupy ports `29280/29281` (`atelier-backend.service`, `atelier-worker.service`, `atelier-web.service`), then runs `docker compose up -d --build --remove-orphans` and checks backend `/healthz`, web `/healthz`, and web proxy `/api/healthz`. This process does not delete Docker volumes; do not use `docker compose down -v` for normal updates. To reuse files from an old systemd production setup, set `STORAGE_HOST_PATH=/home/cot/Atelier-release/shared/storage` in `.env` first. If you have already manually moved old services away, you can temporarily run `LEGACY_SYSTEMD_ACTION=skip bash scripts/release.sh`, or `LEGACY_SYSTEMD_ACTION=skip just release`.
 
 `just release-dry-run` / `DRY_RUN=1 bash scripts/release.sh` only validates Compose configuration and prints the steps a real release would execute. It does not stop systemd services, build images, start containers, or switch running services.
 

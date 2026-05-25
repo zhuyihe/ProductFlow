@@ -1,6 +1,6 @@
 # Frontend Quality Guidelines
 
-> Frontend quality standards reflected by current ProductFlow code and tooling.
+> Frontend quality standards reflected by current Atelier code and tooling.
 
 ---
 
@@ -213,7 +213,7 @@ Use `just web-dev` so `.env.dev` and proxy behavior match backend dev commands.
 - Committing `web/dist/`, `web/node_modules/`, `*.tsbuildinfo`, or local env files.
 - Adding lint/test commands to docs without actually configuring them in `web/package.json`.
 - Adding page-local locale/theme persistence outside `PreferencesProvider`.
-- Translating product/operator/model-authored content instead of only ProductFlow UI chrome and system labels.
+- Translating product/operator/model-authored content instead of only Atelier UI chrome and system labels.
 
 ---
 

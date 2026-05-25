@@ -1,4 +1,4 @@
-# ProductFlow Beginner Tutorial and Reference
+# Atelier Beginner Tutorial and Reference
 
 [中文](USER_GUIDE.md) | English
 
@@ -9,7 +9,7 @@ This document has two parts:
 
 The product now provides a **Help** page in the top navigation for quick access to workflows, templates, supported operations, and common troubleshooting. This Markdown document remains as repository text reference and should stay aligned with the in-product help page.
 
-The current workbench is the **ProductFlow workbench**: the middle area is a zoomable and draggable node canvas. On desktop, the right side is a compact sidebar that switches between **Details / Runs / Library / Templates** with a small rail. On mobile, the canvas remains the main surface and the bottom toolbar opens workflow run, Single node, Templates, Details, Runs, and Library controls. Normal use does not require understanding the internal DAG. Just remember: product, reference image, copy, and image generation are cards; edges mean "downstream generation refers to upstream data".
+The current workbench is the **Atelier workbench**: the middle area is a zoomable and draggable node canvas. On desktop, the right side is a compact sidebar that switches between **Details / Runs / Library / Templates** with a small rail. On mobile, the canvas remains the main surface and the bottom toolbar opens workflow run, Single node, Templates, Details, Runs, and Library controls. Normal use does not require understanding the internal DAG. Just remember: product, reference image, copy, and image generation are cards; edges mean "downstream generation refers to upstream data".
 
 ---
 

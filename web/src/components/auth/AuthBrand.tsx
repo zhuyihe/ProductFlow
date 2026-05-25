@@ -11,7 +11,7 @@ export function AuthBrand() {
       </div>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-          ProductFlow
+          Atelier
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-slate-400">
           {t("login.subtitle")}

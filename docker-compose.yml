@@ -1,36 +1,36 @@
 services:
-  productflow-postgres:
+  atelier-postgres:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: productflow
+      POSTGRES_USER: atelier
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: productflow
+      POSTGRES_DB: atelier
     ports:
       - "${POSTGRES_HOST_PORT:-15432}:5432"
     volumes:
-      - productflow-postgres-data:/var/lib/postgresql/data
+      - atelier-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U productflow -d productflow"]
+      test: ["CMD-SHELL", "pg_isready -U atelier -d atelier"]
       interval: 5s
       timeout: 5s
       retries: 20
 
-  productflow-redis:
+  atelier-redis:
     image: redis:7
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "${REDIS_HOST_PORT:-16379}:6379"
     volumes:
-      - productflow-redis-data:/data
+      - atelier-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 20
 
-  productflow-backend:
+  atelier-backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -44,8 +44,8 @@ services:
       ADMIN_ACCESS_KEY: ${ADMIN_ACCESS_KEY:?set ADMIN_ACCESS_KEY in .env}
       SETTINGS_ACCESS_TOKEN: ${SETTINGS_ACCESS_TOKEN:?set SETTINGS_ACCESS_TOKEN in .env}
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
-      DATABASE_URL: postgresql+psycopg://productflow:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@productflow-postgres:5432/productflow
-      REDIS_URL: redis://productflow-redis:6379/0
+      DATABASE_URL: postgresql+psycopg://atelier:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@atelier-postgres:5432/atelier
+      REDIS_URL: redis://atelier-redis:6379/0
       STORAGE_ROOT: /app/storage
       LOG_DIR: /app/storage/logs
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -81,13 +81,13 @@ services:
     ports:
       - "${APP_HOST_PORT:-29280}:29280"
     volumes:
-      # STORAGE_HOST_PATH is host-only. Leave it unset to use the productflow-storage named volume,
-      # or set it to an existing production directory such as /home/cot/ProductFlow-release/shared/storage.
-      - ${STORAGE_HOST_PATH:-productflow-storage}:/app/storage
+      # STORAGE_HOST_PATH is host-only. Leave it unset to use the atelier-storage named volume,
+      # or set it to an existing production directory such as /home/cot/Atelier-release/shared/storage.
+      - ${STORAGE_HOST_PATH:-atelier-storage}:/app/storage
     depends_on:
-      productflow-postgres:
+      atelier-postgres:
         condition: service_healthy
-      productflow-redis:
+      atelier-redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -100,7 +100,7 @@ services:
       retries: 12
       start_period: 20s
 
-  productflow-worker:
+  atelier-worker:
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -110,8 +110,8 @@ services:
       ADMIN_ACCESS_KEY: ${ADMIN_ACCESS_KEY:?set ADMIN_ACCESS_KEY in .env}
       SETTINGS_ACCESS_TOKEN: ${SETTINGS_ACCESS_TOKEN:?set SETTINGS_ACCESS_TOKEN in .env}
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
-      DATABASE_URL: postgresql+psycopg://productflow:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@productflow-postgres:5432/productflow
-      REDIS_URL: redis://productflow-redis:6379/0
+      DATABASE_URL: postgresql+psycopg://atelier:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@atelier-postgres:5432/atelier
+      REDIS_URL: redis://atelier-redis:6379/0
       STORAGE_ROOT: /app/storage
       LOG_DIR: /app/storage/logs
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -144,13 +144,13 @@ services:
       GENERATION_MAX_CONCURRENT_TASKS: ${GENERATION_MAX_CONCURRENT_TASKS:-3}
     command: ["dramatiq", "--processes", "2", "--threads", "4", "productflow_backend.workers"]
     volumes:
-      # Keep this source identical to productflow-backend so API and worker see the same files at /app/storage.
-      - ${STORAGE_HOST_PATH:-productflow-storage}:/app/storage
+      # Keep this source identical to atelier-backend so API and worker see the same files at /app/storage.
+      - ${STORAGE_HOST_PATH:-atelier-storage}:/app/storage
     depends_on:
-      productflow-backend:
+      atelier-backend:
         condition: service_healthy
 
-  productflow-web:
+  atelier-web:
     build:
       context: .
       dockerfile: web/Dockerfile
@@ -160,7 +160,7 @@ services:
     ports:
       - "${WEB_PORT:-29281}:80"
     depends_on:
-      productflow-backend:
+      atelier-backend:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
@@ -170,6 +170,6 @@ services:
       start_period: 10s
 
 volumes:
-  productflow-postgres-data:
-  productflow-redis-data:
-  productflow-storage:
+  atelier-postgres-data:
+  atelier-redis-data:
+  atelier-storage:

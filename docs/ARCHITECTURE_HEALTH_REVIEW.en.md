@@ -1,4 +1,4 @@
-# ProductFlow Architecture Health Review
+# Atelier Architecture Health Review
 
 [中文](ARCHITECTURE_HEALTH_REVIEW.md) | English
 
@@ -10,7 +10,7 @@
 
 **Current health: 8.0 / 10.**
 
-ProductFlow is currently in a state where the single-merchant self-hosted workspace can iterate sustainably. The backend keeps the FastAPI presentation / application / domain / infrastructure layering. Product DAG workflows and iterative image-generation durable tasks both use PostgreSQL state as the source of truth, while Redis/Dramatiq only handle dispatch and background execution. The frontend uses React, TypeScript, and TanStack Query; the API client and DTOs are centralized in `web/src/lib/`, and the product detail page has started splitting into page-local components and utilities.
+Atelier is currently in a state where the single-merchant self-hosted workspace can iterate sustainably. The backend keeps the FastAPI presentation / application / domain / infrastructure layering. Product DAG workflows and iterative image-generation durable tasks both use PostgreSQL state as the source of truth, while Redis/Dramatiq only handle dispatch and background execution. The frontend uses React, TypeScript, and TanStack Query; the API client and DTOs are centralized in `web/src/lib/`, and the product detail page has started splitting into page-local components and utilities.
 
 Compared with the historical review, several key governance items have landed:
 
@@ -84,7 +84,7 @@ Frontend quality entrypoints from `web/package.json`:
 `README.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, and `docs/USER_GUIDE.md` now cover the current mainline:
 
 - Single-admin self-hosting, not multi-tenant SaaS.
-- ProductFlow workbench, iterative image generation, gallery, settings page, and runtime configuration.
+- Atelier workbench, iterative image generation, gallery, settings page, and runtime configuration.
 - Async execution and lightweight status polling.
 - Docker Compose self-hosting path and local development path.
 - Current explicit exclusions: multi-tenancy, payments, automatic placement, object storage, Helm, or released container images.
@@ -163,7 +163,7 @@ Any future background task should reuse these principles and include tests for q
 
 ### R4. Productionization Boundaries Still Need Clear Wording
 
-The Docker Compose self-hosted path is available, but ProductFlow is still not a full production platform:
+The Docker Compose self-hosted path is available, but Atelier is still not a full production platform:
 
 - It is not a multi-user or multi-tenant system.
 - There is no object-storage adapter layer; storage is currently local filesystem storage.

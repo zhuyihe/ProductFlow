@@ -4,7 +4,7 @@ Project rule. Every backend change that touches user data must comply.
 
 ## Why
 
-ProductFlow runs as a public multi-tenant workspace at `image.aync.cc.cd`.
+Atelier runs as a public multi-tenant workspace at `image.aync.cc.cd`.
 Users authenticate through new-api SSO; each user owns a disjoint slice of
 business data (products, image sessions, canvas templates, and everything that
 hangs off them). A single bypass anywhere collapses the tenant boundary for

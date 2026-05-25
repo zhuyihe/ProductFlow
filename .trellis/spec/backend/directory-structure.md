@@ -1,6 +1,6 @@
 # Backend Directory Structure
 
-> Actual backend organization for ProductFlow.
+> Actual backend organization for Atelier.
 
 ---
 

@@ -1,4 +1,4 @@
-# ProductFlow Architecture
+# Atelier Architecture
 
 [中文](ARCHITECTURE.md) | [English](ARCHITECTURE.en.md)
 
@@ -6,7 +6,7 @@
 
 ## 1. 系统概览
 
-ProductFlow 由前端、后端 API、后台 worker、PostgreSQL、Redis 和本地文件存储组成：
+Atelier 由前端、后端 API、后台 worker、PostgreSQL、Redis 和本地文件存储组成：
 
 ```text
 React/Vite web
@@ -19,11 +19,11 @@ React/Vite web
     -> same database, queue, storage and providers
 ```
 
-默认自托管路径由根目录 `docker-compose.yml` 驱动。`docker compose up -d --build` 会构建并启动 PostgreSQL、Redis、FastAPI 后端、Dramatiq worker 和 nginx-served Web 静态站点；API/worker 在容器内通过 `productflow-postgres:5432` 与 `productflow-redis:6379` 连接依赖，并共享挂载到容器 `/app/storage` 的持久化 storage。未设置 `STORAGE_HOST_PATH` 时，storage 使用 Docker named volume `productflow-storage`；迁移旧 systemd 生产环境时，可以设置 host-only 变量 `STORAGE_HOST_PATH=/home/cot/ProductFlow-release/shared/storage` 将既有宿主机 storage 目录 bind-mount 到 `/app/storage`，容器运行时仍保持 `STORAGE_ROOT=/app/storage`。后端容器启动时先执行 Alembic 迁移，再启动 `uvicorn`。
+默认自托管路径由根目录 `docker-compose.yml` 驱动。`docker compose up -d --build` 会构建并启动 PostgreSQL、Redis、FastAPI 后端、Dramatiq worker 和 nginx-served Web 静态站点；API/worker 在容器内通过 `atelier-postgres:5432` 与 `atelier-redis:6379` 连接依赖，并共享挂载到容器 `/app/storage` 的持久化 storage。未设置 `STORAGE_HOST_PATH` 时，storage 使用 Docker named volume `atelier-storage`；迁移旧 systemd 生产环境时，可以设置 host-only 变量 `STORAGE_HOST_PATH=/home/cot/Atelier-release/shared/storage` 将既有宿主机 storage 目录 bind-mount 到 `/app/storage`，容器运行时仍保持 `STORAGE_ROOT=/app/storage`。后端容器启动时先执行 Alembic 迁移，再启动 `uvicorn`。
 
-生产更新入口是 `just release`，底层调用 `scripts/release.sh` 执行 Compose 配置校验、停止 legacy user-level systemd 服务（`productflow-backend.service`、`productflow-worker.service`、`productflow-web.service`，用于释放旧发布占用的 29280/29281 端口）、`docker compose up -d --build --remove-orphans` 和 HTTP health checks。`just release-dry-run` 只做配置校验与计划输出，不停止旧服务、不构建、不启动容器。普通更新不会删除 Docker volumes。
+生产更新入口是 `just release`，底层调用 `scripts/release.sh` 执行 Compose 配置校验、停止 legacy user-level systemd 服务（`atelier-backend.service`、`atelier-worker.service`、`atelier-web.service`，用于释放旧发布占用的 29280/29281 端口）、`docker compose up -d --build --remove-orphans` 和 HTTP health checks。`just release-dry-run` 只做配置校验与计划输出，不停止旧服务、不构建、不启动容器。普通更新不会删除 Docker volumes。
 
-本地热重载开发仍由根目录 `justfile` 驱动：可以只启动 `productflow-postgres` 与 `productflow-redis`，API、worker、前端分别由 `just backend-run`、`just backend-worker`、`just web-dev` 启动。开发环境使用 `.env.dev` 中的 `STORAGE_ROOT=./backend/storage-dev`，与生产 Compose storage 隔离；不要通过 shell-sourcing 生产 `.env` 来启动本地开发进程。
+本地热重载开发仍由根目录 `justfile` 驱动：可以只启动 `atelier-postgres` 与 `atelier-redis`，API、worker、前端分别由 `just backend-run`、`just backend-worker`、`just web-dev` 启动。开发环境使用 `.env.dev` 中的 `STORAGE_ROOT=./backend/storage-dev`，与生产 Compose storage 隔离；不要通过 shell-sourcing 生产 `.env` 来启动本地开发进程。
 
 ## 2. 后端分层
 
@@ -59,7 +59,7 @@ React/Vite web
 不要重新给完整 `ImageSessionDetailResponse` 或完整 `ProductWorkflowResponse` 加 active 轮询；它们包含历史图片、
 节点配置、产物引用和运行记录，运行中高频刷新会放大前端渲染和后端序列化压力。
 
-商品详情页当前是 ProductFlow 工作台：画布负责节点、连接线、缩放、平移、节点拖拽、框选和多选。桌面端右侧侧栏负责详情、日志、图库和模板；移动端用底部工具栏承载运行入口、单节点、模板、详情、日志和图库入口，并用底部面板展示这些面板内容。移动端画布有 `browse` / `edit` / `select` 三种本地交互模式：`browse` 用于单指平移、点选节点和双指缩放；`edit` 允许触控/触控笔拖动节点和创建连线；`select` 用点按切换多选。画布缩放比例和桌面侧栏宽度是浏览器本地偏好，移动端模式和底部面板开合是页面本地 UI 状态；工作流节点、连接、运行状态和产物仍以数据库为准。
+商品详情页当前是 Atelier 工作台：画布负责节点、连接线、缩放、平移、节点拖拽、框选和多选。桌面端右侧侧栏负责详情、日志、图库和模板；移动端用底部工具栏承载运行入口、单节点、模板、详情、日志和图库入口，并用底部面板展示这些面板内容。移动端画布有 `browse` / `edit` / `select` 三种本地交互模式：`browse` 用于单指平移、点选节点和双指缩放；`edit` 允许触控/触控笔拖动节点和创建连线；`select` 用点按切换多选。画布缩放比例和桌面侧栏宽度是浏览器本地偏好，移动端模式和底部面板开合是页面本地 UI 状态；工作流节点、连接、运行状态和产物仍以数据库为准。
 
 ## 4. 数据模型主线
 
@@ -151,7 +151,7 @@ PostgreSQL 是元数据和运行状态的权威存储；Redis/Dramatiq 只负责
 
 ## 6. Provider 架构
 
-ProductFlow 把模型能力按模态拆分。
+Atelier 把模型能力按模态拆分。
 
 文本 provider 位于 `infrastructure/text/`，统一接口为：
 
@@ -169,9 +169,9 @@ ProductFlow 把模型能力按模态拆分。
 - `openai_responses`（Responses API `image_generation` 工具，支持 `input_image`；连续生图优先使用 background
   response + retrieve polling，把 provider status 写入任务 progress）
 - `openai_images`（Images API `images.generate` / `images.edit` 兼容接口；不使用 Responses
-  `previous_response_id`，连续生图由 ProductFlow 显式传入所选基图和参考图）
+  `previous_response_id`，连续生图由 Atelier 显式传入所选基图和参考图）
 - `google_gemini_image`（Google Gemini native `generateContent` 图片接口，通过官方 `google-genai` SDK 调用；
-  连续生图由 ProductFlow 显式传入所选基图和参考图）
+  连续生图由 Atelier 显式传入所选基图和参考图）
 
 Provider 选择由 `provider_profiles`、`provider_bindings` 和对应 factory 控制。旧 `TEXT_*` / `IMAGE_*`
 环境变量只作为首次迁移输入；运行时 resolver 从供应商档案和用途绑定读取接口类型、连接信息和模型。路由不直接依赖具体 SDK。

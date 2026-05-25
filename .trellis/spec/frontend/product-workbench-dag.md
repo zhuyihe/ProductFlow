@@ -36,7 +36,7 @@
 - The main workbench grid background should be rendered with ReactFlow `Background` so the visual canvas grid follows the
   ReactFlow viewport. Avoid page-level CSS grid overlays for the main workflow canvas.
 - Viewport controls should use ReactFlow `Controls` / `ControlButton` instead of a page-level custom button group. Keep
-  ReactFlow-native zoom in, zoom out, and fit-view behavior where possible; reserve ProductFlow-owned control buttons for
+  ReactFlow-native zoom in, zoom out, and fit-view behavior where possible; reserve Atelier-owned control buttons for
   business-specific actions such as reset-to-100% display and fitting the selected node group. Localize built-in control
   and minimap aria labels through ReactFlow `ariaLabelConfig`.
 - Large ProductDetail canvases should use ReactFlow `MiniMap` for desktop overview. Mobile should either hide the minimap
@@ -88,10 +88,10 @@
   appropriate for lasso, multi-select modifiers, Space pan activation, Ctrl/Meta zoom activation, and Escape
   clear-selection. Backend-backed operations such as delete, duplicate, paste, undo, and redo remain ProductDetail-owned
   shortcuts because they require confirmation, mutation calls, cache updates, or history restoration; keep ReactFlow
-  `deleteKeyCode` disabled unless those contracts are routed through ProductFlow handlers.
-- ProductDetail node/group secondary actions must use one ProductFlow action model rendered through ReactFlow
+  `deleteKeyCode` disabled unless those contracts are routed through Atelier handlers.
+- ProductDetail node/group secondary actions must use one Atelier action model rendered through ReactFlow
   `NodeToolbar` on the selected node. The toolbar is the direct action surface on both desktop and mobile. Do not add a
-  selected-card More button, mobile node action sheet, long-press action path, or ProductFlow desktop right-click context
+  selected-card More button, mobile node action sheet, long-press action path, or Atelier desktop right-click context
   menu for node actions. Single selected reusable nodes expose run, duplicate, fit selected, and delete. A single
   `product_context` node exposes only fit selected. A selected group exposes duplicate, fit selected, save selected as
   template, and delete through one toolbar anchored to the primary selected node; secondary selected nodes do not render
@@ -101,7 +101,7 @@
   template, and delete must call existing ProductDetail
   handlers/mutations: run flushes the selected draft through `handleRunWorkflow`, duplicate uses the backend duplicate
   mutation, fit selected uses WorkflowCanvas/ReactFlow fit-view helpers, template save opens the existing save-template
-  form/state, and delete opens ProductFlow confirmation before backend mutation. A single `product_context` target should
+  form/state, and delete opens Atelier confirmation before backend mutation. A single `product_context` target should
   expose only fit-selected; a group that includes `product_context` may duplicate reusable non-product nodes, but should
   not expose node-group template save or group delete. Keep ReactFlow `deleteKeyCode` disabled and do not locally
   materialize duplicate or delete results.
@@ -119,7 +119,7 @@
 - Pointer release must not flash the node back to its stale server position. Keep the final drag coordinates in an
   optimistic position layer and update the `['product-workflow', productId]` cache before/while the PATCH is in flight;
   clear the optimistic entry after the server response becomes the authority, or restore the previous cache on error.
-- Pointer releases below the ProductFlow click/commit guard must restore ReactFlow internal node positions to their drag
+- Pointer releases below the Atelier click/commit guard must restore ReactFlow internal node positions to their drag
   start positions and skip persisted position mutations.
 - If the same node is dropped again before an earlier position mutation resolves, protect the latest optimistic position
   from stale mutation success/error handlers; serialize or version position mutations so older responses cannot overwrite
@@ -132,7 +132,7 @@
   rendered by ReactFlow.
 - Connection-drag handle highlighting should use ReactFlow native connection state, such as `useConnection` or
   ReactFlow-provided handle connection classes. Do not reimplement connection drag, draw a custom temporary connection
-  path, or bypass ProductFlow's existing `onConnect` / `isValidConnection` / backend edge mutation path.
+  path, or bypass Atelier's existing `onConnect` / `isValidConnection` / backend edge mutation path.
 - Edge deletion is a canvas action and should use ReactFlow `EdgeToolbar` or an equivalent ReactFlow edge child for the
   delete affordance. It must call `deleteWorkflowEdge(edgeId)` before refreshing `['product-workflow', productId]`; do
   not leave stale local-only edge state.
@@ -436,7 +436,7 @@ Filter editable/action targets before interpreting canvas shortcuts.
 const [nodes, setNodes] = useState(defaultNodes);
 ```
 
-Local-only nodes do not satisfy the persisted ProductFlow workflow contract.
+Local-only nodes do not satisfy the persisted Atelier workflow contract.
 
 #### Correct
 
@@ -521,7 +521,7 @@ pending state for individual node run actions, while keeping layout dragging ind
 - `api.listProducts({ page, page_size })` drives paginated product lists and returns thumbnail URLs.
 - `api.runProductWorkflow(productId, { start_node_id })` may target an image node whose only required upstream is product
   context.
-- Local UI persistence keys: `productflow.workflow.zoom` and `productflow.workflow.inspectorWidth`.
+- Local UI persistence keys: `atelier.workflow.zoom` and `atelier.workflow.inspectorWidth`.
 
 ### 3. Contracts
 - The add-node toolbar must not expose `product_context`; one product context exists per active workflow.
@@ -533,7 +533,7 @@ pending state for individual node run actions, while keeping layout dragging ind
 - ReactFlow viewport zoom transforms visual coordinates, while drag persistence must keep backend positions in unscaled
   workflow coordinates.
 - Mouse wheel and pinch events inside the canvas viewport should zoom the ReactFlow canvas within shared zoom bounds and
-  persist the value under `productflow.workflow.zoom`. Controls/forms/buttons should not trigger unexpected zoom.
+  persist the value under `atelier.workflow.zoom`. Controls/forms/buttons should not trigger unexpected zoom.
 - The shared minimum zoom must be low enough for mobile all-nodes overview. Do not set a floor such as 50% that prevents
   ReactFlow `fitView` from fitting the current workflow into a narrow mobile viewport.
 - Canvas zoom controls must be a floating overlay anchored inside the ReactFlow canvas viewport through ReactFlow `Panel`

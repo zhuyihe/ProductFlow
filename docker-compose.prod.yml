@@ -1,33 +1,33 @@
 services:
-  productflow-postgres:
+  atelier-postgres:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: productflow
+      POSTGRES_USER: atelier
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: productflow
+      POSTGRES_DB: atelier
     volumes:
-      - productflow-postgres-data:/var/lib/postgresql/data
+      - atelier-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U productflow -d productflow"]
+      test: ["CMD-SHELL", "pg_isready -U atelier -d atelier"]
       interval: 5s
       timeout: 5s
       retries: 20
 
-  productflow-redis:
+  atelier-redis:
     image: redis:7
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
-      - productflow-redis-data:/data
+      - atelier-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 20
 
-  productflow-backend:
-    image: ${PRODUCTFLOW_BACKEND_IMAGE:-ghcr.io/zhuyihe/productflow-backend:new-api-sso}
+  atelier-backend:
+    image: ${ATELIER_BACKEND_IMAGE:-ghcr.io/zhuyihe/atelier-backend:new-api-sso}
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-production}
@@ -38,8 +38,8 @@ services:
       ADMIN_ACCESS_KEY: ${ADMIN_ACCESS_KEY:?set ADMIN_ACCESS_KEY in .env}
       SETTINGS_ACCESS_TOKEN: ${SETTINGS_ACCESS_TOKEN:?set SETTINGS_ACCESS_TOKEN in .env}
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
-      DATABASE_URL: postgresql+psycopg://productflow:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@productflow-postgres:5432/productflow
-      REDIS_URL: redis://productflow-redis:6379/0
+      DATABASE_URL: postgresql+psycopg://atelier:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@atelier-postgres:5432/atelier
+      REDIS_URL: redis://atelier-redis:6379/0
       STORAGE_ROOT: /app/storage
       LOG_DIR: /app/storage/logs
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -82,11 +82,11 @@ services:
     ports:
       - "127.0.0.1:${APP_HOST_PORT:-29280}:29280"
     volumes:
-      - ${STORAGE_HOST_PATH:-productflow-storage}:/app/storage
+      - ${STORAGE_HOST_PATH:-atelier-storage}:/app/storage
     depends_on:
-      productflow-postgres:
+      atelier-postgres:
         condition: service_healthy
-      productflow-redis:
+      atelier-redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -99,16 +99,16 @@ services:
       retries: 12
       start_period: 20s
 
-  productflow-worker:
-    image: ${PRODUCTFLOW_BACKEND_IMAGE:-ghcr.io/zhuyihe/productflow-backend:new-api-sso}
+  atelier-worker:
+    image: ${ATELIER_BACKEND_IMAGE:-ghcr.io/zhuyihe/atelier-backend:new-api-sso}
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-production}
       ADMIN_ACCESS_KEY: ${ADMIN_ACCESS_KEY:?set ADMIN_ACCESS_KEY in .env}
       SETTINGS_ACCESS_TOKEN: ${SETTINGS_ACCESS_TOKEN:?set SETTINGS_ACCESS_TOKEN in .env}
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
-      DATABASE_URL: postgresql+psycopg://productflow:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@productflow-postgres:5432/productflow
-      REDIS_URL: redis://productflow-redis:6379/0
+      DATABASE_URL: postgresql+psycopg://atelier:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@atelier-postgres:5432/atelier
+      REDIS_URL: redis://atelier-redis:6379/0
       STORAGE_ROOT: /app/storage
       LOG_DIR: /app/storage/logs
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -148,13 +148,13 @@ services:
       WORKFLOW_IMAGE_GENERATION_PROVIDER_TIMEOUT_SECONDS: ${WORKFLOW_IMAGE_GENERATION_PROVIDER_TIMEOUT_SECONDS:-900}
     command: ["dramatiq", "--processes", "2", "--threads", "4", "productflow_backend.workers"]
     volumes:
-      - ${STORAGE_HOST_PATH:-productflow-storage}:/app/storage
+      - ${STORAGE_HOST_PATH:-atelier-storage}:/app/storage
     depends_on:
-      productflow-backend:
+      atelier-backend:
         condition: service_healthy
 
-  productflow-web:
-    image: ${PRODUCTFLOW_WEB_IMAGE:-ghcr.io/zhuyihe/productflow-web:new-api-sso}
+  atelier-web:
+    image: ${ATELIER_WEB_IMAGE:-ghcr.io/zhuyihe/atelier-web:new-api-sso}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${WEB_PORT:-29281}:80"
@@ -162,7 +162,7 @@ services:
       - default
       - relay-edge
     depends_on:
-      productflow-backend:
+      atelier-backend:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
@@ -172,9 +172,9 @@ services:
       start_period: 10s
 
 volumes:
-  productflow-postgres-data:
-  productflow-redis-data:
-  productflow-storage:
+  atelier-postgres-data:
+  atelier-redis-data:
+  atelier-storage:
 
 networks:
   relay-edge:

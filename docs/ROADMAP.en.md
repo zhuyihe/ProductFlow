@@ -1,4 +1,4 @@
-# ProductFlow Roadmap
+# Atelier Roadmap
 
 [中文](ROADMAP.md) | English
 
@@ -17,7 +17,7 @@ Completed baseline capabilities:
 - Generated image gallery: iterative image results can be collected at `/gallery`, keeping source session, product, prompt, size, model, and download entrypoint.
 - Product DAG workflow editing, execution, persistent state, and recovery.
 - Shared top navigation.
-- ProductFlow workbench canvas interactions: desktop mouse-wheel zoom, left-drag pan, node drag positioning, box selection / multi-select, and edge drag creation/deletion; mobile Browse, Edit, and Select modes, touch drag/edge creation, and two-finger pinch zoom.
+- Atelier workbench canvas interactions: desktop mouse-wheel zoom, left-drag pan, node drag positioning, box selection / multi-select, and edge drag creation/deletion; mobile Browse, Edit, and Select modes, touch drag/edge creation, and two-finger pinch zoom.
 - Full scenario templates for product creation: blank canvas, marketplace hero images, detail persuasion, scene galleries, content covers, and campaign assets.
 - Workbench templates: the same built-in scenario templates can be inserted into existing canvases and automatically reuse the product node; users can save selected nodes as their own node-group templates with rename and archive-delete support.
 - Single-slot semantics for reference images, image drag-and-drop upload, compact right sidebar for Details / Runs / Library / Templates, and asset fill.
@@ -56,7 +56,7 @@ Completed baseline capabilities:
 
 ### 4. Documentation and Productization
 
-- Add README / user-guide screenshots so ProductFlow workbench nodes, template panel, and sidebar are more intuitive.
+- Add README / user-guide screenshots so Atelier workbench nodes, template panel, and sidebar are more intuitive.
 - Capture lightweight brand usage guidance, including recommended sizes and usage boundaries for logo, favicon, and README hero.
 - Add provider configuration examples and common-error troubleshooting instead of expanding dependency lists.
 

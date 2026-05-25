@@ -43,7 +43,7 @@ def bootstrap_admin_session(*, new_api_user_id: str, new_api_username: str, ttl_
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="productflow-backend")
+    parser = argparse.ArgumentParser(prog="atelier-backend")
     subparsers = parser.add_subparsers(dest="command", required=True)
     bootstrap = subparsers.add_parser("bootstrap-admin", help="Create a temporary admin session")
     bootstrap.add_argument("--new-api-user-id", required=True)

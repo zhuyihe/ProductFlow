@@ -1,6 +1,6 @@
 # Frontend Directory Structure
 
-> Actual React/Vite organization for ProductFlow.
+> Actual React/Vite organization for Atelier.
 
 ---
 

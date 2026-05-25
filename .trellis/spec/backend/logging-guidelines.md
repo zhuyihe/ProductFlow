@@ -1,6 +1,6 @@
 # Backend Logging Guidelines
 
-> Current logging reality and safe extension rules for ProductFlow.
+> Current logging reality and safe extension rules for Atelier.
 
 ---
 
@@ -46,7 +46,7 @@ logging is needed, add it deliberately and consistently through `logging.getLogg
 - `just backend-worker` runs Dramatiq through `uv run --directory backend dramatiq --processes 2 --threads 4
   productflow_backend.workers`.
 
-Those tools provide process-level logs. ProductFlow configures the root Python logger once per process so application logs
+Those tools provide process-level logs. Atelier configures the root Python logger once per process so application logs
 continue to reach stdout/stderr and are mirrored into a rotating file handler.
 
 ### Persisted operational state
@@ -272,14 +272,14 @@ Use logs to aid diagnosis, not as the only source of truth for behavior.
   queue recovery.
 - Dramatiq worker import calls `configure_logging()`, and the Dramatiq CLI startup path calls `cleanup_old_logs()` before
   job/workflow recovery.
-- Default log path is the repository backend storage log file (`backend/storage/logs/productflow.log`, resolved from
+- Default log path is the repository backend storage log file (`backend/storage/logs/atelier.log`, resolved from
   the backend package location rather than the process working directory); storage/log files are ignored by git. `LOG_DIR`
   may still override the directory explicitly.
 - File logs use `RotatingFileHandler` with configured max bytes and backup count. Stdout/stderr logging remains available
   for service managers.
 - Uvicorn `uvicorn.error` and `uvicorn.access` records must also be mirrored into the same persistent file when their
   logger propagation stops before root, including human-readable access status text such as `200 OK`. Do not add
-  ProductFlow stream handlers to Uvicorn loggers, and keep a single shared ProductFlow file handler instance across
+  Atelier stream handlers to Uvicorn loggers, and keep a single shared Atelier file handler instance across
   root/Uvicorn mirrors so console output and file lines are not duplicated.
 
 ### 4. Validation & Error Matrix

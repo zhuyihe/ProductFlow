@@ -22,7 +22,7 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-ProductFlow is a private single-merchant workspace. The backend lives in `backend/src/productflow_backend/` and uses clear layers: `presentation/` for FastAPI routes and schemas, `application/` for use cases, `domain/` for enums/core concepts, and `infrastructure/` for database, storage, queues, text/image providers, and poster rendering. Alembic migrations are in `backend/alembic/versions/`; backend tests are in `backend/tests/`. The React/Vite app lives in `web/src/`, with pages in `web/src/pages/`, shared UI in `web/src/components/`, and API/type helpers in `web/src/lib/`. Product and architecture notes live in `docs/`.
+Atelier is a private single-merchant workspace. The backend lives in `backend/src/productflow_backend/` and uses clear layers: `presentation/` for FastAPI routes and schemas, `application/` for use cases, `domain/` for enums/core concepts, and `infrastructure/` for database, storage, queues, text/image providers, and poster rendering. Alembic migrations are in `backend/alembic/versions/`; backend tests are in `backend/tests/`. The React/Vite app lives in `web/src/`, with pages in `web/src/pages/`, shared UI in `web/src/components/`, and API/type helpers in `web/src/lib/`. Product and architecture notes live in `docs/`.
 
 ## Build, Test, and Development Commands
 Use the root `justfile` whenever possible:
