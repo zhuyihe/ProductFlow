@@ -350,15 +350,27 @@ function EmptyState({ onNew }: { onNew: () => void }) {
   const { t } = useI18n();
   return (
     <div className="border border-dashed border-atelier-smoke/50 bg-atelier-paper px-8 py-20 text-center dark:border-atelier-cream/20 dark:bg-[#221A14]">
-      {/* R4 #4 placeholder — replace with /illustrations/productlist-empty.webp */}
-      <div className="mx-auto mb-8 flex h-28 w-28 items-center justify-center border border-atelier-smoke/30 bg-atelier-cream dark:border-atelier-cream/15 dark:bg-[#1A1410]">
-        <span
+      {/* R4 #4 illustration — sketchbook empty */}
+      <picture className="mx-auto mb-8 block w-44">
+        <source
+          type="image/avif"
+          srcSet="/illustrations/productlist-empty.avif 1x, /illustrations/productlist-empty@2x.avif 2x"
+        />
+        <source
+          type="image/webp"
+          srcSet="/illustrations/productlist-empty.webp 1x, /illustrations/productlist-empty@2x.webp 2x"
+        />
+        <img
+          src="/illustrations/productlist-empty.webp"
+          alt=""
           aria-hidden="true"
-          className="font-display text-5xl italic leading-none text-atelier-smoke"
-        >
-          ✎
-        </span>
-      </div>
+          loading="lazy"
+          decoding="async"
+          width={800}
+          height={800}
+          className="block w-44 select-none"
+        />
+      </picture>
       <h3 className="font-display text-3xl italic text-atelier-ink dark:text-atelier-cream">
         {t("products.emptyTitle")}
       </h3>

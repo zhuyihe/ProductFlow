@@ -116,17 +116,27 @@ export function LoginPage({ authenticated, ssoStartUrl }: LoginPageProps) {
         }}
         className="relative hidden items-center justify-center overflow-hidden bg-atelier-kraft dark:bg-[#241B14] lg:flex"
       >
-        {/* R4 #2 Hero illustration placeholder — replace with /illustrations/login-hero.webp */}
-        <div className="relative flex flex-col items-center gap-8">
-          <div className="flex h-64 w-64 items-center justify-center border border-atelier-ink/10 bg-atelier-cream/60 backdrop-blur-sm dark:border-atelier-cream/10 dark:bg-[#1A1410]/60">
-            <span className="font-display text-9xl italic leading-none text-atelier-ink dark:text-atelier-cream">
-              A
-            </span>
-          </div>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-atelier-sepia dark:text-atelier-cream/60">
-            Hero · placeholder
-          </span>
-        </div>
+        {/* R4 #2 Hero illustration — French atelier scene */}
+        <picture className="relative block">
+          <source
+            type="image/avif"
+            srcSet="/illustrations/login-hero.avif 1x, /illustrations/login-hero@2x.avif 2x"
+          />
+          <source
+            type="image/webp"
+            srcSet="/illustrations/login-hero.webp 1x, /illustrations/login-hero@2x.webp 2x"
+          />
+          <img
+            src="/illustrations/login-hero.webp"
+            alt=""
+            aria-hidden="true"
+            fetchPriority="high"
+            decoding="async"
+            width={1024}
+            height={1280}
+            className="block max-h-[78vh] w-auto select-none"
+          />
+        </picture>
 
         {/* 装饰 ornament 散点 (UQ10 A wordmark+ornament 简化) */}
         <span
