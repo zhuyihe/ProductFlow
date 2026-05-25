@@ -38,7 +38,6 @@ export function SelectField({
   ariaLabel,
   className = "",
   disabled = false,
-  radius = "xl",
   visualSize = "md",
 }: SelectFieldProps) {
   const generatedId = useId();
@@ -84,7 +83,7 @@ export function SelectField({
     }
   }, [activeOption, open]);
 
-  const radiusClassName = radius === "lg" ? "rounded-lg" : "rounded-xl";
+  // D 风默认直角；radius prop 保留为 API 兼容（不再生效）
   const sizeClassName = visualSize === "sm" ? "h-9 pl-2.5 pr-9 text-xs" : "h-10 pl-3 pr-10 text-sm";
   const menuClassName = visualSize === "sm" ? "max-h-56 text-xs" : "max-h-64 text-sm";
   const iconSize = visualSize === "sm" ? 14 : 16;
@@ -153,15 +152,15 @@ export function SelectField({
             setOpen(false);
           }
         }}
-        className={`relative w-full border border-slate-300 bg-slate-50/90 text-left font-medium text-slate-900 shadow-sm shadow-slate-200/45 outline-none ring-1 ring-white/70 transition-colors hover:border-slate-400 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none dark:border-slate-600 dark:bg-[#111b2d] dark:text-slate-100 dark:shadow-black/25 dark:ring-slate-800 dark:hover:border-slate-500 dark:hover:bg-[#15233a] dark:focus:border-violet-400 dark:focus:bg-[#111b2d] dark:focus:ring-violet-400/20 dark:disabled:border-slate-800 dark:disabled:bg-slate-900 dark:disabled:text-slate-500 ${radiusClassName} ${sizeClassName}`}
+        className={`relative w-full border border-atelier-smoke/50 bg-atelier-paper/90 text-left font-medium text-atelier-ink shadow-paper-sm outline-none transition-colors hover:border-atelier-smoke hover:bg-atelier-paper focus:border-atelier-vermilion focus:bg-atelier-paper focus:ring-2 focus:ring-atelier-vermilion/30 disabled:cursor-not-allowed disabled:border-atelier-smoke/30 disabled:bg-atelier-cream disabled:text-atelier-smoke disabled:shadow-none dark:border-atelier-cream/30 dark:bg-[#1F1812] dark:text-atelier-cream dark:shadow-black/25 dark:hover:border-atelier-cream/40 dark:hover:bg-atelier-cream/10 dark:focus:border-atelier-vermilion dark:focus:bg-[#1F1812] dark:focus:ring-atelier-vermilion/30 dark:disabled:border-atelier-cream/15 dark:disabled:bg-atelier-cream/5 dark:disabled:text-atelier-cream/40 ${sizeClassName}`}
       >
         <span className="block truncate">{selectedOption?.label ?? ""}</span>
         <span
-          className={`pointer-events-none absolute top-1/2 h-5 -translate-y-1/2 border-l border-slate-300 dark:border-slate-700 ${dividerRightClassName}`}
+          className={`pointer-events-none absolute top-1/2 h-5 -translate-y-1/2 border-l border-atelier-smoke/30 dark:border-atelier-cream/15 ${dividerRightClassName}`}
         />
         <ChevronDown
           size={iconSize}
-          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-500 transition-transform dark:text-slate-300 ${open ? "rotate-180" : ""} ${iconRightClassName}`}
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-atelier-smoke transition-transform dark:text-atelier-cream/60 ${open ? "rotate-180" : ""} ${iconRightClassName}`}
         />
       </button>
 
@@ -170,12 +169,12 @@ export function SelectField({
           id={listboxId}
           role="listbox"
           aria-labelledby={buttonId}
-          className={`absolute z-[95] mt-1 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl shadow-slate-950/12 ring-1 ring-slate-950/5 dark:border-slate-700 dark:bg-[#0f1726] dark:shadow-black/45 dark:ring-white/10 ${menuClassName}`}
+          className={`absolute z-[95] mt-1 w-full overflow-y-auto rounded-paper-lg border border-atelier-smoke/30 bg-atelier-paper p-1 shadow-paper-lg ring-1 ring-atelier-ink/5 dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-black/45 dark:ring-atelier-cream/10 ${menuClassName}`}
         >
           {groups.length
             ? groups.map((group) => (
                 <div key={group.label}>
-                  <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <div className="px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">
                     {group.label}
                   </div>
                   {group.options.map((option) => (
@@ -229,10 +228,10 @@ function SelectOptionButton({
 }) {
   const sizeClassName = visualSize === "sm" ? "min-h-8 px-2 py-1.5 text-xs" : "min-h-9 px-2.5 py-2 text-sm";
   const stateClassName = selected
-    ? "bg-indigo-50 text-indigo-700 dark:bg-violet-500/18 dark:text-violet-100"
+    ? "bg-atelier-vermilion/5 text-atelier-vermilion dark:bg-atelier-vermilion/12 dark:text-atelier-cream"
     : active
-      ? "bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white"
-      : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white";
+      ? "bg-atelier-cream text-atelier-ink dark:bg-atelier-cream/10 dark:text-atelier-cream"
+      : "text-atelier-sepia hover:bg-atelier-cream hover:text-atelier-ink dark:text-atelier-cream/80 dark:hover:bg-atelier-cream/10 dark:hover:text-atelier-cream";
 
   return (
     <button
@@ -242,7 +241,7 @@ function SelectOptionButton({
       aria-selected={selected}
       disabled={option.disabled}
       onClick={() => onSelect(option)}
-      className={`flex w-full items-center gap-2 rounded-lg text-left font-medium outline-none transition-colors disabled:cursor-not-allowed disabled:text-slate-400 disabled:opacity-60 dark:disabled:text-slate-600 ${sizeClassName} ${stateClassName}`}
+      className={`flex w-full items-center gap-2 text-left font-medium outline-none transition-colors disabled:cursor-not-allowed disabled:text-atelier-smoke disabled:opacity-60 dark:disabled:text-atelier-cream/30 ${sizeClassName} ${stateClassName}`}
     >
       <span className="min-w-0 flex-1 truncate">{option.label}</span>
       {selected ? <Check size={14} className="shrink-0" /> : null}
