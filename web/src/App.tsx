@@ -33,6 +33,9 @@ const ProductListPage = lazy(loadProductListPage);
 const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((module) => ({ default: module.SettingsPage })),
 );
+const NotFoundPage = lazy(() =>
+  import("./pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
+);
 
 function LoadingScreen() {
   const { t } = useI18n();
@@ -110,7 +113,7 @@ function AppRoutes() {
           path="/products/:productId"
           element={authenticated ? <ProductDetailPage /> : <Navigate to={workspaceLoginTarget} replace />}
         />
-        <Route path="*" element={<Navigate to={authenticated ? "/products" : workspaceLoginTarget} replace />} />
+        <Route path="*" element={<NotFoundPage authenticated={authenticated} />} />
       </Routes>
     </Suspense>
   );
