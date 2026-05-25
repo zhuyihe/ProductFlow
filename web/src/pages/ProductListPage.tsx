@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Image as ImageIcon,
-  MoreHorizontal,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -13,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { StatusPill } from "../components/StatusPill";
 import { TopNav } from "../components/TopNav";
+import { StaggerGrid } from "../components/motion/StaggerGrid";
 import { api, ApiError } from "../lib/api";
 import { formatPrice, formatShortDate } from "../lib/format";
 import { useI18n } from "../lib/preferences";
@@ -29,6 +29,7 @@ export function ProductListPage() {
   const [page, setPage] = useState(1);
   const [deleteError, setDeleteError] = useState("");
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState<ProductSummary | null>(null);
+
   const productsQuery = useQuery({
     queryKey: ["products", page, PAGE_SIZE],
     queryFn: () => api.listProducts({ page, page_size: PAGE_SIZE }),
@@ -45,13 +46,14 @@ export function ProductListPage() {
     queryFn: api.getSessionState,
     staleTime: PRODUCT_LIST_STALE_TIME_MS,
   });
+
   const products = productsQuery.data?.items ?? [];
   const total = productsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const deletionEnabled = runtimeConfigQuery.data?.deletion_enabled ?? false;
-  const posterReadyCount = products.filter((product) => product.workflow_state === "poster_ready").length;
+  const posterReadyCount = products.filter((p) => p.workflow_state === "poster_ready").length;
   const copyReadyCount = products.filter(
-    (product) => product.workflow_state === "copy_ready" || product.workflow_state === "poster_ready",
+    (p) => p.workflow_state === "copy_ready" || p.workflow_state === "poster_ready",
   ).length;
 
   useEffect(() => {
@@ -80,7 +82,9 @@ export function ProductListPage() {
     },
     onError: (mutationError) => {
       setPendingDeleteProduct(null);
-      setDeleteError(mutationError instanceof ApiError ? mutationError.detail : t("products.deleteFailed"));
+      setDeleteError(
+        mutationError instanceof ApiError ? mutationError.detail : t("products.deleteFailed"),
+      );
     },
   });
 
@@ -93,152 +97,82 @@ export function ProductListPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-[#060a12]">
+    <div className="flex min-h-screen flex-col bg-atelier-cream dark:bg-[#1A1410]">
       <TopNav
         onHome={() => navigate("/products")}
         onLogout={() => logoutMutation.mutate()}
         session={sessionQuery.data}
       />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 px-4 pt-4 pb-40 sm:px-6 lg:py-10">
-        <div className="w-full space-y-4 lg:space-y-6">
-          <section className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/50 dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[0_16px_44px_rgba(0,0,0,0.24)] lg:hidden">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400 dark:text-slate-500">
-                  {t("products.heroEyebrow")}
-                </div>
-                <h1 className="mt-1 truncate text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                  {t("products.listTitle")}
-                </h1>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-slate-400">
-                  {t("products.paginationSummary", { page, totalPages, total })}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate("/products/new")}
-                aria-label={t("products.new")}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors active:scale-[0.98] hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:bg-gradient-to-r dark:from-indigo-500 dark:to-violet-500 dark:shadow-violet-900/35 dark:ring-1 dark:ring-violet-300/35 dark:focus-visible:ring-violet-400 dark:focus-visible:ring-offset-slate-950"
-              >
-                <Plus size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </section>
+      <main className="mx-auto flex w-full max-w-4xl flex-1 px-6 py-12 lg:py-16">
+        <div className="w-full space-y-10">
+          {/* Hero — D 风衬线标题 + ornament + 简化 metrics */}
+          <section className="border-b border-atelier-smoke/30 pb-10 dark:border-atelier-cream/15">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-atelier-smoke">
+              {t("products.heroEyebrow")}
+            </p>
+            <h1 className="mt-3 font-display text-5xl italic text-atelier-ink dark:text-atelier-cream">
+              {t("products.title")}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-atelier-sepia dark:text-atelier-cream/60">
+              {t("products.description")}
+            </p>
 
-          <section className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60 dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[0_20px_70px_rgba(0,0,0,0.28)] lg:block">
-            <div className="grid gap-8 p-6 md:grid-cols-[1.35fr_1fr] lg:p-7">
-              <div>
-                <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 dark:text-slate-500">
-                  {t("products.heroEyebrow")}
-                </div>
-                <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">{t("products.title")}</h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                  {t("products.description")}
-                </p>
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/products/new")}
-                    className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-500 dark:bg-gradient-to-r dark:from-indigo-500 dark:to-violet-500 dark:shadow-violet-900/35 dark:ring-1 dark:ring-violet-300/35"
-                  >
-                    <Plus size={16} className="mr-1.5" /> {t("products.new")}
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3 self-end">
+            <div className="mt-6 flex items-center justify-between gap-6">
+              <div className="grid grid-cols-3 gap-8 text-atelier-ink dark:text-atelier-cream">
                 <MetricCard label={t("products.totalMetric")} value={total} />
                 <MetricCard label={t("products.copyReadyMetric")} value={copyReadyCount} />
                 <MetricCard label={t("products.posterReadyMetric")} value={posterReadyCount} />
               </div>
+
+              <button
+                type="button"
+                onClick={() => navigate("/products/new")}
+                className="group inline-flex items-center gap-2 border border-atelier-ink bg-atelier-ink px-5 py-2.5 font-display text-base italic text-atelier-cream transition-colors hover:border-atelier-vermilion hover:bg-atelier-vermilion dark:border-atelier-cream dark:bg-atelier-cream dark:text-atelier-ink dark:hover:border-atelier-vermilion dark:hover:bg-atelier-vermilion dark:hover:text-atelier-cream"
+              >
+                <Plus size={16} aria-hidden="true" />
+                <span>{t("products.new")}</span>
+              </button>
             </div>
           </section>
 
-          <div className="hidden items-end justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm shadow-slate-200/50 dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[0_16px_48px_rgba(0,0,0,0.22)] lg:flex">
-            <div>
-              <h2 className="text-base font-semibold text-zinc-900 dark:text-white">{t("products.listTitle")}</h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-slate-400">
-                {t("products.paginationSummary", { page, totalPages, total })}
-              </p>
-            </div>
-            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} disabled={productsQuery.isFetching} />
-          </div>
-
-          {deleteError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
-              {deleteError}
-            </div>
-          ) : null}
-
-          {productsQuery.isLoading ? (
-            <div className="space-y-4">
-              <div className="space-y-3 lg:hidden">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/85 dark:bg-[#0f1726]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 shrink-0 rounded-lg animate-shimmer" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-2/3 animate-shimmer" />
-                        <div className="h-3.5 w-1/2 animate-shimmer" />
-                      </div>
-                    </div>
-                    <div className="flex justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
-                      <div className="h-5 w-20 rounded-full animate-shimmer" />
-                      <div className="h-4 w-24 animate-shimmer" />
-                    </div>
-                  </div>
-                ))}
+          {/* List */}
+          <section>
+            <div className="mb-4 flex items-end justify-between">
+              <div>
+                <h2 className="font-display text-2xl italic text-atelier-ink dark:text-atelier-cream">
+                  {t("products.listTitle")}
+                </h2>
+                <p className="mt-1 font-mono text-xs text-atelier-smoke">
+                  {t("products.paginationSummary", { page, totalPages, total })}
+                </p>
               </div>
+              {products.length ? (
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  disabled={productsQuery.isFetching}
+                />
+              ) : null}
+            </div>
 
-              <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50 dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[0_18px_60px_rgba(0,0,0,0.24)] lg:block">
-                <table className="w-full table-fixed border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/70 dark:border-slate-700/80 dark:bg-[#151f33]">
-                      <th className="w-[45%] px-5 py-3 font-medium text-zinc-500 dark:text-slate-300">{t("products.table.product")}</th>
-                      <th className="w-[18%] px-5 py-3 font-medium text-zinc-500 dark:text-slate-300">{t("products.table.state")}</th>
-                      <th className="w-[18%] px-5 py-3 font-medium text-zinc-500 dark:text-slate-300">{t("products.table.updated")}</th>
-                      <th className="w-[19%] px-5 py-3 text-right font-medium text-zinc-500 dark:text-slate-300">{t("products.table.actions")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100 dark:divide-slate-800">
-                    {[1, 2, 3, 4].map((i) => (
-                      <tr key={i}>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 shrink-0 rounded-lg animate-shimmer" />
-                            <div className="flex-1 space-y-2">
-                              <div className="h-4 w-1/3 animate-shimmer" />
-                              <div className="h-3.5 w-1/2 animate-shimmer" />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="h-6 w-20 rounded-full animate-shimmer" />
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="h-4 w-24 animate-shimmer" />
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <div className="ml-auto h-5 w-24 animate-shimmer" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {deleteError ? (
+              <div className="mb-4 border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-4 py-3 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10 dark:text-atelier-vermilion">
+                {deleteError}
               </div>
-            </div>
-          ) : productsQuery.isError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
-              {t("products.loadFailed")}
-            </div>
-          ) : products.length ? (
-            <>
-              <div className="space-y-3 lg:hidden">
+            ) : null}
+
+            {productsQuery.isLoading ? (
+              <LoadingList />
+            ) : productsQuery.isError ? (
+              <div className="border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-4 py-3 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10 dark:text-atelier-vermilion">
+                {t("products.loadFailed")}
+              </div>
+            ) : products.length ? (
+              <StaggerGrid className="divide-y divide-atelier-smoke/30 border-y border-atelier-smoke/30 dark:divide-atelier-cream/15 dark:border-atelier-cream/15">
                 {products.map((product) => (
-                  <ProductMobileCard
+                  <ProductRow
                     key={product.id}
                     product={product}
                     deletionEnabled={deletionEnabled}
@@ -247,108 +181,25 @@ export function ProductListPage() {
                     onDelete={() => handleDeleteProduct(product)}
                   />
                 ))}
-              </div>
+              </StaggerGrid>
+            ) : (
+              <EmptyState onNew={() => navigate("/products/new")} />
+            )}
 
-              <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50 dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[0_18px_60px_rgba(0,0,0,0.24)] lg:block">
-                <table className="w-full table-fixed border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/70 dark:border-slate-700/80 dark:bg-[#151f33]">
-                      <th className="w-[45%] px-5 py-3 font-medium text-zinc-500 dark:text-slate-300">{t("products.table.product")}</th>
-                      <th className="w-[18%] px-5 py-3 font-medium text-zinc-500 dark:text-slate-300">{t("products.table.state")}</th>
-                      <th className="w-[18%] px-5 py-3 font-medium text-zinc-500 dark:text-slate-300">{t("products.table.updated")}</th>
-                      <th className="w-[19%] px-5 py-3 text-right font-medium text-zinc-500 dark:text-slate-300">{t("products.table.actions")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100 dark:divide-slate-800">
-                    {products.map((product) => {
-                      return (
-                        <tr key={product.id} className="group transition-colors hover:bg-indigo-50/30 dark:hover:bg-violet-500/10">
-                          <td className="px-5 py-4">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <ProductThumbnail product={product} />
-                              <div className="min-w-0 flex-1">
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(`/products/${product.id}`)}
-                                  className="block max-w-full truncate text-left font-medium text-slate-950 transition-colors hover:text-indigo-700 dark:text-slate-100 dark:hover:text-violet-200"
-                                  title={product.name}
-                                >
-                                  {product.name}
-                                </button>
-                                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-slate-400">
-                                  {product.category ? (
-                                    <span className="min-w-0 max-w-full truncate">{product.category}</span>
-                                  ) : null}
-                                  {product.price ? <span className="shrink-0">{formatPrice(product.price)}</span> : null}
-                                  {product.source_image_filename ? (
-                                    <span className="min-w-0 max-w-full truncate" title={product.source_image_filename}>
-                                      {product.source_image_filename}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <StatusPill status={product.workflow_state} />
-                          </td>
-                          <td className="px-5 py-4 font-mono text-xs text-zinc-500 dark:text-slate-400">
-                            {formatShortDate(product.updated_at)}
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            <div className="flex items-center justify-end gap-3 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteProduct(product)}
-                                disabled={deleteProductMutation.isPending || !deletionEnabled}
-                                title={deletionEnabled ? t("products.delete") : t("products.deleteDisabled")}
-                                className="inline-flex items-center text-sm font-medium text-red-500 transition-colors hover:text-red-700 disabled:opacity-50"
-                              >
-                                <Trash2 size={14} className="mr-1" /> {t("products.delete")}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/products/${product.id}`)}
-                                className="inline-flex items-center text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-slate-300 dark:hover:text-white"
-                              >
-                                {t("products.open")} <ArrowRight size={14} className="ml-1" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {products.length ? (
+              <div className="mt-8 flex justify-end">
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  disabled={productsQuery.isFetching}
+                />
               </div>
-            </>
-          ) : (
-            <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-16 text-center dark:border-slate-700/80 dark:bg-[#0f1726]">
-              <ImageIcon className="mx-auto mb-3 text-zinc-300 dark:text-slate-500" size={32} />
-              <div className="font-medium text-zinc-900 dark:text-white">{t("products.emptyTitle")}</div>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-slate-400">{t("products.emptyDescription")}</p>
-              <button
-                type="button"
-                onClick={() => navigate("/products/new")}
-                className="mt-5 inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-500 dark:bg-gradient-to-r dark:from-indigo-500 dark:to-violet-500 dark:shadow-violet-900/35"
-              >
-                <Plus size={16} className="mr-1.5" /> {t("products.new")}
-              </button>
-            </div>
-          )}
-
-          {products.length ? (
-            <div className="hidden justify-end lg:flex">
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} disabled={productsQuery.isFetching} />
-            </div>
-          ) : null}
+            ) : null}
+          </section>
         </div>
       </main>
-      {products.length ? (
-        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-40 flex justify-center px-4 lg:hidden">
-          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} disabled={productsQuery.isFetching} floating />
-        </div>
-      ) : null}
+
       <ConfirmDialog
         open={Boolean(pendingDeleteProduct)}
         title={t("products.deleteConfirmTitle")}
@@ -369,7 +220,9 @@ export function ProductListPage() {
   );
 }
 
-function ProductMobileCard({
+// 杂志目录条目 (R2.3 wireframe).
+// horizontal layout: thumbnail | title+description | timestamp | actions
+function ProductRow({
   product,
   deletionEnabled,
   isDeleting,
@@ -383,108 +236,143 @@ function ProductMobileCard({
   onDelete: () => void;
 }) {
   const { t } = useI18n();
-  const metadata = [
+  const meta = [
     product.category,
     product.price ? formatPrice(product.price) : null,
     product.source_image_filename,
-  ].filter(Boolean);
-  const metadataText = metadata.join(" / ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/50 [contain-intrinsic-size:144px] [content-visibility:auto] dark:border-slate-700/80 dark:bg-[#0f1726] dark:shadow-[0_14px_38px_rgba(0,0,0,0.22)]">
-      <div className="flex min-w-0 gap-3">
-        <ProductThumbnail product={product} compact />
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-start justify-between gap-2">
-            <button
-              type="button"
-              onClick={onOpen}
-              aria-label={t("products.openProduct", { name: product.name })}
-              className="min-h-11 min-w-0 flex-1 rounded-lg pr-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-violet-400"
-            >
-              <span className="block truncate text-sm font-semibold text-slate-950 dark:text-slate-100" title={product.name}>
-                {product.name}
-              </span>
-              <span className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-slate-400">
-                <span>{t("products.table.updated")}</span>
-                <span className="font-mono tabular-nums">{formatShortDate(product.updated_at)}</span>
-              </span>
-            </button>
-            <StatusPill status={product.workflow_state} />
-          </div>
+    <div className="group grid grid-cols-[80px_1fr_auto] items-center gap-6 py-6 transition-colors hover:bg-atelier-paper dark:hover:bg-atelier-ink/40">
+      <ProductThumbnail product={product} />
 
-          {metadata.length ? (
-            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-slate-400">
-              <MoreHorizontal size={14} className="shrink-0 text-zinc-300 dark:text-slate-600" aria-hidden="true" />
-              <span className="min-w-0 truncate" title={metadataText}>
-                {metadataText}
-              </span>
-            </div>
-          ) : null}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="min-w-0 text-left"
+        title={product.name}
+      >
+        <h3 className="truncate font-display text-2xl italic text-atelier-ink transition-colors group-hover:text-atelier-vermilion dark:text-atelier-cream dark:group-hover:text-atelier-vermilion">
+          {product.name}
+        </h3>
+        {meta ? (
+          <p className="mt-1 truncate text-sm text-atelier-sepia dark:text-atelier-cream/60">
+            {meta}
+          </p>
+        ) : null}
+        <div className="mt-2 flex items-center gap-3">
+          <StatusPill status={product.workflow_state} />
+          <span className="font-mono text-[11px] uppercase tracking-wider text-atelier-smoke">
+            edited {formatShortDate(product.updated_at)}
+          </span>
         </div>
-      </div>
+      </button>
 
-      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl bg-slate-950 px-3 text-sm font-semibold text-white transition-colors active:scale-[0.98] hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white dark:focus-visible:ring-violet-400 dark:focus-visible:ring-offset-slate-950"
-        >
-          <span className="truncate">{t("products.open")}</span>
-          <ArrowRight size={15} className="ml-1.5 shrink-0" aria-hidden="true" />
-        </button>
+      <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
           onClick={onDelete}
           disabled={isDeleting || !deletionEnabled}
-          aria-label={
-            deletionEnabled
-              ? t("products.deleteProduct", { name: product.name })
-              : t("products.deleteDisabled")
-          }
           title={deletionEnabled ? t("products.delete") : t("products.deleteDisabled")}
-          className="inline-flex min-h-11 min-w-[5.75rem] items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-600 transition-colors active:scale-[0.98] hover:border-red-300 hover:bg-red-100 disabled:opacity-45 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-200 dark:hover:border-red-300/50 dark:hover:bg-red-500/18"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-atelier-vermilion-dark transition-colors hover:text-atelier-vermilion disabled:opacity-40 dark:text-atelier-vermilion dark:hover:text-atelier-cream"
         >
-          <Trash2 size={16} className="mr-1.5 shrink-0" aria-hidden="true" />
-          <span className="whitespace-nowrap">{t("products.delete")}</span>
+          <Trash2 size={13} />
+          {t("products.delete")}
+        </button>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-atelier-ink transition-colors hover:text-atelier-vermilion dark:text-atelier-cream dark:hover:text-atelier-vermilion"
+        >
+          {t("products.open")}
+          <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
         </button>
       </div>
-    </article>
+    </div>
   );
 }
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700/80 dark:bg-[#151f33]">
-      <div className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">{value}</div>
-      <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</div>
+    <div>
+      <div className="font-display text-3xl italic tabular-nums">{value}</div>
+      <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-atelier-smoke">
+        {label}
+      </div>
     </div>
   );
 }
 
-function ProductThumbnail({ product, compact = false }: { product: ProductSummary; compact?: boolean }) {
+function ProductThumbnail({ product }: { product: ProductSummary }) {
   const [failed, setFailed] = useState(false);
   const thumbUrl = product.source_image_thumbnail_url ?? product.source_image_preview_url;
   const shouldShowImage = Boolean(thumbUrl) && !failed;
 
   return (
-    <div
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-slate-400 shadow-sm dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-500 ${
-        compact ? "h-20 w-20" : "h-16 w-16"
-      }`}
-    >
+    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#221A14]">
       {shouldShowImage && thumbUrl ? (
         <img
           src={api.toApiUrl(thumbUrl)}
           alt={product.source_image_filename ?? product.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           decoding="async"
           loading="lazy"
           onError={() => setFailed(true)}
         />
       ) : (
-        <ImageIcon size={18} strokeWidth={1.5} />
+        <ImageIcon size={20} strokeWidth={1.2} className="text-atelier-smoke" />
       )}
+    </div>
+  );
+}
+
+function LoadingList() {
+  return (
+    <div className="divide-y divide-atelier-smoke/30 border-y border-atelier-smoke/30 dark:divide-atelier-cream/15 dark:border-atelier-cream/15">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="grid grid-cols-[80px_1fr_auto] items-center gap-6 py-6">
+          <div className="h-20 w-20 animate-shimmer" />
+          <div className="space-y-2.5">
+            <div className="h-6 w-2/5 animate-shimmer" />
+            <div className="h-3.5 w-1/2 animate-shimmer" />
+            <div className="h-3 w-1/3 animate-shimmer" />
+          </div>
+          <div className="h-5 w-24 animate-shimmer" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ onNew }: { onNew: () => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="border border-dashed border-atelier-smoke/50 bg-atelier-paper px-8 py-20 text-center dark:border-atelier-cream/20 dark:bg-[#221A14]">
+      {/* R4 #4 placeholder — replace with /illustrations/productlist-empty.webp */}
+      <div className="mx-auto mb-8 flex h-28 w-28 items-center justify-center border border-atelier-smoke/30 bg-atelier-cream dark:border-atelier-cream/15 dark:bg-[#1A1410]">
+        <span
+          aria-hidden="true"
+          className="font-display text-5xl italic leading-none text-atelier-smoke"
+        >
+          ✎
+        </span>
+      </div>
+      <h3 className="font-display text-3xl italic text-atelier-ink dark:text-atelier-cream">
+        {t("products.emptyTitle")}
+      </h3>
+      <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-atelier-sepia dark:text-atelier-cream/60">
+        {t("products.emptyDescription")}
+      </p>
+      <button
+        type="button"
+        onClick={onNew}
+        className="mt-8 inline-flex items-center gap-2 border border-atelier-ink bg-atelier-ink px-5 py-2.5 font-display text-base italic text-atelier-cream transition-colors hover:border-atelier-vermilion hover:bg-atelier-vermilion dark:border-atelier-cream dark:bg-atelier-cream dark:text-atelier-ink dark:hover:border-atelier-vermilion dark:hover:bg-atelier-vermilion dark:hover:text-atelier-cream"
+      >
+        <Plus size={16} aria-hidden="true" />
+        {t("products.new")}
+      </button>
     </div>
   );
 }
@@ -494,41 +382,35 @@ function Pagination({
   totalPages,
   onPageChange,
   disabled,
-  floating = false,
 }: {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   disabled: boolean;
-  floating?: boolean;
 }) {
   const { t } = useI18n();
   return (
-    <div
-      className={`inline-flex items-center gap-2 border p-1 shadow-sm ${
-        floating
-          ? "rounded-2xl border-slate-200/85 bg-white/95 shadow-[0_16px_44px_rgba(15,23,42,0.18)] backdrop-blur dark:border-slate-700/90 dark:bg-slate-950/94 dark:shadow-[0_18px_46px_rgba(0,0,0,0.42)]"
-          : "rounded-lg border-zinc-200 bg-white dark:border-slate-700/80 dark:bg-[#151f33] dark:shadow-black/20"
-      }`}
-    >
+    <div className="inline-flex items-center gap-3 border border-atelier-smoke/30 px-2 py-1 dark:border-atelier-cream/15">
       <button
         type="button"
         onClick={() => onPageChange(Math.max(1, page - 1))}
         disabled={disabled || page <= 1}
-        className="inline-flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-violet-500/15 dark:hover:text-white lg:min-h-0 lg:px-2.5 lg:py-1.5"
+        className="inline-flex items-center gap-1 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-atelier-ink transition-colors hover:text-atelier-vermilion disabled:opacity-40 dark:text-atelier-cream dark:hover:text-atelier-vermilion"
       >
-        <ArrowLeft size={13} className="mr-1" /> {t("pagination.previous")}
+        <ArrowLeft size={12} />
+        {t("pagination.previous")}
       </button>
-      <span className="px-2 text-xs tabular-nums text-zinc-500 dark:text-slate-400">
+      <span className="font-mono text-xs tabular-nums text-atelier-sepia dark:text-atelier-cream/60">
         {page} / {totalPages}
       </span>
       <button
         type="button"
         onClick={() => onPageChange(Math.min(totalPages, page + 1))}
         disabled={disabled || page >= totalPages}
-        className="inline-flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-violet-500/15 dark:hover:text-white lg:min-h-0 lg:px-2.5 lg:py-1.5"
+        className="inline-flex items-center gap-1 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-atelier-ink transition-colors hover:text-atelier-vermilion disabled:opacity-40 dark:text-atelier-cream dark:hover:text-atelier-vermilion"
       >
-        {t("pagination.next")} <ArrowRight size={13} className="ml-1" />
+        {t("pagination.next")}
+        <ArrowRight size={12} />
       </button>
     </div>
   );

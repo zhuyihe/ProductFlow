@@ -3,7 +3,31 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  /* Font families (UQ6: Cormorant Garamond + Inter Variable + Noto Serif SC) */
+  --font-sans: "Inter Variable", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-body: "Inter Variable", "Noto Serif SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --font-display: "Cormorant Garamond", "Noto Serif SC", "Songti SC", "PingFang SC", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+
+  /* Atelier palette (UQ7: 经典出版社 米白 + 墨黑 + 朱红 + 深褐) */
+  --color-atelier-cream: #F5F1E8;
+  --color-atelier-paper: #FBF8F1;
+  --color-atelier-kraft: #E8DDC4;
+  --color-atelier-ink: #1A1A1A;
+  --color-atelier-sepia: #3D2817;
+  --color-atelier-vermilion: #C8324B;
+  --color-atelier-vermilion-dark: #8B1E2F;
+  --color-atelier-smoke: #9C9489;
+
+  /* Atelier shadows — warm sepia tint, never cool blue (D 手作风) */
+  --shadow-paper-sm: 0 1px 2px rgba(61, 40, 23, 0.06);
+  --shadow-paper-md: 0 2px 8px rgba(61, 40, 23, 0.08);
+  --shadow-paper-lg: 0 8px 24px rgba(61, 40, 23, 0.10);
+  --shadow-paper-press: inset 0 1px 2px rgba(61, 40, 23, 0.08);
+
+  /* Atelier radii (UQ7: 偏方正少圆角) */
+  --radius-paper: 2px;
+  --radius-paper-lg: 4px;
 }
 
 html,

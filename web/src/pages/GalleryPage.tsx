@@ -6,7 +6,6 @@ import {
   Import,
   Layers3,
   Loader2,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -570,7 +569,7 @@ export function GalleryPage() {
   const activeCount = activeTab === "images" ? entries.length : templates.length;
 
   return (
-    <div className="min-h-screen bg-[#07111d] text-slate-950">
+    <div className="min-h-screen bg-atelier-cream text-atelier-ink dark:bg-[#1A1410] dark:text-atelier-cream">
       <TopNav
         breadcrumbs={t("gallery.title")}
         onHome={() => navigate("/products")}
@@ -579,46 +578,56 @@ export function GalleryPage() {
       />
 
       <main className="w-full">
-        <section className="relative isolate min-h-[420px] overflow-hidden bg-[#f4eddf] sm:min-h-[480px] lg:min-h-[460px]">
+        <section className="relative isolate min-h-[420px] overflow-hidden bg-atelier-kraft sm:min-h-[480px] lg:min-h-[460px] dark:bg-[#241B14]">
           <img
             src="/hero.png"
             alt=""
             decoding="async"
             className="absolute inset-y-0 right-0 h-full w-full object-cover object-center opacity-35 sm:opacity-50 lg:w-[62%] lg:opacity-100"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,#f4eddf_0%,rgba(244,237,223,0.99)_36%,rgba(244,237,223,0.72)_52%,rgba(244,237,223,0.08)_76%,rgba(244,237,223,0)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-[#020617]/10" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#E8DDC4_0%,rgba(232,221,196,0.99)_36%,rgba(232,221,196,0.72)_52%,rgba(232,221,196,0.08)_76%,rgba(232,221,196,0)_100%)] dark:bg-[linear-gradient(90deg,#241B14_0%,rgba(36,27,20,0.99)_36%,rgba(36,27,20,0.72)_52%,rgba(36,27,20,0.08)_76%,rgba(36,27,20,0)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-atelier-smoke/30" />
           <div className="relative z-10 mx-auto grid min-h-[420px] max-w-7xl grid-cols-1 px-6 py-14 sm:min-h-[480px] sm:px-10 lg:min-h-[460px] lg:grid-cols-[minmax(0,0.43fr)_minmax(360px,0.57fr)] lg:items-center lg:px-14">
             <div className="max-w-xl">
-              <div className="mb-7 h-px w-44 bg-[#020617]/22" />
-              <h1 className="text-6xl font-black leading-none text-[#020617] sm:text-7xl lg:text-8xl">
+              <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-atelier-smoke">
+                {t("gallery.feed")}
+              </p>
+              <h1 className="mt-6 font-display text-7xl italic leading-none text-atelier-ink sm:text-8xl lg:text-[7rem] dark:text-atelier-cream">
                 {t("gallery.title")}
               </h1>
-              <p className="mt-6 max-w-md text-base leading-7 text-[#1f2937]">{t("gallery.description")}</p>
-              <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#020617]/12 bg-white/70 px-3 py-1.5 text-xs font-semibold text-[#1f2937] shadow-sm">
-                <Sparkles size={14} className="text-indigo-600" />
-                <span>{t("gallery.feed")}</span>
-              </div>
+              <p className="mt-6 max-w-md text-base leading-relaxed text-atelier-sepia dark:text-atelier-cream/70">
+                {t("gallery.description")}
+              </p>
+              <span
+                aria-hidden="true"
+                className="mt-8 inline-block font-display text-3xl text-atelier-ink/30 dark:text-atelier-cream/30"
+              >
+                ❦
+              </span>
             </div>
             <div className="hidden lg:block" />
           </div>
         </section>
 
-        <section className="bg-[#07111d] px-4 py-8 sm:px-6 lg:px-10">
-          <div className="mx-auto mb-6 flex max-w-7xl flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <section className="bg-atelier-cream px-4 py-12 sm:px-6 lg:px-10 dark:bg-[#1A1410]">
+          <div className="mx-auto mb-8 flex max-w-7xl flex-col gap-4 border-b border-atelier-smoke/30 pb-6 dark:border-atelier-cream/15 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="text-xs font-bold uppercase text-indigo-300">{t("gallery.feed")}</div>
-              <h2 className="mt-2 text-2xl font-black text-white">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-atelier-vermilion">
+                {t("gallery.feed")}
+              </p>
+              <h2 className="mt-2 font-display text-3xl italic text-atelier-ink dark:text-atelier-cream">
                 {activeTab === "images" ? t("gallery.works") : t("gallery.templates")}
               </h2>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+              <div className="inline-flex border border-atelier-smoke/30 p-1 dark:border-atelier-cream/15">
                 <button
                   type="button"
                   onClick={() => setActiveTab("images")}
-                  className={`inline-flex h-9 items-center rounded-lg px-3 text-xs font-bold transition-colors ${
-                    activeTab === "images" ? "bg-white text-slate-950" : "text-white/65 hover:text-white"
+                  className={`inline-flex h-9 items-center px-3 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+                    activeTab === "images"
+                      ? "bg-atelier-ink text-atelier-cream dark:bg-atelier-cream dark:text-atelier-ink"
+                      : "text-atelier-sepia hover:text-atelier-ink dark:text-atelier-cream/60 dark:hover:text-atelier-cream"
                   }`}
                 >
                   <ImageIcon size={14} className="mr-1.5" />
@@ -627,15 +636,17 @@ export function GalleryPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("templates")}
-                  className={`inline-flex h-9 items-center rounded-lg px-3 text-xs font-bold transition-colors ${
-                    activeTab === "templates" ? "bg-white text-slate-950" : "text-white/65 hover:text-white"
+                  className={`inline-flex h-9 items-center px-3 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+                    activeTab === "templates"
+                      ? "bg-atelier-ink text-atelier-cream dark:bg-atelier-cream dark:text-atelier-ink"
+                      : "text-atelier-sepia hover:text-atelier-ink dark:text-atelier-cream/60 dark:hover:text-atelier-cream"
                   }`}
                 >
                   <Layers3 size={14} className="mr-1.5" />
                   {t("gallery.templatesTab")}
                 </button>
               </div>
-              <div className="text-sm font-medium text-white/55">
+              <div className="font-mono text-xs text-atelier-smoke">
                 {activeTab === "images"
                   ? t("gallery.count", { count: activeCount })
                   : t("gallery.templateCount", { count: activeCount })}
@@ -644,11 +655,11 @@ export function GalleryPage() {
           </div>
 
           {activeQueryLoading ? (
-            <div className="flex min-h-[320px] items-center justify-center text-white/60">
+            <div className="flex min-h-[320px] items-center justify-center text-atelier-smoke">
               <Loader2 size={28} className="animate-spin" />
             </div>
           ) : activeQueryError ? (
-            <div className="flex min-h-[320px] items-center justify-center px-6 text-sm font-medium text-red-200">
+            <div className="flex min-h-[320px] items-center justify-center px-6 text-sm font-medium text-atelier-vermilion-dark dark:text-atelier-vermilion">
               {activeTab === "images" ? t("gallery.loadFailed") : t("gallery.templateLoadFailed")}
             </div>
           ) : activeTab === "images" ? (
@@ -704,9 +715,16 @@ export function GalleryPage() {
                 })}
               </div>
             ) : (
-              <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-sm text-white/60">
-                <ImageIcon size={30} className="mb-4 text-indigo-300" />
-                <div>{t("gallery.empty")}</div>
+              <div className="flex min-h-[320px] flex-col items-center justify-center border border-dashed border-atelier-smoke/40 bg-atelier-paper px-8 py-16 text-center dark:border-atelier-cream/15 dark:bg-[#221A14]">
+                <span
+                  aria-hidden="true"
+                  className="mb-6 font-display text-6xl italic leading-none text-atelier-smoke"
+                >
+                  ❦
+                </span>
+                <p className="font-display text-xl italic text-atelier-ink dark:text-atelier-cream">
+                  {t("gallery.empty")}
+                </p>
               </div>
             )
           ) : templates.length ? (
@@ -752,9 +770,16 @@ export function GalleryPage() {
               ))}
             </div>
           ) : (
-            <div className="flex min-h-[320px] flex-col items-center justify-center px-6 text-sm text-white/60">
-              <Layers3 size={30} className="mb-4 text-indigo-300" />
-              <div>{t("gallery.templateEmpty")}</div>
+            <div className="flex min-h-[320px] flex-col items-center justify-center border border-dashed border-atelier-smoke/40 bg-atelier-paper px-8 py-16 text-center dark:border-atelier-cream/15 dark:bg-[#221A14]">
+              <span
+                aria-hidden="true"
+                className="mb-6 font-display text-6xl italic leading-none text-atelier-smoke"
+              >
+                ※
+              </span>
+              <p className="font-display text-xl italic text-atelier-ink dark:text-atelier-cream">
+                {t("gallery.templateEmpty")}
+              </p>
             </div>
           )}
         </section>

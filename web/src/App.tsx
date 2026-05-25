@@ -4,7 +4,10 @@ import { Loader2 } from "lucide-react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { api } from "./lib/api";
+import { LenisProvider } from "./lib/lenis-provider";
 import { PreferencesProvider, useI18n } from "./lib/preferences";
+import { DesktopOnlyPrompt } from "./components/DesktopOnlyPrompt";
+import { useIsDesktop } from "./hooks/useIsDesktop";
 
 const GalleryPage = lazy(() =>
   import("./pages/GalleryPage").then((module) => ({ default: module.GalleryPage })),
@@ -35,7 +38,7 @@ function LoadingScreen() {
   const { t } = useI18n();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-zinc-400 dark:bg-[#060a12] dark:text-slate-400">
+    <div className="flex min-h-screen items-center justify-center bg-atelier-cream text-atelier-smoke dark:bg-[#1A1410] dark:text-atelier-cream/40">
       <Loader2 size={24} className="animate-spin" />
       <span className="sr-only">{t("app.loading")}</span>
     </div>
@@ -114,6 +117,7 @@ function AppRoutes() {
 }
 
 export function App() {
+  const isDesktop = useIsDesktop();
   const queryClient = useMemo(
     () =>
       new QueryClient({
@@ -126,13 +130,19 @@ export function App() {
     [],
   );
 
+  if (!isDesktop) {
+    return <DesktopOnlyPrompt />;
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider>
         <BrowserRouter>
-          <div className="min-h-screen bg-white font-sans text-zinc-900 selection:bg-zinc-200 dark:bg-[#060a12] dark:text-slate-100 dark:selection:bg-indigo-500/30">
-            <AppRoutes />
-          </div>
+          <LenisProvider>
+            <div className="min-h-screen bg-atelier-cream font-body text-atelier-ink selection:bg-atelier-vermilion/20 dark:bg-[#1A1410] dark:text-atelier-cream dark:selection:bg-atelier-vermilion/30">
+              <AppRoutes />
+            </div>
+          </LenisProvider>
         </BrowserRouter>
       </PreferencesProvider>
     </QueryClientProvider>
