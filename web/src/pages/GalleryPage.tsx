@@ -141,59 +141,59 @@ function GalleryTemplatePreviewDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/86 p-2 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-atelier-ink/86 p-2 backdrop-blur-sm sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={t("gallery.templatePreviewLabel")}
       onClick={onClose}
     >
       <div
-        className="grid h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-full max-w-[calc(100vw-1rem)] min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,44svh)] overflow-hidden rounded-lg bg-white shadow-2xl sm:h-[calc(100svh-2rem)] sm:max-h-[calc(100svh-2rem)] sm:max-w-[calc(100vw-2rem)] lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] lg:grid-rows-1 xl:max-w-[94rem]"
+        className="grid h-[calc(100svh-1rem)] max-h-[calc(100svh-1rem)] w-full max-w-[calc(100vw-1rem)] min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,44svh)] overflow-hidden rounded-paper-lg bg-atelier-paper shadow-paper-lg dark:bg-[#1F1812] sm:h-[calc(100svh-2rem)] sm:max-h-[calc(100svh-2rem)] sm:max-w-[calc(100vw-2rem)] lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] lg:grid-rows-1 xl:max-w-[94rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="min-h-0 overflow-auto bg-zinc-50 dark:bg-[#0b1220]">
+        <div className="min-h-0 overflow-auto bg-atelier-cream dark:bg-[#1A1410]">
           <TemplateGraphPreview template={template} variant="dialog" />
         </div>
-        <aside className="flex min-h-0 flex-col border-t border-slate-200 lg:border-l lg:border-t-0">
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+        <aside className="flex min-h-0 flex-col border-t border-atelier-smoke/30 dark:border-atelier-cream/15 lg:border-l lg:border-t-0">
+          <div className="flex items-center justify-between border-b border-atelier-smoke/30 px-4 py-3 dark:border-atelier-cream/15">
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-slate-950">{template.title}</div>
-              <div className="mt-0.5 truncate text-xs text-slate-500">
+              <div className="truncate font-display text-base italic text-atelier-ink dark:text-atelier-cream">{template.title}</div>
+              <div className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">
                 {galleryTemplateAuthorLabelForLocale(template, locale)}
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-atelier-smoke transition-colors hover:bg-atelier-cream hover:text-atelier-ink dark:text-atelier-cream/60 dark:hover:bg-atelier-cream/10 dark:hover:text-atelier-cream"
               aria-label={t("gallery.closePreview")}
             >
               <X size={18} />
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            <div className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">
+            <div className="whitespace-pre-wrap break-words text-sm leading-6 text-atelier-sepia dark:text-atelier-cream/80">
               {template.description || t("gallery.templateNoDescription")}
             </div>
             <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
               {templateMetadataRows(template, locale, t).map(([label, value]) => (
                 <div key={label} className="min-w-0">
-                  <div className="font-semibold text-slate-400">{t(label)}</div>
-                  <div className="mt-1 truncate font-medium text-slate-800">{value}</div>
+                  <div className="font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">{t(label)}</div>
+                  <div className="mt-1 truncate font-medium text-atelier-sepia dark:text-atelier-cream/80">{value}</div>
                 </div>
               ))}
             </div>
-            <div className="mt-6 border-t border-slate-200 pt-4">
-              <div className="text-xs font-bold uppercase text-slate-400">{t("gallery.templateNodes")}</div>
+            <div className="mt-6 border-t border-atelier-smoke/30 pt-4 dark:border-atelier-cream/15">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">{t("gallery.templateNodes")}</div>
               <div className="mt-3 space-y-2">
                 {template.preview_nodes.map((node) => {
                   const primaryText = templateNodePrimaryText(node);
                   return (
-                    <div key={node.key} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                    <div key={node.key} className="border border-atelier-smoke/30 bg-atelier-cream p-3 dark:border-atelier-cream/15 dark:bg-atelier-cream/5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="truncate text-xs font-bold text-slate-900">{node.title}</div>
-                          <div className="mt-1 text-[11px] font-medium text-slate-500">
+                          <div className="truncate text-xs font-semibold text-atelier-ink dark:text-atelier-cream">{node.title}</div>
+                          <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">
                             {localizedWorkflowNodeTypeLabel(node.node_type, t)}
                             {node.size ? ` · ${node.size}` : ""}
                           </div>
@@ -202,14 +202,14 @@ function GalleryTemplatePreviewDialog({
                           <button
                             type="button"
                             onClick={() => void copyNodeText(node.key, primaryText)}
-                            className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 transition-colors hover:border-indigo-200 hover:text-indigo-700"
+                            className="shrink-0 border border-atelier-smoke/30 bg-atelier-paper px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-atelier-sepia transition-colors hover:border-atelier-vermilion/30 hover:text-atelier-vermilion dark:border-atelier-cream/15 dark:bg-atelier-cream/5 dark:text-atelier-cream/80 dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-vermilion"
                           >
                             {copiedNodeKey === node.key ? t("gallery.copied") : t("gallery.copy")}
                           </button>
                         ) : null}
                       </div>
                       {primaryText ? (
-                        <div className="mt-2 line-clamp-3 whitespace-pre-wrap text-xs leading-5 text-slate-600">
+                        <div className="mt-2 line-clamp-3 whitespace-pre-wrap text-xs leading-5 text-atelier-sepia dark:text-atelier-cream/60">
                           {primaryText}
                         </div>
                       ) : null}
@@ -219,15 +219,15 @@ function GalleryTemplatePreviewDialog({
               </div>
             </div>
           </div>
-          <div className="space-y-2 border-t border-slate-200 p-4">
-            {actionError ? <div className="text-xs font-medium text-red-600">{actionError}</div> : null}
-            {actionMessage ? <div className="text-xs font-medium text-emerald-700">{actionMessage}</div> : null}
+          <div className="space-y-2 border-t border-atelier-smoke/30 p-4 dark:border-atelier-cream/15">
+            {actionError ? <div className="text-xs font-medium text-atelier-vermilion-dark dark:text-atelier-vermilion">{actionError}</div> : null}
+            {actionMessage ? <div className="text-xs font-medium text-atelier-sepia dark:text-atelier-cream/80">{actionMessage}</div> : null}
             {canImport ? (
               <button
                 type="button"
                 onClick={() => onImport(template)}
                 disabled={importBusy}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center bg-atelier-ink px-3 py-2.5 font-display text-base italic text-atelier-cream transition-colors hover:bg-atelier-vermilion disabled:opacity-60 dark:bg-atelier-cream dark:text-atelier-ink dark:hover:bg-atelier-vermilion dark:hover:text-atelier-cream"
               >
                 {importBusy ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Import size={16} className="mr-2" />}
                 {t("gallery.importTemplate")}
@@ -454,13 +454,13 @@ export function GalleryPage() {
     }
     return (
       <>
-        {actionError ? <div className="text-xs font-medium text-red-600">{actionError}</div> : null}
-        {actionMessage ? <div className="text-xs font-medium text-emerald-700">{actionMessage}</div> : null}
+        {actionError ? <div className="text-xs font-medium text-atelier-vermilion-dark dark:text-atelier-vermilion">{actionError}</div> : null}
+        {actionMessage ? <div className="text-xs font-medium text-atelier-sepia dark:text-atelier-cream/80">{actionMessage}</div> : null}
         <button
           type="button"
           onClick={() => importEntryMutation.mutate(previewEntry.id)}
           disabled={importEntryMutation.isPending}
-          className="inline-flex w-full items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-3 py-2.5 font-display text-base italic text-atelier-vermilion transition-colors hover:bg-atelier-vermilion/10 disabled:opacity-60 dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/12 dark:text-atelier-vermilion dark:hover:bg-atelier-vermilion/20"
         >
           {importEntryMutation.isPending ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Import size={16} className="mr-2" />}
           {t("gallery.importImage")}
@@ -474,7 +474,7 @@ export function GalleryPage() {
               }
             }}
             disabled={deleteEntryMutation.isPending}
-            className="inline-flex w-full items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-3 py-2.5 font-display text-base italic text-atelier-vermilion-dark transition-colors hover:bg-atelier-vermilion-dark/10 disabled:opacity-60 dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion dark:hover:bg-atelier-vermilion-dark/20"
           >
             {deleteEntryMutation.isPending ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Trash2 size={16} className="mr-2" />}
             {t("gallery.delete")}
@@ -483,7 +483,7 @@ export function GalleryPage() {
         {canReportEntry(previewEntry) ? (
           reportingEntryId === previewEntry.id ? (
             <form
-              className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3"
+              className="space-y-2 border border-atelier-smoke/30 bg-atelier-cream p-3 dark:border-atelier-cream/15 dark:bg-atelier-cream/5"
               onSubmit={(event) => {
                 event.preventDefault();
                 reportEntryMutation.mutate({
@@ -493,12 +493,12 @@ export function GalleryPage() {
                 });
               }}
             >
-              <label className="block text-xs font-semibold text-slate-500">
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">
                 <span className="sr-only">{t("gallery.reportReason")}</span>
                 <select
                   value={reportReasonCode}
                   onChange={(event) => setReportReasonCode(event.target.value as (typeof REPORT_REASON_OPTIONS)[number])}
-                  className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-800 outline-none"
+                  className="h-9 w-full border border-atelier-smoke/30 bg-atelier-paper px-2 text-xs font-medium text-atelier-sepia outline-none focus:border-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-cream"
                 >
                   {REPORT_REASON_OPTIONS.map((reason) => (
                     <option key={reason} value={reason}>
@@ -512,20 +512,20 @@ export function GalleryPage() {
                 onChange={(event) => setReportReasonText(event.target.value)}
                 placeholder={t("gallery.reportPlaceholder")}
                 maxLength={500}
-                className="min-h-20 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-xs text-slate-800 outline-none"
+                className="min-h-20 w-full border border-atelier-smoke/30 bg-atelier-paper px-2 py-2 text-xs text-atelier-sepia outline-none focus:border-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-cream"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setReportingEntryId(null)}
-                  className="rounded-md px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-white"
+                  className="px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-atelier-smoke hover:bg-atelier-paper hover:text-atelier-ink dark:text-atelier-cream/60 dark:hover:bg-atelier-cream/10 dark:hover:text-atelier-cream"
                 >
                   {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={reportEntryMutation.isPending}
-                  className="inline-flex rounded-md bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                  className="inline-flex bg-atelier-ink px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-atelier-cream transition-colors hover:bg-atelier-vermilion disabled:opacity-60 dark:bg-atelier-cream dark:text-atelier-ink dark:hover:bg-atelier-vermilion dark:hover:text-atelier-cream"
                 >
                   {reportEntryMutation.isPending ? <Loader2 size={13} className="mr-1.5 animate-spin" /> : null}
                   {t("gallery.reportSubmit")}
@@ -540,7 +540,7 @@ export function GalleryPage() {
                 setActionMessage("");
                 setReportingEntryId(previewEntry.id);
               }}
-              className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-amber-200 hover:text-amber-700"
+              className="inline-flex w-full items-center justify-center border border-atelier-smoke/30 bg-atelier-paper px-3 py-2.5 font-mono text-[10px] uppercase tracking-wider text-atelier-sepia transition-colors hover:border-atelier-vermilion/40 hover:text-atelier-vermilion dark:border-atelier-cream/15 dark:bg-atelier-cream/5 dark:text-atelier-cream/80 dark:hover:border-atelier-vermilion/40 dark:hover:text-atelier-vermilion"
             >
               <Flag size={16} className="mr-2" />
               {t("gallery.report")}
@@ -681,10 +681,10 @@ export function GalleryPage() {
                       type="button"
                       onClick={() => openEntry(entry.id)}
                       aria-label={`${t("gallery.openDetail")}: ${authorLabel}`}
-                      className={`group relative min-w-0 overflow-hidden rounded-md bg-slate-900 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#0b4eea]/20 ${tileLayout.className}`}
+                      className={`group relative min-w-0 overflow-hidden bg-atelier-ink text-left shadow-paper-sm transition duration-300 hover:-translate-y-1 hover:shadow-paper-lg ${tileLayout.className}`}
                       style={tileStyle}
                     >
-                      <div className="relative h-full overflow-hidden bg-slate-900">
+                      <div className="relative h-full overflow-hidden bg-atelier-ink">
                         <img
                           src={api.toApiUrl(entry.image.thumbnail_url)}
                           alt={entry.prompt ?? entry.image.original_filename}
@@ -692,22 +692,22 @@ export function GalleryPage() {
                           decoding="async"
                           className="h-full w-full object-contain transition duration-300"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/82 via-slate-950/10 to-transparent opacity-80 transition-opacity group-hover:opacity-95" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-atelier-ink/82 via-atelier-ink/10 to-transparent opacity-80 transition-opacity group-hover:opacity-95" />
                         {entry.forked_from_entry_id ? (
-                          <div className="absolute left-3 top-3 rounded-full bg-white/88 px-2.5 py-1 text-[11px] font-semibold text-slate-900 shadow-sm">
+                          <div className="absolute left-3 top-3 rounded-full bg-atelier-cream/88 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-atelier-ink shadow-paper-sm">
                             {t("gallery.remix")}
                           </div>
                         ) : null}
-                        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                          <div className="line-clamp-2 text-sm font-semibold leading-5">
+                        <div className="absolute inset-x-0 bottom-0 p-4 text-atelier-cream">
+                          <div className="line-clamp-2 font-display text-base italic leading-5">
                             {entry.prompt ?? entry.image.original_filename}
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/75">
+                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-wider text-atelier-cream/75">
                             <span>{authorLabel}</span>
                             <span>{galleryEntrySizeLabel(entry, locale)}</span>
                             <span>{formatDateTime(entry.created_at)}</span>
                           </div>
-                          <div className="mt-1 truncate text-[11px] text-white/58">{entry.image_session_title}</div>
+                          <div className="mt-1 truncate text-[11px] text-atelier-cream/60">{entry.image_session_title}</div>
                         </div>
                       </div>
                     </button>
@@ -734,35 +734,35 @@ export function GalleryPage() {
                   key={templatePublicId(template)}
                   type="button"
                   onClick={() => openTemplate(template)}
-                  className="group overflow-hidden rounded-md border border-white/10 bg-white text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-2xl hover:shadow-[#0b4eea]/20"
+                  className="group overflow-hidden border border-atelier-smoke/30 bg-atelier-paper text-left shadow-paper-sm transition duration-300 hover:-translate-y-1 hover:border-atelier-vermilion/40 hover:shadow-paper-lg dark:border-atelier-cream/15 dark:bg-atelier-cream/5"
                 >
                   <TemplateGraphPreview template={template} />
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <h3 className="line-clamp-2 text-sm font-bold leading-5 text-slate-950">{template.title}</h3>
-                        <div className="mt-1 text-xs font-medium text-slate-500">
+                        <h3 className="line-clamp-2 font-display text-base italic leading-5 text-atelier-ink dark:text-atelier-cream">{template.title}</h3>
+                        <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">
                           {galleryTemplateAuthorLabelForLocale(template, locale)}
                         </div>
                       </div>
                       {template.forked_from_template_id ? (
-                        <span className="shrink-0 rounded-full border border-indigo-100 bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
+                        <span className="shrink-0 rounded-full border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/12 dark:text-atelier-vermilion">
                           {t("gallery.remix")}
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">
+                    <div className="mt-3 line-clamp-2 text-xs leading-5 text-atelier-sepia dark:text-atelier-cream/60">
                       {template.description || t("gallery.templateNoDescription")}
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-500">
-                      <span className="rounded-full bg-slate-100 px-2 py-1">
+                    <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-wider text-atelier-smoke dark:text-atelier-cream/40">
+                      <span className="rounded-full bg-atelier-cream px-2 py-1 dark:bg-atelier-cream/10">
                         {t("gallery.templateNodeCount", { count: template.preview_nodes.length })}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-2 py-1">
+                      <span className="rounded-full bg-atelier-cream px-2 py-1 dark:bg-atelier-cream/10">
                         {t("gallery.templateEdgeCount", { count: template.preview_edges.length })}
                       </span>
                       {template.shared_at ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-1">{formatDateTime(template.shared_at)}</span>
+                        <span className="rounded-full bg-atelier-cream px-2 py-1 dark:bg-atelier-cream/10">{formatDateTime(template.shared_at)}</span>
                       ) : null}
                     </div>
                   </div>
