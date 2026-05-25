@@ -64,6 +64,8 @@ class ResolvedTextProviderConfig:
 class ProviderCredentialOverride:
     api_key: str
     base_url: str
+    image_model: str | None = None
+    token_group: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -424,6 +426,9 @@ def resolve_image_provider_config(
         ensure_provider_config_bootstrapped(session)
         binding = _require_binding(session, IMAGE_PURPOSE)
         kind = binding.provider_kind
+        override_image_model = (
+            _optional_str(credential_override.image_model) if credential_override is not None else None
+        )
         if kind == "mock":
             return ResolvedImageProviderConfig(
                 provider_kind="mock",
@@ -438,7 +443,8 @@ def resolve_image_provider_config(
         _require_capability(profile, capability)
         return ResolvedImageProviderConfig(
             provider_kind=kind,  # type: ignore[arg-type]
-            model=_require_text_value(
+            model=override_image_model
+            or _require_text_value(
                 binding.model_settings_json,
                 "model",
                 "图片模型未配置",

@@ -41,6 +41,8 @@ def verify_new_api_sso_ticket(ticket: str, *, settings: Settings) -> NewApiSessi
         raise NewApiSsoError("New API SSO 票据无效或已过期")
 
     payload = _unwrap_payload(response.json())
+    token_payload = _first_mapping(payload, "token", "token_info", "productflow_token")
+    productflow_payload = _first_mapping(payload, "productflow", "product_flow", "atelier")
     user_id = _first_text(payload, "user_id", "id", "uid")
     if user_id is None:
         raise NewApiSsoError("New API SSO 响应缺少用户信息")
@@ -51,9 +53,19 @@ def verify_new_api_sso_ticket(ticket: str, *, settings: Settings) -> NewApiSessi
         email=_first_text(payload, "email"),
         group=_first_text(payload, "group", "user_group"),
         role=_first_text(payload, "role"),
-        token=_first_text(payload, "token", "api_key", "key"),
-        token_id=_first_text(payload, "token_id"),
-        token_name=_first_text(payload, "token_name"),
+        token=_first_text(payload, "token", "api_key", "key") or _first_text(token_payload, "token", "api_key", "key"),
+        token_id=_first_text(payload, "token_id") or _first_text(token_payload, "id", "token_id"),
+        token_name=_first_text(payload, "token_name") or _first_text(token_payload, "name", "token_name"),
+        token_group=(
+            _first_text(payload, "token_group", "selected_token_group")
+            or _first_text(productflow_payload, "token_group", "selected_token_group")
+            or _first_text(token_payload, "group", "token_group")
+        ),
+        image_model=(
+            _first_text(payload, "image_model", "selected_image_model")
+            or _first_text(productflow_payload, "image_model", "selected_image_model")
+            or _first_text(token_payload, "image_model", "selected_image_model", "model")
+        ),
         expires_in_seconds=_first_int(payload, "expires_in", "session_expires_in"),
     )
 
@@ -74,10 +86,24 @@ def _unwrap_payload(payload: object) -> dict:
     return payload
 
 
-def _first_text(payload: dict, *keys: str) -> str | None:
+def _first_mapping(payload: dict | None, *keys: str) -> dict | None:
+    if payload is None:
+        return None
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, dict):
+            return value
+    return None
+
+
+def _first_text(payload: dict | None, *keys: str) -> str | None:
+    if payload is None:
+        return None
     for key in keys:
         value = payload.get(key)
         if value is None:
+            continue
+        if isinstance(value, dict | list | tuple | set):
             continue
         normalized = str(value).strip()
         if normalized:
@@ -85,7 +111,9 @@ def _first_text(payload: dict, *keys: str) -> str | None:
     return None
 
 
-def _first_int(payload: dict, *keys: str) -> int | None:
+def _first_int(payload: dict | None, *keys: str) -> int | None:
+    if payload is None:
+        return None
     for key in keys:
         value = payload.get(key)
         if value is None or value == "":

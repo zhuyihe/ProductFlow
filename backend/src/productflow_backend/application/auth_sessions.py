@@ -27,6 +27,8 @@ class Principal:
     new_api_token_id: str | None
     new_api_token_name: str | None
     new_api_token: str | None = field(repr=False)
+    new_api_token_group: str | None = None
+    new_api_image_model: str | None = None
 
     @property
     def is_admin(self) -> bool:
@@ -75,6 +77,8 @@ class NewApiSessionClaims:
     token: str | None = field(default=None, repr=False)
     token_id: str | None = None
     token_name: str | None = None
+    token_group: str | None = None
+    image_model: str | None = None
     expires_in_seconds: int | None = None
 
 
@@ -129,6 +133,8 @@ def create_new_api_user_session(session: Session, claims: NewApiSessionClaims) -
         new_api_token=claims.token,
         new_api_token_id=claims.token_id,
         new_api_token_name=claims.token_name,
+        new_api_token_group=claims.token_group,
+        new_api_image_model=claims.image_model,
         expires_at=utc_now() + timedelta(seconds=ttl),
     )
     session.add(auth_session)
@@ -166,4 +172,6 @@ def load_principal(session: Session, auth_session_id: str | None) -> Principal |
         new_api_token_id=auth_session.new_api_token_id,
         new_api_token_name=auth_session.new_api_token_name,
         new_api_token=auth_session.new_api_token,
+        new_api_token_group=auth_session.new_api_token_group,
+        new_api_image_model=auth_session.new_api_image_model,
     )

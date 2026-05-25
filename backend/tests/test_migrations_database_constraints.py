@@ -184,6 +184,10 @@ def test_auth_session_model_matches_migration_contract() -> None:
     assert table.c.new_api_token_id.nullable
     assert table.c.new_api_token_name.type.length == 120
     assert table.c.new_api_token_name.nullable
+    assert table.c.new_api_token_group.type.length == 120
+    assert table.c.new_api_token_group.nullable
+    assert table.c.new_api_image_model.type.length == 255
+    assert table.c.new_api_image_model.nullable
     assert table.c.new_api_token.nullable
     assert table.c.revoked_at.nullable
     assert table.c.expires_at.nullable
@@ -254,6 +258,10 @@ def test_generation_task_new_api_token_context_model_columns_match_migration_con
         assert table.c.new_api_token_id.nullable
         assert table.c.new_api_token_name.type.length == 120
         assert table.c.new_api_token_name.nullable
+        assert table.c.new_api_token_group.type.length == 120
+        assert table.c.new_api_token_group.nullable
+        assert table.c.new_api_image_model.type.length == 255
+        assert table.c.new_api_image_model.nullable
         assert table.c.new_api_token.nullable
         indexes = {index.name: index for index in table.indexes}
         assert index_name in indexes
@@ -301,6 +309,8 @@ def test_auth_session_migration_schema_and_downgrade_support_sqlite(tmp_path: Pa
     assert columns["id"]["nullable"] is False
     assert columns["principal_kind"]["nullable"] is False
     assert columns["new_api_user_id"]["nullable"] is True
+    assert columns["new_api_token_group"]["nullable"] is True
+    assert columns["new_api_image_model"]["nullable"] is True
     assert columns["new_api_token"]["nullable"] is True
     assert columns["revoked_at"]["nullable"] is True
     assert columns["expires_at"]["nullable"] is True
@@ -390,6 +400,8 @@ def test_generation_task_token_context_migration_schema_and_downgrade_support_sq
         assert columns["new_api_user_id"]["nullable"] is True
         assert columns["new_api_token_id"]["nullable"] is True
         assert columns["new_api_token_name"]["nullable"] is True
+        assert columns["new_api_token_group"]["nullable"] is True
+        assert columns["new_api_image_model"]["nullable"] is True
         assert columns["new_api_token"]["nullable"] is True
         indexes = {index["name"]: index for index in inspector.get_indexes(table_name)}
         assert indexes[index_name]["column_names"] == ["new_api_user_id"]
@@ -400,7 +412,14 @@ def test_generation_task_token_context_migration_schema_and_downgrade_support_sq
     inspector = sa.inspect(engine)
     for table_name in expected:
         columns = {column["name"] for column in inspector.get_columns(table_name)}
-        assert not {"new_api_user_id", "new_api_token_id", "new_api_token_name", "new_api_token"} & columns
+        assert not {
+            "new_api_user_id",
+            "new_api_token_id",
+            "new_api_token_name",
+            "new_api_token_group",
+            "new_api_image_model",
+            "new_api_token",
+        } & columns
     engine.dispose()
     get_settings.cache_clear()
 

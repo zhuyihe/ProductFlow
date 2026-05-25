@@ -1005,7 +1005,7 @@ def test_image_session_generation_task_uses_current_principal_new_api_token(
     monkeypatch.setenv("IMAGE_PROVIDER_KIND", "openai_images")
     monkeypatch.setenv("IMAGE_API_KEY", "shared-admin-key")
     monkeypatch.setenv("IMAGE_BASE_URL", "https://upstream.example/v1")
-    monkeypatch.setenv("IMAGE_GENERATE_MODEL", "gpt-image-2")
+    monkeypatch.setenv("IMAGE_GENERATE_MODEL", "gpt-image-1")
     get_settings.cache_clear()
 
     from productflow_backend.application.auth_sessions import Principal
@@ -1046,6 +1046,8 @@ def test_image_session_generation_task_uses_current_principal_new_api_token(
         new_api_token_id=token_id,
         new_api_token_name=token_name,
         new_api_token=token,
+        new_api_token_group="GPT-Image-2",
+        new_api_image_model="gpt-image-2",
     )
     result = create_image_session_generation_task(
         db_session,
@@ -1064,6 +1066,8 @@ def test_image_session_generation_task_uses_current_principal_new_api_token(
     assert task.new_api_user_id == new_api_user_id
     assert task.new_api_token_id == token_id
     assert task.new_api_token_name == token_name
+    assert task.new_api_token_group == "GPT-Image-2"
+    assert task.new_api_image_model == "gpt-image-2"
     assert task.new_api_token == token
     assert client_kwargs == [{"api_key": token, "base_url": "https://relay.example/v1"}]
     assert calls == [

@@ -46,6 +46,7 @@ import type {
   ProviderProfileCreateRequest,
   ProviderProfileUpdateRequest,
   ProviderType,
+  SessionState,
   SettingsExportPayload,
   SettingsImportPreviewResponse,
 } from "../lib/types";
@@ -1542,12 +1543,15 @@ interface ImageBindingSectionProps {
   data: ProviderConfigResponse | undefined;
   draft: ImageBindingDraft;
   pending: boolean;
+  session?: SessionState | null;
   onChange: (next: ImageBindingDraft) => void;
   onSave: () => void;
 }
 
-function ImageBindingSection({ data, draft, pending, onChange, onSave }: ImageBindingSectionProps) {
+function ImageBindingSection({ data, draft, pending, session, onChange, onSave }: ImageBindingSectionProps) {
   const { t } = useI18n();
+  const ssoImageModel = session?.new_api_image_model?.trim();
+  const ssoTokenGroup = session?.new_api_token_group?.trim();
   const requiredCapability =
     draft.provider_kind === "openai_responses"
       ? "image_responses"
@@ -1594,14 +1598,42 @@ function ImageBindingSection({ data, draft, pending, onChange, onSave }: ImageBi
           />
         </SettingsFormField>
       ) : null}
-      <SettingsFormField label={t("settings.provider.imageModelLabel")}>
-        <input
-          value={draft.model}
-          onChange={(event) => onChange({ ...draft, model: event.target.value })}
-          className={INPUT_CLASS}
-          placeholder={t("settings.provider.imageModelPlaceholder")}
-        />
-      </SettingsFormField>
+      {ssoImageModel ? (
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-50">
+          <div className="font-semibold">{t("settings.provider.ssoModelSourceTitle")}</div>
+          <p className="mt-1 text-indigo-800 dark:text-violet-100/80">
+            {t("settings.provider.ssoModelSourceDescription")}
+          </p>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-violet-200">
+                {t("settings.provider.ssoTokenGroupLabel")}
+              </dt>
+              <dd className="mt-1 font-mono text-sm">{ssoTokenGroup || t("settings.provider.ssoMissingValue")}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-violet-200">
+                {t("settings.provider.ssoImageModelLabel")}
+              </dt>
+              <dd className="mt-1 font-mono text-sm">{ssoImageModel}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-indigo-700 dark:text-violet-100/70">
+            {t("settings.provider.localImageModelFallbackHelp", {
+              model: draft.model || t("settings.provider.ssoMissingValue"),
+            })}
+          </p>
+        </div>
+      ) : (
+        <SettingsFormField label={t("settings.provider.imageModelLabel")}>
+          <input
+            value={draft.model}
+            onChange={(event) => onChange({ ...draft, model: event.target.value })}
+            className={INPUT_CLASS}
+            placeholder={t("settings.provider.imageModelPlaceholder")}
+          />
+        </SettingsFormField>
+      )}
       {draft.provider_kind === "google_gemini_image" ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <SettingsFormField label={t("settings.provider.geminiApiVersionLabel")}>
@@ -2354,6 +2386,7 @@ export function SettingsPage() {
                         data={providerConfigQuery.data}
                         draft={imageDraft}
                         pending={providerPending}
+                        session={sessionQuery.data}
                         onChange={(next) => {
                           setImageDraft(next);
                           setSavedMessage("");

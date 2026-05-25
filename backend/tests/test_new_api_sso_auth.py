@@ -69,6 +69,8 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
                         "token": "sk-productflow-secret",
                         "token_id": 77,
                         "token_name": "ProductFlow",
+                        "token_group": "GPT-Image-2",
+                        "image_model": "gpt-image-2",
                         "expires_in": 3600,
                     }
                 }
@@ -93,6 +95,8 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
         "username": "alice",
         "new_api_user_id": "42",
         "new_api_token_id": "77",
+        "new_api_token_group": "GPT-Image-2",
+        "new_api_image_model": "gpt-image-2",
     }
     assert "sk-productflow-secret" not in state.text
 
@@ -103,6 +107,8 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
         assert auth_session.principal_kind == "user"
         assert auth_session.new_api_token == "sk-productflow-secret"
         assert auth_session.new_api_token_name == "ProductFlow"
+        assert auth_session.new_api_token_group == "GPT-Image-2"
+        assert auth_session.new_api_image_model == "gpt-image-2"
         assert 3595 <= (auth_session.expires_at - auth_session.created_at).total_seconds() <= 3605
     finally:
         session.close()

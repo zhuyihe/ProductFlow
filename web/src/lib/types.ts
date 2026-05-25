@@ -39,6 +39,8 @@ export interface SessionState {
   username?: string | null;
   new_api_user_id?: string | null;
   new_api_token_id?: string | null;
+  new_api_token_group?: string | null;
+  new_api_image_model?: string | null;
   sso_start_url?: string | null;
 }
 

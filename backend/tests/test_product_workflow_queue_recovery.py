@@ -130,6 +130,8 @@ def test_start_product_workflow_run_persists_new_api_token_context(
         new_api_token_id=token_id,
         new_api_token_name=token_name,
         new_api_token=token,
+        new_api_token_group="GPT-Image-2",
+        new_api_image_model="gpt-image-2",
     )
 
     kickoff = start_product_workflow_run(db_session, product_id=product.id, principal=principal)
@@ -139,6 +141,8 @@ def test_start_product_workflow_run_persists_new_api_token_context(
     assert run.new_api_user_id == new_api_user_id
     assert run.new_api_token_id == token_id
     assert run.new_api_token_name == token_name
+    assert run.new_api_token_group == "GPT-Image-2"
+    assert run.new_api_image_model == "gpt-image-2"
     assert run.new_api_token == token
 
 

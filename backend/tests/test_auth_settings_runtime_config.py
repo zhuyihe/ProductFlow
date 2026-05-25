@@ -1108,7 +1108,7 @@ def test_resolvers_override_real_provider_credentials_with_current_principal_tok
                     purpose="image",
                     provider_kind="openai_images",
                     provider_profile_id=profile.id,
-                    model_settings_json={"model": "gpt-image-2"},
+                    model_settings_json={"model": "gpt-image-1"},
                     config_json={"images_quality": "high", "images_style": "natural"},
                 ),
             ]
@@ -1130,6 +1130,8 @@ def test_resolvers_override_real_provider_credentials_with_current_principal_tok
                 new_api_token_id="77",
                 new_api_token_name="ProductFlow",
                 new_api_token="sk-user-token",
+                new_api_token_group="GPT-Image-2",
+                new_api_image_model="gpt-image-2",
             ),
             "sk-user-token",
         ),
@@ -1145,6 +1147,8 @@ def test_resolvers_override_real_provider_credentials_with_current_principal_tok
                 new_api_token_id="88",
                 new_api_token_name="ProductFlow Admin",
                 new_api_token="sk-admin-token",
+                new_api_token_group="GPT-Image-2",
+                new_api_image_model="gpt-image-2",
             ),
             "sk-admin-token",
         ),
@@ -1157,6 +1161,8 @@ def test_resolvers_override_real_provider_credentials_with_current_principal_tok
         assert credential_override is not None
         assert credential_override.api_key == expected_token
         assert credential_override.base_url == "https://relay.example/v1"
+        assert credential_override.token_group == "GPT-Image-2"
+        assert credential_override.image_model == "gpt-image-2"
 
         text_config = resolve_text_provider_config(credential_override)
         assert text_config.api_key == expected_token

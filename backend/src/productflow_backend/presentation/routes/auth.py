@@ -47,6 +47,8 @@ def get_session_state(
         username=principal.username if principal is not None else None,
         new_api_user_id=principal.new_api_user_id if principal is not None else None,
         new_api_token_id=principal.new_api_token_id if principal is not None else None,
+        new_api_token_group=principal.new_api_token_group if principal is not None else None,
+        new_api_image_model=principal.new_api_image_model if principal is not None else None,
         sso_start_url=_configured_sso_start_url(runtime_settings),
     )
 

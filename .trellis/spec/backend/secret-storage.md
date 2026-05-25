@@ -116,8 +116,9 @@ Rules:
 
 - `ProviderExecutionContext` may carry `new_api_user_id`, token metadata, and the decrypted `new_api_token`; the token
   field must stay `repr=False` and must never be returned through API responses.
-- Atelier provider profiles supply model names and provider-specific settings. For interactive SSO generation, the
-  API key and base URL must be overridden with `new_api_token` and the configured New API relay URL.
+- Atelier provider profiles supply fallback model names and provider-specific settings. For interactive SSO image
+  generation, the API key and base URL must be overridden with `new_api_token` and the configured New API relay URL; when
+  the SSO session carries a New API-selected image model, that model is the effective image model.
 - Durable `workflow_runs` and `image_session_generation_tasks` store the token snapshot chosen at submit time so retries
   keep the original billing identity.
 - A CLI/bootstrap admin session has no New API token. It may be used to recover settings, but it must not silently fall
@@ -138,6 +139,8 @@ A change that touches secrets is in scope. Ask:
    the production-mode validator?
 5. Does an interactive provider call have an SSO principal? If yes, does it use
    that principal's New API token rather than Atelier's shared provider key?
+6. For SSO image generation, does the effective image model come from the SSO
+   session claim when present rather than a stale local provider binding?
 
 ## Anti-Patterns (Do Not Reintroduce)
 
