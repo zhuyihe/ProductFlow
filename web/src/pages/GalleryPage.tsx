@@ -12,6 +12,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { GalleryImagePreviewDialog } from "../components/GalleryImagePreviewDialog";
+import { MiniHero } from "../components/MiniHero";
 import { TopNav } from "../components/TopNav";
 import { api, ApiError } from "../lib/api";
 import { formatDateTime } from "../lib/format";
@@ -577,38 +578,13 @@ export function GalleryPage() {
         session={sessionQuery.data}
       />
 
-      <main className="w-full">
-        <section className="relative isolate min-h-[420px] overflow-hidden bg-atelier-kraft sm:min-h-[480px] lg:min-h-[460px] dark:bg-[#241B14]">
-          <img
-            src="/hero.png"
-            alt=""
-            decoding="async"
-            className="absolute inset-y-0 right-0 h-full w-full object-cover object-center opacity-35 sm:opacity-50 lg:w-[62%] lg:opacity-100"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,#E8DDC4_0%,rgba(232,221,196,0.99)_36%,rgba(232,221,196,0.72)_52%,rgba(232,221,196,0.08)_76%,rgba(232,221,196,0)_100%)] dark:bg-[linear-gradient(90deg,#241B14_0%,rgba(36,27,20,0.99)_36%,rgba(36,27,20,0.72)_52%,rgba(36,27,20,0.08)_76%,rgba(36,27,20,0)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-atelier-smoke/30" />
-          <div className="relative z-10 mx-auto grid min-h-[420px] max-w-7xl grid-cols-1 px-6 py-14 sm:min-h-[480px] sm:px-10 lg:min-h-[460px] lg:grid-cols-[minmax(0,0.43fr)_minmax(360px,0.57fr)] lg:items-center lg:px-14">
-            <div className="max-w-xl">
-              <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-atelier-smoke">
-                {t("gallery.feed")}
-              </p>
-              <h1 className="mt-6 font-display text-7xl italic leading-none text-atelier-ink sm:text-8xl lg:text-[7rem] dark:text-atelier-cream">
-                {t("gallery.title")}
-              </h1>
-              <p className="mt-6 max-w-md text-base leading-relaxed text-atelier-sepia dark:text-atelier-cream/70">
-                {t("gallery.description")}
-              </p>
-              <span
-                aria-hidden="true"
-                className="mt-8 inline-block font-display text-3xl text-atelier-ink/30 dark:text-atelier-cream/30"
-              >
-                ❦
-              </span>
-            </div>
-            <div className="hidden lg:block" />
-          </div>
-        </section>
+      <MiniHero
+        title="GALLERY"
+        meta="Recent works · 2026"
+        ornament="❦"
+      />
 
+      <main className="w-full">
         <section className="bg-atelier-cream px-4 py-12 sm:px-6 lg:px-10 dark:bg-[#1A1410]">
           <div className="mx-auto mb-8 flex max-w-7xl flex-col gap-4 border-b border-atelier-smoke/30 pb-6 dark:border-atelier-cream/15 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -670,9 +646,16 @@ export function GalleryPage() {
               >
                 {entries.map((entry, index) => {
                   const tileLayout = galleryTileLayout(entry, index, gridContentWidth ?? undefined);
+                  const isFirst = index === 0;
+                  const effectiveRowSpan = isFirst
+                    ? Math.round(tileLayout.rowSpan * 1.5)
+                    : tileLayout.rowSpan;
+                  const tileColSpan = isFirst
+                    ? "sm:col-span-2 lg:col-span-6"
+                    : tileLayout.className;
                   const tileStyle: CSSProperties = {
                     aspectRatio: tileLayout.aspectRatio,
-                    ...(isDesktopGrid ? { gridRowEnd: `span ${tileLayout.rowSpan}` } : {}),
+                    ...(isDesktopGrid ? { gridRowEnd: `span ${effectiveRowSpan}` } : {}),
                   };
                   const authorLabel = galleryEntryAuthorLabelForLocale(entry, locale);
                   return (
@@ -681,7 +664,7 @@ export function GalleryPage() {
                       type="button"
                       onClick={() => openEntry(entry.id)}
                       aria-label={`${t("gallery.openDetail")}: ${authorLabel}`}
-                      className={`group relative min-w-0 overflow-hidden bg-atelier-ink text-left shadow-paper-sm transition duration-300 hover:-translate-y-1 hover:shadow-paper-lg ${tileLayout.className}`}
+                      className={`group relative min-w-0 overflow-hidden bg-atelier-ink text-left shadow-paper-sm transition duration-300 hover:scale-[1.02] hover:shadow-paper-md ${tileColSpan}`}
                       style={tileStyle}
                     >
                       <div className="relative h-full overflow-hidden bg-atelier-ink">
@@ -716,12 +699,26 @@ export function GalleryPage() {
               </div>
             ) : (
               <div className="flex min-h-[320px] flex-col items-center justify-center border border-dashed border-atelier-smoke/40 bg-atelier-paper px-8 py-16 text-center dark:border-atelier-cream/15 dark:bg-[#221A14]">
-                <span
-                  aria-hidden="true"
-                  className="mb-6 font-display text-6xl italic leading-none text-atelier-smoke"
-                >
-                  ❦
-                </span>
+                <picture className="mb-8 block w-48">
+                  <source
+                    type="image/avif"
+                    srcSet="/illustrations/gallery-empty.avif 1x, /illustrations/gallery-empty@2x.avif 2x"
+                  />
+                  <source
+                    type="image/webp"
+                    srcSet="/illustrations/gallery-empty.webp 1x, /illustrations/gallery-empty@2x.webp 2x"
+                  />
+                  <img
+                    src="/illustrations/gallery-empty.webp"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                    width={800}
+                    height={800}
+                    className="block w-48 select-none"
+                  />
+                </picture>
                 <p className="font-display text-xl italic text-atelier-ink dark:text-atelier-cream">
                   {t("gallery.empty")}
                 </p>
@@ -734,7 +731,7 @@ export function GalleryPage() {
                   key={templatePublicId(template)}
                   type="button"
                   onClick={() => openTemplate(template)}
-                  className="group overflow-hidden border border-atelier-smoke/30 bg-atelier-paper text-left shadow-paper-sm transition duration-300 hover:-translate-y-1 hover:border-atelier-vermilion/40 hover:shadow-paper-lg dark:border-atelier-cream/15 dark:bg-atelier-cream/5"
+                  className="group overflow-hidden border border-atelier-smoke/30 bg-atelier-paper text-left shadow-paper-sm transition duration-300 hover:scale-[1.02] hover:border-atelier-vermilion/40 hover:shadow-paper-md dark:border-atelier-cream/15 dark:bg-atelier-cream/5"
                 >
                   <TemplateGraphPreview template={template} />
                   <div className="p-4">

@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { MiniHero } from "../components/MiniHero";
 import { StatusPill } from "../components/StatusPill";
 import { TopNav } from "../components/TopNav";
 import { StaggerGrid } from "../components/motion/StaggerGrid";
@@ -104,41 +105,35 @@ export function ProductListPage() {
         session={sessionQuery.data}
       />
 
-      <main className="mx-auto flex w-full max-w-4xl flex-1 px-6 py-12 lg:py-16">
+      <MiniHero
+        title="PRODUCTS"
+        meta={`${total} ATELIER WORKS · 2026`}
+        ornament="❦"
+      />
+
+      <main className="mx-auto flex w-full max-w-6xl flex-1 px-6 py-12 lg:py-16">
         <div className="w-full space-y-10">
-          {/* Hero — D 风衬线标题 + ornament + 简化 metrics */}
-          <section className="border-b border-atelier-smoke/30 pb-10 dark:border-atelier-cream/15">
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-atelier-smoke">
-              {t("products.heroEyebrow")}
-            </p>
-            <h1 className="mt-3 font-display text-5xl italic text-atelier-ink dark:text-atelier-cream">
-              {t("products.title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-atelier-sepia dark:text-atelier-cream/60">
-              {t("products.description")}
-            </p>
-
-            <div className="mt-6 flex items-center justify-between gap-6">
-              <div className="grid grid-cols-3 gap-8 text-atelier-ink dark:text-atelier-cream">
-                <MetricCard label={t("products.totalMetric")} value={total} />
-                <MetricCard label={t("products.copyReadyMetric")} value={copyReadyCount} />
-                <MetricCard label={t("products.posterReadyMetric")} value={posterReadyCount} />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => navigate("/products/new")}
-                className="group inline-flex items-center gap-2 border border-atelier-ink bg-atelier-ink px-5 py-2.5 font-display text-base italic text-atelier-cream transition-colors hover:border-atelier-vermilion hover:bg-atelier-vermilion dark:border-atelier-cream dark:bg-atelier-cream dark:text-atelier-ink dark:hover:border-atelier-vermilion dark:hover:bg-atelier-vermilion dark:hover:text-atelier-cream"
-              >
-                <Plus size={16} aria-hidden="true" />
-                <span>{t("products.new")}</span>
-              </button>
+          {/* Toolbar — metrics + 新建按钮 */}
+          <section className="flex items-center justify-between gap-6 border-b border-atelier-smoke/30 pb-8 dark:border-atelier-cream/15">
+            <div className="grid grid-cols-3 gap-10 text-atelier-ink dark:text-atelier-cream">
+              <MetricCard label={t("products.totalMetric")} value={total} />
+              <MetricCard label={t("products.copyReadyMetric")} value={copyReadyCount} />
+              <MetricCard label={t("products.posterReadyMetric")} value={posterReadyCount} />
             </div>
+
+            <button
+              type="button"
+              onClick={() => navigate("/products/new")}
+              className="group inline-flex items-center gap-2 border border-atelier-ink bg-atelier-ink px-5 py-2.5 font-display text-base italic text-atelier-cream transition-colors hover:border-atelier-vermilion hover:bg-atelier-vermilion dark:border-atelier-cream dark:bg-atelier-cream dark:text-atelier-ink dark:hover:border-atelier-vermilion dark:hover:bg-atelier-vermilion dark:hover:text-atelier-cream"
+            >
+              <Plus size={16} aria-hidden="true" />
+              <span>{t("products.new")}</span>
+            </button>
           </section>
 
           {/* List */}
           <section>
-            <div className="mb-4 flex items-end justify-between">
+            <div className="mb-6 flex items-end justify-between">
               <div>
                 <h2 className="font-display text-2xl italic text-atelier-ink dark:text-atelier-cream">
                   {t("products.listTitle")}
@@ -170,9 +165,9 @@ export function ProductListPage() {
                 {t("products.loadFailed")}
               </div>
             ) : products.length ? (
-              <StaggerGrid className="divide-y divide-atelier-smoke/30 border-y border-atelier-smoke/30 dark:divide-atelier-cream/15 dark:border-atelier-cream/15">
+              <StaggerGrid className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {products.map((product) => (
-                  <ProductRow
+                  <ProductCard
                     key={product.id}
                     product={product}
                     deletionEnabled={deletionEnabled}
@@ -220,9 +215,9 @@ export function ProductListPage() {
   );
 }
 
-// 杂志目录条目 (R2.3 wireframe).
-// horizontal layout: thumbnail | title+description | timestamp | actions
-function ProductRow({
+// 杂志画册卡片 (R2.3 wireframe).
+// vertical layout: thumbnail (4:3) → title + meta → status + actions
+function ProductCard({
   product,
   deletionEnabled,
   isDeleting,
@@ -239,58 +234,69 @@ function ProductRow({
   const meta = [
     product.category,
     product.price ? formatPrice(product.price) : null,
-    product.source_image_filename,
   ]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <div className="group grid grid-cols-[80px_1fr_auto] items-center gap-6 py-6 transition-colors hover:bg-atelier-paper dark:hover:bg-atelier-ink/40">
-      <ProductThumbnail product={product} />
-
+    <article className="group flex h-full flex-col border border-atelier-smoke/30 bg-atelier-paper transition-shadow hover:shadow-paper-md dark:border-atelier-cream/15 dark:bg-[#221A14]">
       <button
         type="button"
         onClick={onOpen}
-        className="min-w-0 text-left"
+        className="block w-full overflow-hidden text-left"
         title={product.name}
       >
-        <h3 className="truncate font-display text-2xl italic text-atelier-ink transition-colors group-hover:text-atelier-vermilion dark:text-atelier-cream dark:group-hover:text-atelier-vermilion">
-          {product.name}
-        </h3>
-        {meta ? (
-          <p className="mt-1 truncate text-sm text-atelier-sepia dark:text-atelier-cream/60">
-            {meta}
-          </p>
-        ) : null}
-        <div className="mt-2 flex items-center gap-3">
-          <StatusPill status={product.workflow_state} />
-          <span className="font-mono text-[11px] uppercase tracking-wider text-atelier-smoke">
-            edited {formatShortDate(product.updated_at)}
-          </span>
-        </div>
+        <ProductThumbnail product={product} />
       </button>
 
-      <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={isDeleting || !deletionEnabled}
-          title={deletionEnabled ? t("products.delete") : t("products.deleteDisabled")}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-atelier-vermilion-dark transition-colors hover:text-atelier-vermilion disabled:opacity-40 dark:text-atelier-vermilion dark:hover:text-atelier-cream"
-        >
-          <Trash2 size={13} />
-          {t("products.delete")}
-        </button>
+      <div className="flex flex-1 flex-col gap-4 border-t border-atelier-smoke/30 p-5 dark:border-atelier-cream/15">
         <button
           type="button"
           onClick={onOpen}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-atelier-ink transition-colors hover:text-atelier-vermilion dark:text-atelier-cream dark:hover:text-atelier-vermilion"
+          className="text-left"
+          title={product.name}
         >
-          {t("products.open")}
-          <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+          <h3 className="truncate font-display text-2xl italic leading-tight text-atelier-ink decoration-atelier-vermilion decoration-1 underline-offset-4 transition-colors group-hover:text-atelier-vermilion group-hover:underline dark:text-atelier-cream dark:group-hover:text-atelier-vermilion">
+            {product.name}
+          </h3>
+          {meta ? (
+            <p className="mt-1.5 truncate text-sm text-atelier-sepia dark:text-atelier-cream/60">
+              {meta}
+            </p>
+          ) : null}
         </button>
+
+        <div className="mt-auto flex items-end justify-between gap-3 border-t border-atelier-smoke/20 pt-4 dark:border-atelier-cream/10">
+          <div className="flex flex-col gap-1.5">
+            <StatusPill status={product.workflow_state} />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-atelier-smoke">
+              edited {formatShortDate(product.updated_at)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeleting || !deletionEnabled}
+              title={deletionEnabled ? t("products.delete") : t("products.deleteDisabled")}
+              className="inline-flex items-center gap-1 px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-atelier-vermilion-dark opacity-0 transition-opacity hover:text-atelier-vermilion disabled:opacity-40 group-hover:opacity-100 dark:text-atelier-vermilion dark:hover:text-atelier-cream"
+            >
+              <Trash2 size={12} />
+              {t("products.delete")}
+            </button>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="inline-flex items-center gap-1 px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider text-atelier-ink transition-colors hover:text-atelier-vermilion dark:text-atelier-cream dark:hover:text-atelier-vermilion"
+            >
+              {t("products.open")}
+              <ArrowRight size={12} className="transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -311,18 +317,18 @@ function ProductThumbnail({ product }: { product: ProductSummary }) {
   const shouldShowImage = Boolean(thumbUrl) && !failed;
 
   return (
-    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#221A14]">
+    <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-atelier-cream dark:bg-[#1A1410]">
       {shouldShowImage && thumbUrl ? (
         <img
           src={api.toApiUrl(thumbUrl)}
           alt={product.source_image_filename ?? product.name}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
           decoding="async"
           loading="lazy"
           onError={() => setFailed(true)}
         />
       ) : (
-        <ImageIcon size={20} strokeWidth={1.2} className="text-atelier-smoke" />
+        <ImageIcon size={36} strokeWidth={1.1} className="text-atelier-smoke" />
       )}
     </div>
   );
@@ -330,16 +336,21 @@ function ProductThumbnail({ product }: { product: ProductSummary }) {
 
 function LoadingList() {
   return (
-    <div className="divide-y divide-atelier-smoke/30 border-y border-atelier-smoke/30 dark:divide-atelier-cream/15 dark:border-atelier-cream/15">
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="grid grid-cols-[80px_1fr_auto] items-center gap-6 py-6">
-          <div className="h-20 w-20 animate-shimmer" />
-          <div className="space-y-2.5">
-            <div className="h-6 w-2/5 animate-shimmer" />
-            <div className="h-3.5 w-1/2 animate-shimmer" />
-            <div className="h-3 w-1/3 animate-shimmer" />
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className="flex flex-col border border-atelier-smoke/30 bg-atelier-paper dark:border-atelier-cream/15 dark:bg-[#221A14]"
+        >
+          <div className="aspect-[4/3] w-full animate-shimmer" />
+          <div className="space-y-3 border-t border-atelier-smoke/30 p-5 dark:border-atelier-cream/15">
+            <div className="h-6 w-3/5 animate-shimmer" />
+            <div className="h-3.5 w-2/5 animate-shimmer" />
+            <div className="mt-3 flex items-end justify-between border-t border-atelier-smoke/20 pt-4 dark:border-atelier-cream/10">
+              <div className="h-5 w-20 animate-shimmer" />
+              <div className="h-3 w-12 animate-shimmer" />
+            </div>
           </div>
-          <div className="h-5 w-24 animate-shimmer" />
         </div>
       ))}
     </div>

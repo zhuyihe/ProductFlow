@@ -22,6 +22,8 @@ EXTRA_PATHS = [
     r"D:\netcup\ProductFlow\web\src\pages\product-detail\ImagePreviewModal.tsx",
     r"D:\netcup\ProductFlow\web\src\pages\product-detail\SidebarTabButton.tsx",
     r"D:\netcup\ProductFlow\web\src\pages\product-detail\TextArea.tsx",
+    # atelier-ui-polish (2026-05-26) - SettingsPage token 迁移
+    r"D:\netcup\ProductFlow\web\src\pages\SettingsPage.tsx",
 ]
 
 # 替换映射（按 token-migration-map Section 1-6）

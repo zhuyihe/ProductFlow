@@ -30,6 +30,7 @@ import type { LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { MiniHero } from "../components/MiniHero";
 import { SelectField } from "../components/SelectField";
 import { TopNav } from "../components/TopNav";
 import { api, ApiError } from "../lib/api";
@@ -118,31 +119,31 @@ export interface ImageBindingDraft {
 }
 
 const INPUT_CLASS =
-  "h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 " +
-  "placeholder:text-slate-400 shadow-sm shadow-slate-200/35 focus:border-indigo-500 focus:bg-white " +
-  "focus:outline-none focus:ring-1 focus:ring-indigo-500 " +
-  "dark:border-slate-700 dark:bg-[#111b2d] dark:text-slate-100 dark:shadow-black/20 " +
-  "dark:placeholder:text-slate-500 dark:focus:border-violet-400 dark:focus:bg-[#111b2d]";
+  "h-11 w-full rounded-none border-0 border-b-2 border-atelier-smoke/40 bg-transparent px-0 py-2.5 text-sm text-atelier-ink " +
+  "placeholder:text-atelier-smoke focus:border-atelier-vermilion focus:bg-transparent " +
+  "focus:outline-none focus:ring-0 " +
+  "dark:border-atelier-cream/20 dark:bg-transparent dark:text-atelier-cream " +
+  "dark:placeholder:text-atelier-smoke dark:focus:border-atelier-vermilion dark:focus:bg-transparent";
 
 const TEXTAREA_CLASS =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-950 " +
-  "placeholder:text-slate-400 shadow-sm shadow-slate-200/35 focus:border-indigo-500 focus:bg-white " +
-  "focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-[#111b2d] " +
-  "dark:text-slate-100 dark:shadow-black/20 dark:placeholder:text-slate-500 dark:focus:border-violet-400";
+  "w-full rounded-none border-0 border-b-2 border-atelier-smoke/40 bg-transparent px-0 py-2.5 text-sm text-atelier-ink " +
+  "placeholder:text-atelier-smoke focus:border-atelier-vermilion focus:bg-transparent " +
+  "focus:outline-none focus:ring-0 dark:border-atelier-cream/20 dark:bg-transparent " +
+  "dark:text-atelier-cream dark:placeholder:text-atelier-smoke dark:focus:border-atelier-vermilion";
 
 const PANEL_CLASS =
-  "rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60 " +
-  "dark:border-slate-800 dark:bg-[#0f1726] dark:shadow-black/25";
+  "rounded-xl border border-atelier-smoke/30 bg-atelier-paper p-6 shadow-sm shadow-paper-md " +
+  "dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-black/25";
 
 const SETTINGS_MAIN_ACTION_CLASS =
-  "inline-flex h-11 items-center justify-center rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white " +
-  "shadow-sm shadow-indigo-500/25 hover:bg-indigo-500 disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400";
+  "inline-flex h-11 items-center justify-center rounded-lg bg-atelier-ink px-5 text-sm font-semibold text-atelier-cream " +
+  "shadow-sm shadow-paper-md hover:bg-atelier-vermilion disabled:opacity-50 dark:bg-atelier-vermilion dark:hover:bg-atelier-vermilion-dark";
 
 const PROVIDER_DRAWER_INPUT_CLASS =
-  "h-[43px] w-full rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-950 " +
-  "placeholder:text-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 " +
-  "dark:border-slate-700 dark:bg-[#192234] dark:text-slate-100 dark:placeholder:text-slate-500 " +
-  "dark:focus:border-violet-500 dark:focus:ring-violet-500/35";
+  "h-[43px] w-full rounded-none border-0 border-b-2 border-atelier-smoke/40 bg-transparent px-0 py-2.5 text-sm font-medium text-atelier-ink " +
+  "placeholder:text-atelier-smoke outline-none transition focus:border-atelier-vermilion focus:ring-0 " +
+  "dark:border-atelier-cream/20 dark:bg-transparent dark:text-atelier-cream dark:placeholder:text-atelier-smoke " +
+  "dark:focus:border-atelier-vermilion";
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   {
@@ -312,9 +313,9 @@ function sourceLabel(item: ConfigItem, t: ReturnType<typeof useI18n>["t"]): stri
 
 function sourceClassName(item: ConfigItem): string {
   if (item.source === "database") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/12";
+    return "border-atelier-smoke/40 bg-atelier-cream text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/12";
   }
-  return "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-slate-700 dark:bg-[#0b1220]";
+  return "border-atelier-smoke/30 bg-atelier-paper text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812]";
 }
 
 function textValue(record: Record<string, unknown> | undefined, key: string): string {
@@ -586,20 +587,20 @@ function SettingsMigrationPanel({
   const { t } = useI18n();
   const counts = importPreview ? settingsImportSummaryCounts(importPreview) : null;
   return (
-    <section className={`${PANEL_CLASS} mb-8`}>
+    <section className={`${PANEL_CLASS} mb-8 border-l-2 border-l-atelier-vermilion-dark pl-4`}>
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-400/35 dark:bg-amber-500/12 dark:text-amber-200">
+          <div className="inline-flex items-center rounded-full border border-atelier-smoke/40 bg-atelier-kraft px-3 py-1 text-xs font-semibold text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/12 dark:text-atelier-cream/70">
             <KeyRound size={13} className="mr-1.5" />
             {t("settings.migration.sensitiveLabel")}
           </div>
-          <h2 className="mt-3 text-lg font-semibold text-slate-950 dark:text-white">
+          <h2 className="mt-3 text-lg font-semibold text-atelier-ink dark:text-atelier-cream">
             {t("settings.migration.title")}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm leading-6 text-atelier-smoke dark:text-atelier-smoke">
             {t("settings.migration.description")}
           </p>
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-400/35 dark:bg-amber-500/10 dark:text-amber-100">
+          <p className="mt-3 rounded-lg border border-atelier-smoke/40 bg-atelier-kraft px-3 py-2 text-xs leading-5 text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/10 dark:text-atelier-cream/70">
             {t("settings.migration.sensitiveWarning")}
           </p>
         </div>
@@ -617,7 +618,7 @@ function SettingsMigrationPanel({
             type="button"
             onClick={onChooseImportFile}
             disabled={importPreviewBusy || importCommitBusy}
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-[#111b2d] dark:text-slate-100 dark:hover:bg-slate-800"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-5 text-sm font-semibold text-atelier-sepia shadow-sm hover:bg-atelier-paper disabled:opacity-50 dark:border-atelier-cream/15 dark:bg-[#1A1410] dark:text-atelier-cream dark:hover:bg-[#241B14]"
           >
             {importPreviewBusy ? (
               <Loader2 size={14} className="mr-2 animate-spin" />
@@ -637,14 +638,14 @@ function SettingsMigrationPanel({
       </div>
 
       {importPreview && counts ? (
-        <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-violet-400/35 dark:bg-violet-500/10">
+        <div className="mt-5 rounded-xl border border-atelier-vermilion/30 bg-atelier-vermilion/5 p-4 dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="flex items-center text-sm font-semibold text-indigo-800 dark:text-violet-100">
+              <div className="flex items-center text-sm font-semibold text-atelier-vermilion-dark dark:text-atelier-cream">
                 <FileJson size={15} className="mr-2" />
                 {t("settings.migration.previewTitle")}
               </div>
-              <p className="mt-1 text-xs text-indigo-700/80 dark:text-violet-100/75">
+              <p className="mt-1 text-xs text-atelier-vermilion/80 dark:text-atelier-cream/75">
                 {t("settings.migration.previewFile", { file: importFileName })}
               </p>
             </div>
@@ -653,7 +654,7 @@ function SettingsMigrationPanel({
                 type="button"
                 onClick={onCancelImport}
                 disabled={importCommitBusy}
-                className="h-9 rounded-lg px-3 text-sm font-medium text-slate-600 hover:bg-white/70 disabled:opacity-50 dark:text-slate-200 dark:hover:bg-white/10"
+                className="h-9 rounded-lg px-3 text-sm font-medium text-atelier-sepia hover:bg-atelier-paper/70 disabled:opacity-50 dark:text-atelier-cream dark:hover:bg-atelier-paper/10"
               >
                 {t("common.cancel")}
               </button>
@@ -669,16 +670,16 @@ function SettingsMigrationPanel({
             </div>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600 shadow-sm dark:bg-[#101827] dark:text-slate-300">
+            <div className="rounded-lg bg-atelier-paper px-3 py-2 text-xs text-atelier-sepia shadow-sm dark:bg-[#1A1410] dark:text-atelier-smoke">
               {t("settings.migration.runtimeCount", { count: counts.runtimeConfigCount })}
             </div>
-            <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600 shadow-sm dark:bg-[#101827] dark:text-slate-300">
+            <div className="rounded-lg bg-atelier-paper px-3 py-2 text-xs text-atelier-sepia shadow-sm dark:bg-[#1A1410] dark:text-atelier-smoke">
               {t("settings.migration.profileCount", { count: counts.providerProfileCount })}
             </div>
-            <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600 shadow-sm dark:bg-[#101827] dark:text-slate-300">
+            <div className="rounded-lg bg-atelier-paper px-3 py-2 text-xs text-atelier-sepia shadow-sm dark:bg-[#1A1410] dark:text-atelier-smoke">
               {t("settings.migration.bindingCount", { count: counts.providerBindingCount })}
             </div>
-            <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600 shadow-sm dark:bg-[#101827] dark:text-slate-300">
+            <div className="rounded-lg bg-atelier-paper px-3 py-2 text-xs text-atelier-sepia shadow-sm dark:bg-[#1A1410] dark:text-atelier-smoke">
               {t("settings.migration.keyCount", { count: counts.providerProfilesWithApiKeyCount })}
             </div>
           </div>
@@ -697,7 +698,7 @@ interface SettingsFormFieldProps {
 function SettingsFormField({ label, children, className = "" }: SettingsFormFieldProps) {
   return (
     <label className={`block space-y-2 ${className}`}>
-      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="text-xs font-medium text-atelier-sepia dark:text-atelier-smoke">{label}</span>
       {children}
     </label>
   );
@@ -740,13 +741,13 @@ function ConfigField({
         {item.options.map((option) => (
           <label
             key={`${item.key}-${option.value}`}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300"
+            className="inline-flex items-center gap-2 rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-2.5 py-2 text-xs font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke"
           >
             <input
               type="checkbox"
               checked={selectedMultiValues.includes(option.value)}
               onChange={() => toggleMultiValue(option.value)}
-              className="h-3.5 w-3.5 accent-indigo-600"
+              className="h-3.5 w-3.5 accent-atelier-vermilion-dark"
             />
             <span>{option.label}</span>
           </label>
@@ -763,13 +764,13 @@ function ConfigField({
         className={`${TEXTAREA_CLASS} resize-y leading-6`}
       />
     ) : item.input_type === "boolean" ? (
-      <label className="inline-flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-300">
+      <label className="inline-flex cursor-pointer items-center gap-3 rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-3 py-2 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
         <input
           id={item.key}
           type="checkbox"
           checked={Boolean(value)}
           onChange={(event) => onChange(event.target.checked)}
-          className="h-4 w-4 accent-zinc-900"
+          className="h-4 w-4 accent-atelier-ink"
         />
         <span>{Boolean(value) ? t("settings.enabled") : t("settings.disabled")}</span>
       </label>
@@ -789,9 +790,9 @@ function ConfigField({
 
   if (layout === "card") {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/50 dark:border-slate-800 dark:bg-[#0f1726] dark:shadow-black/20">
+      <div className="rounded-xl border border-atelier-smoke/30 bg-atelier-paper p-3 shadow-sm shadow-paper-md dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-paper-md">
         <div className="flex items-start justify-between gap-3">
-          <label htmlFor={item.key} className="min-w-0 text-sm font-semibold text-zinc-950 dark:text-white">
+          <label htmlFor={item.key} className="min-w-0 text-sm font-semibold text-atelier-ink dark:text-atelier-cream">
             {item.label}
           </label>
           <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${sourceClassName(item)}`}>
@@ -801,9 +802,9 @@ function ConfigField({
         <div className="mt-3">{control}</div>
         <div className="mt-2 flex min-h-5 items-start justify-between gap-3">
           <div>
-            <div className="font-mono text-[11px] text-zinc-400 dark:text-slate-500">{item.key}</div>
+            <div className="font-mono text-[11px] text-atelier-smoke dark:text-atelier-smoke">{item.key}</div>
             {item.secret && secretTouched ? (
-              <div className="mt-1 text-xs text-amber-600 dark:text-amber-300">{t("settings.writeNewSecret")}</div>
+              <div className="mt-1 text-xs text-atelier-kraft dark:text-atelier-sepia">{t("settings.writeNewSecret")}</div>
             ) : null}
           </div>
           {item.source === "database" ? (
@@ -811,7 +812,7 @@ function ConfigField({
               type="button"
               onClick={onReset}
               disabled={isResetting}
-              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-400 hover:bg-slate-100 hover:text-zinc-900 disabled:opacity-50 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-white"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-atelier-smoke hover:bg-atelier-cream hover:text-atelier-ink disabled:opacity-50 dark:text-atelier-smoke dark:hover:bg-[#241B14] dark:hover:text-atelier-cream"
               aria-label={t("settings.restoreDefault")}
               title={t("settings.restoreDefault")}
             >
@@ -824,25 +825,25 @@ function ConfigField({
   }
 
   return (
-    <div className="grid gap-3 border-t border-slate-100 py-5 first:border-t-0 dark:border-slate-800 md:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="grid gap-3 border-t border-atelier-smoke/20 py-5 first:border-t-0 dark:border-atelier-cream/15 md:grid-cols-[220px_minmax(0,1fr)]">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor={item.key} className="text-sm font-medium text-zinc-900 dark:text-white">
+          <label htmlFor={item.key} className="text-sm font-medium text-atelier-ink dark:text-atelier-cream">
             {item.label}
           </label>
           <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${sourceClassName(item)}`}>
             {sourceLabel(item, t)}
           </span>
         </div>
-        <div className="mt-1 font-mono text-[11px] text-zinc-400 dark:text-slate-500">{item.key}</div>
+        <div className="mt-1 font-mono text-[11px] text-atelier-smoke dark:text-atelier-smoke">{item.key}</div>
       </div>
       <div className="space-y-2">
         {control}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="min-h-4 text-xs leading-5 text-zinc-500 dark:text-slate-400">
+          <p className="min-h-4 text-xs leading-5 text-atelier-smoke dark:text-atelier-smoke">
             {item.description}
             {item.secret && secretTouched ? (
-              <span className="ml-2 text-amber-600 dark:text-amber-300">{t("settings.writeNewSecret")}</span>
+              <span className="ml-2 text-atelier-kraft dark:text-atelier-sepia">{t("settings.writeNewSecret")}</span>
             ) : null}
           </p>
           {item.source === "database" ? (
@@ -850,7 +851,7 @@ function ConfigField({
               type="button"
               onClick={onReset}
               disabled={isResetting}
-              className="inline-flex items-center text-xs font-medium text-zinc-500 hover:text-zinc-900 disabled:opacity-50 dark:text-slate-400 dark:hover:text-white"
+              className="inline-flex items-center text-xs font-medium text-atelier-smoke hover:text-atelier-ink disabled:opacity-50 dark:text-atelier-smoke dark:hover:text-atelier-cream"
             >
               {isResetting ? <Loader2 size={13} className="mr-1 animate-spin" /> : <RotateCcw size={13} className="mr-1" />}
               {t("settings.restoreDefault")}
@@ -908,10 +909,10 @@ function ProvidersSection({
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">
+          <h2 className="text-base font-semibold text-atelier-ink dark:text-atelier-cream">
             {t("settings.provider.listTitle")}
           </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm leading-6 text-atelier-smoke dark:text-atelier-smoke">
             {t("settings.provider.listDescription")}
           </p>
         </div>
@@ -940,12 +941,12 @@ function ProvidersSection({
           })}
         </div>
       ) : (
-        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-6 text-center shadow-sm shadow-slate-200/60 dark:border-slate-700 dark:bg-[#0f1726] dark:shadow-black/25">
-          <Box size={42} className="text-slate-500" />
-          <div className="mt-5 text-base font-semibold text-slate-950 dark:text-white">
+        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed border-atelier-smoke/50 bg-atelier-paper px-6 text-center shadow-sm shadow-paper-md dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-black/25">
+          <Box size={42} className="text-atelier-smoke" />
+          <div className="mt-5 text-base font-semibold text-atelier-ink dark:text-atelier-cream">
             {t("settings.provider.emptyTitle")}
           </div>
-          <p className="mt-3 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <p className="mt-3 max-w-sm text-sm leading-6 text-atelier-smoke dark:text-atelier-smoke">
             {t("settings.provider.emptyDescription")}
           </p>
           <button type="button" onClick={onOpenCreate} className={`${SETTINGS_MAIN_ACTION_CLASS} mt-6`}>
@@ -1004,12 +1005,12 @@ function ProviderEnabledSwitch({
       onKeyDown={(event) => event.stopPropagation()}
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
         checked
-          ? "border-indigo-500 bg-indigo-600 dark:border-violet-400 dark:bg-violet-500"
-          : "border-slate-300 bg-slate-200 dark:border-slate-700 dark:bg-slate-800"
+          ? "border-atelier-vermilion bg-atelier-ink dark:border-atelier-vermilion dark:bg-atelier-vermilion"
+          : "border-atelier-smoke/50 bg-atelier-smoke/30 dark:border-atelier-cream/15 dark:bg-[#241B14]"
       } ${disabled ? "cursor-not-allowed opacity-55" : "hover:brightness-105"}`}
     >
       <span
-        className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm transition ${
+        className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-atelier-paper text-atelier-smoke shadow-sm transition ${
           checked ? "translate-x-5" : "translate-x-0.5"
         }`}
       >
@@ -1045,27 +1046,27 @@ function ProviderProfileCard({
   const switchHelp = disableBlocked ? t("settings.provider.disableBlocked") : undefined;
 
   return (
-    <div className="group relative flex min-h-[230px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 transition hover:border-indigo-200 hover:shadow-md dark:border-slate-800 dark:bg-[#0f1726] dark:shadow-black/25 dark:hover:border-violet-400/45">
+    <div className="group relative flex min-h-[230px] flex-col justify-between rounded-xl border border-atelier-smoke/30 bg-atelier-paper p-5 shadow-sm shadow-paper-md transition hover:border-atelier-vermilion/30 hover:shadow-md dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:shadow-black/25 dark:hover:border-atelier-vermilion/40">
       <button
         type="button"
         onClick={onEdit}
-        className="-m-2 block w-full space-y-4 rounded-lg p-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-violet-400"
+        className="-m-2 block w-full space-y-4 rounded-lg p-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-atelier-vermilion dark:focus-visible:ring-atelier-vermilion"
       >
         <span className="flex items-start justify-between gap-4">
           <span className="min-w-0 pr-20">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-base font-semibold text-slate-950 dark:text-white">{profile.name}</span>
+              <span className="truncate text-base font-semibold text-atelier-ink dark:text-atelier-cream">{profile.name}</span>
               <span
                 className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                   profile.enabled
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/12 dark:text-emerald-200"
-                    : "border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                    ? "border-atelier-smoke/40 bg-atelier-cream text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/12 dark:text-atelier-cream/70"
+                    : "border-atelier-smoke/30 bg-atelier-paper text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke"
                 }`}
               >
                 {profile.enabled ? t("settings.provider.enabled") : t("settings.provider.disabled")}
               </span>
             </span>
-            <span className="mt-2 flex items-center gap-1.5 truncate font-mono text-xs text-slate-500 dark:text-slate-400">
+            <span className="mt-2 flex items-center gap-1.5 truncate font-mono text-xs text-atelier-smoke dark:text-atelier-smoke">
               <ServerCog size={13} className="shrink-0" />
               <span className="truncate">{profile.base_url || t(providerDefaultEndpointLabelKey(profile))}</span>
             </span>
@@ -1073,13 +1074,13 @@ function ProviderProfileCard({
         </span>
 
         <span className="flex flex-wrap gap-1.5">
-          <span className="rounded-md bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700 dark:bg-violet-500/12 dark:text-violet-100">
+          <span className="rounded-md bg-atelier-vermilion/5 px-2 py-1 text-[11px] font-medium text-atelier-vermilion dark:bg-atelier-vermilion/10 dark:text-atelier-cream">
             {t(providerTypeLabelKey(profile.provider_type))}
           </span>
           {profile.capabilities.map((capability) => (
             <span
               key={`${profile.id}-${capability}`}
-              className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+              className="rounded-md bg-atelier-cream px-2 py-1 text-[11px] font-medium text-atelier-sepia dark:bg-[#241B14] dark:text-atelier-smoke"
             >
               {t(providerCapabilityLabelKey(capability))}
             </span>
@@ -1090,8 +1091,8 @@ function ProviderProfileCard({
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
               profile.has_api_key
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/12 dark:text-emerald-200"
-                : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/35 dark:bg-amber-500/12 dark:text-amber-200"
+                ? "border-atelier-smoke/40 bg-atelier-cream text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/12 dark:text-atelier-cream/70"
+                : "border-atelier-smoke/40 bg-atelier-kraft text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-kraft/12 dark:text-atelier-cream/70"
             }`}
           >
             <KeyRound size={12} />
@@ -1101,13 +1102,13 @@ function ProviderProfileCard({
             usageLabelKeys.map((labelKey) => (
               <span
                 key={labelKey}
-                className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 dark:border-violet-400/35 dark:bg-violet-500/12 dark:text-violet-100"
+                className="rounded-full border border-atelier-vermilion/30 bg-atelier-vermilion/5 px-2.5 py-1 text-[11px] font-medium text-atelier-vermilion dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion/10 dark:text-atelier-cream"
               >
                 {t(labelKey)}
               </span>
             ))
           ) : (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <span className="rounded-full border border-atelier-smoke/30 bg-atelier-paper px-2.5 py-1 text-[11px] font-medium text-atelier-smoke dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
               {t("settings.provider.usageNone")}
             </span>
           )}
@@ -1118,7 +1119,7 @@ function ProviderProfileCard({
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:text-indigo-700 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-400 dark:hover:border-violet-300/50 dark:hover:text-violet-100"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-atelier-smoke/30 bg-atelier-paper text-atelier-smoke hover:border-atelier-vermilion/30 hover:text-atelier-vermilion dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:border-atelier-vermilion/50 dark:hover:text-atelier-cream"
           aria-label={t("settings.provider.editAria")}
           title={t("settings.provider.edit")}
         >
@@ -1128,7 +1129,7 @@ function ProviderProfileCard({
           type="button"
           onClick={onDelete}
           disabled={pending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-red-200 hover:text-red-600 disabled:opacity-50 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-400 dark:hover:border-red-300/50 dark:hover:text-red-200"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-atelier-smoke/30 bg-atelier-paper text-atelier-smoke hover:border-atelier-vermilion-dark/30 hover:text-atelier-vermilion-dark disabled:opacity-50 dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:border-atelier-vermilion-dark/50 dark:hover:text-atelier-vermilion"
           aria-label={t("settings.provider.deleteAria")}
           title={t("settings.provider.deleteAria")}
         >
@@ -1136,17 +1137,17 @@ function ProviderProfileCard({
         </button>
       </div>
 
-      <div className="mt-5 flex items-start justify-between gap-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <div className="mt-5 flex items-start justify-between gap-4 border-t border-atelier-smoke/20 pt-4 dark:border-atelier-cream/15">
         <div>
-          <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+          <div className="text-xs font-semibold text-atelier-sepia dark:text-atelier-cream">
             {t("settings.provider.enabledSwitchLabel")}
           </div>
           {switchHelp ? (
-            <p id={blockHelpId} className="mt-1 text-xs leading-5 text-amber-700 dark:text-amber-200">
+            <p id={blockHelpId} className="mt-1 text-xs leading-5 text-atelier-sepia dark:text-atelier-cream/70">
               {switchHelp}
             </p>
           ) : (
-            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-xs leading-5 text-atelier-smoke dark:text-atelier-smoke">
               {t("settings.provider.enabledSwitchHelp")}
             </p>
           )}
@@ -1180,15 +1181,15 @@ function ProviderCapabilityToggle({ option, selected, onToggle }: ProviderCapabi
       onClick={onToggle}
       className={`flex h-[46px] items-center gap-3 rounded-xl border px-3 text-left text-sm font-semibold transition ${
         selected
-          ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-violet-500 dark:bg-violet-500/12 dark:text-violet-50"
-          : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-[#171f30] dark:text-slate-300 dark:hover:border-slate-500"
+          ? "border-atelier-vermilion bg-atelier-vermilion/5 text-atelier-vermilion dark:border-atelier-vermilion dark:bg-atelier-vermilion/10 dark:text-atelier-cream"
+          : "border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia hover:border-atelier-smoke/50 dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:hover:border-atelier-smoke/50"
       }`}
     >
       <span
         className={`grid h-5 w-5 shrink-0 place-items-center rounded-[5px] transition ${
           selected
-            ? "bg-indigo-600 text-white dark:bg-violet-500"
-            : "bg-slate-200 dark:bg-slate-600"
+            ? "bg-atelier-ink text-atelier-cream dark:bg-atelier-vermilion"
+            : "bg-atelier-smoke/30 dark:bg-atelier-cream/30"
         }`}
       >
         {selected ? <Check size={13} strokeWidth={3} /> : null}
@@ -1218,7 +1219,7 @@ function ProviderDrawerTextInput({
   return (
     <div className="relative">
       {icon ? (
-        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-atelier-smoke dark:text-atelier-smoke">
           {icon}
         </span>
       ) : null}
@@ -1254,17 +1255,17 @@ function ProviderDrawerEnableToggle({ checked, disabled, blocked = false, onTogg
         onClick={() => onToggle(!checked)}
         className={`flex h-[46px] w-full items-center gap-3 rounded-xl border px-3 text-left text-sm font-semibold transition ${
           checked
-            ? "border-indigo-300 bg-indigo-50 text-slate-900 dark:border-slate-700 dark:bg-[#171f30] dark:text-slate-100"
-            : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-[#171f30] dark:text-slate-300"
+            ? "border-atelier-vermilion/30 bg-atelier-vermilion/5 text-atelier-ink dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-cream"
+            : "border-atelier-smoke/30 bg-atelier-paper text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke"
         } ${
           disabled || blocked
             ? "cursor-not-allowed opacity-60"
-            : "hover:border-indigo-300 dark:hover:border-violet-500/60"
+            : "hover:border-atelier-vermilion/30 dark:hover:border-atelier-vermilion/60"
         }`}
       >
         <span
           className={`grid h-5 w-5 shrink-0 place-items-center rounded-md transition ${
-            checked ? "bg-indigo-600 text-white dark:bg-violet-500" : "bg-slate-200 dark:bg-slate-600"
+            checked ? "bg-atelier-ink text-atelier-cream dark:bg-atelier-vermilion" : "bg-atelier-smoke/30 dark:bg-atelier-cream/30"
           }`}
         >
           {checked ? <Check size={13} strokeWidth={3} /> : null}
@@ -1272,7 +1273,7 @@ function ProviderDrawerEnableToggle({ checked, disabled, blocked = false, onTogg
         {t("settings.provider.enable")}
       </button>
       {blocked ? (
-        <p id={helpId} className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-200">
+        <p id={helpId} className="mt-2 text-xs leading-5 text-atelier-sepia dark:text-atelier-cream/70">
           {t("settings.provider.disableBlocked")}
         </p>
       ) : null}
@@ -1334,7 +1335,7 @@ function ProviderProfileDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/55 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex justify-end bg-atelier-ink/55 backdrop-blur-sm">
       <div
         className="absolute inset-0 h-full w-full cursor-default"
         aria-hidden="true"
@@ -1344,21 +1345,21 @@ function ProviderProfileDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex h-full w-full max-w-full flex-col overflow-hidden bg-white shadow-2xl shadow-slate-950/25 dark:bg-[#121722] sm:max-w-[448px]"
+        className="relative flex h-full w-full max-w-full flex-col overflow-hidden bg-atelier-paper shadow-2xl shadow-paper-md dark:bg-[#1A1410] sm:max-w-[448px]"
       >
-        <div className="flex h-[74px] items-center justify-between border-b border-slate-200 px-6 dark:border-slate-800">
+        <div className="flex h-[74px] items-center justify-between border-b border-atelier-smoke/30 px-6 dark:border-atelier-cream/15">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="text-indigo-600 dark:text-violet-400">
+            <span className="text-atelier-vermilion dark:text-atelier-vermilion">
               {editingProfileId ? <Pencil size={17} /> : <Plus size={18} />}
             </span>
-            <h2 id={titleId} className="truncate text-lg font-bold text-slate-950 dark:text-white">
+            <h2 id={titleId} className="truncate text-lg font-bold text-atelier-ink dark:text-atelier-cream">
               {editingProfileId ? t("settings.provider.edit") : t("settings.provider.create")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-950 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-white"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-atelier-smoke/30 text-atelier-smoke transition hover:border-atelier-smoke/50 hover:text-atelier-ink dark:border-atelier-cream/15 dark:text-atelier-smoke dark:hover:border-atelier-smoke/50 dark:hover:text-atelier-cream"
             aria-label={t("settings.provider.closeDrawer")}
             title={t("settings.provider.closeDrawer")}
           >
@@ -1374,7 +1375,7 @@ function ProviderProfileDrawer({
           }}
         >
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
-            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <div className="text-xs font-semibold text-atelier-smoke dark:text-atelier-smoke">
               {t("settings.provider.basicInfo")}
             </div>
             <SettingsFormField label={t("settings.provider.nameLabel")}>
@@ -1407,7 +1408,7 @@ function ProviderProfileDrawer({
                 />
               </SettingsFormField>
             ) : (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-[#171f30] dark:text-slate-300">
+              <div className="rounded-xl border border-atelier-smoke/30 bg-atelier-paper px-4 py-3 text-xs leading-5 text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke">
                 {t("settings.provider.googleBaseUrlUnsupported")}
               </div>
             )}
@@ -1426,7 +1427,7 @@ function ProviderProfileDrawer({
               />
             </SettingsFormField>
             <div className="grid gap-2">
-              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              <div className="text-xs font-medium text-atelier-sepia dark:text-atelier-smoke">
                 {t("settings.provider.capabilitiesLabel")}
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1441,7 +1442,7 @@ function ProviderProfileDrawer({
               </div>
             </div>
 
-            <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
+            <div className="border-t border-atelier-smoke/30 pt-4 dark:border-atelier-cream/15">
               <ProviderDrawerEnableToggle
                 checked={form.enabled}
                 disabled={pending}
@@ -1451,11 +1452,11 @@ function ProviderProfileDrawer({
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-slate-200 bg-white px-6 py-5 dark:border-slate-800 dark:bg-[#121722]">
+          <div className="shrink-0 border-t border-atelier-smoke/30 bg-atelier-paper px-6 py-5 dark:border-atelier-cream/15 dark:bg-[#1A1410]">
             <button
               type="submit"
               disabled={pending || !form.name.trim() || !form.capabilities.length}
-              className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-indigo-600 px-5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-500 disabled:opacity-50 dark:bg-violet-500 dark:shadow-violet-950/30 dark:hover:bg-violet-400"
+              className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-atelier-ink px-5 text-sm font-bold text-atelier-cream shadow-lg shadow-paper-md transition hover:bg-atelier-vermilion disabled:opacity-50 dark:bg-atelier-vermilion dark:shadow-paper-md dark:hover:bg-atelier-vermilion-dark"
             >
               {pending ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Save size={14} className="mr-2" />}
               {t("detail.save")}
@@ -1524,7 +1525,7 @@ function TextBindingSection({ data, draft, pending, onChange, onSave }: TextBind
           />
         </SettingsFormField>
       </div>
-      <div className="flex justify-end border-t border-slate-100 pt-5 dark:border-slate-800">
+      <div className="flex justify-end border-t border-atelier-smoke/20 pt-5 dark:border-atelier-cream/15">
         <button
           type="button"
           onClick={onSave}
@@ -1601,20 +1602,20 @@ function ImageBindingSection({ data, draft, pending, session, onChange, onSave }
         </SettingsFormField>
       ) : null}
       {hasSsoImageModelSource ? (
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-50">
+        <div className="rounded-lg border border-atelier-vermilion/30 bg-atelier-vermilion/5 p-4 text-sm text-atelier-ink dark:border-atelier-vermilion/30 dark:bg-atelier-vermilion/10 dark:text-atelier-cream">
           <div className="font-semibold">{t("settings.provider.ssoModelSourceTitle")}</div>
-          <p className="mt-1 text-indigo-800 dark:text-violet-100/80">
+          <p className="mt-1 text-atelier-vermilion-dark dark:text-atelier-cream/80">
             {t("settings.provider.ssoModelSourceDescription")}
           </p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-violet-200">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-atelier-vermilion dark:text-atelier-vermilion">
                 {t("settings.provider.ssoTokenGroupLabel")}
               </dt>
               <dd className="mt-1 font-mono text-sm">{ssoTokenGroup || t("settings.provider.ssoMissingValue")}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-violet-200">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-atelier-vermilion dark:text-atelier-vermilion">
                 {t("settings.provider.ssoImageModelLabel")}
               </dt>
               <dd className="mt-1 font-mono text-sm">
@@ -1622,7 +1623,7 @@ function ImageBindingSection({ data, draft, pending, session, onChange, onSave }
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs text-indigo-700 dark:text-violet-100/70">
+          <p className="mt-3 text-xs text-atelier-vermilion dark:text-atelier-cream/70">
             {t("settings.provider.localImageModelFallbackHelp", {
               model: draft.model || t("settings.provider.ssoMissingValue"),
             })}
@@ -1688,14 +1689,14 @@ function ImageBindingSection({ data, draft, pending, session, onChange, onSave }
           </SettingsFormField>
         </div>
       ) : null}
-      <div className="flex flex-col gap-5 border-t border-slate-100 pt-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-5 border-t border-atelier-smoke/20 pt-5 dark:border-atelier-cream/15 sm:flex-row sm:items-center sm:justify-between">
         {draft.provider_kind === "openai_responses" ? (
-          <label className="inline-flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+          <label className="inline-flex items-center gap-3 text-sm font-medium text-atelier-sepia dark:text-atelier-smoke">
             <input
               type="checkbox"
               checked={draft.responses_background_enabled}
               onChange={(event) => onChange({ ...draft, responses_background_enabled: event.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 accent-indigo-600 dark:border-slate-600"
+              className="h-4 w-4 rounded border-atelier-smoke/50 accent-atelier-vermilion-dark dark:border-atelier-cream/15"
             />
             {t("settings.provider.responsesBackground")}
           </label>
@@ -2094,7 +2095,7 @@ export function SettingsPage() {
   const isUnlocked = Boolean(lockStateQuery.data?.unlocked);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white dark:bg-[#060a12] dark:text-slate-100">
+    <div className="flex min-h-screen flex-col bg-atelier-paper dark:bg-[#1A1410] dark:text-atelier-cream">
       <TopNav
         breadcrumbs={t("settings.breadcrumb")}
         onHome={() => navigate("/products")}
@@ -2102,24 +2103,22 @@ export function SettingsPage() {
         session={sessionQuery.data}
       />
 
+      <div className="mx-auto w-full max-w-[1440px]">
+        <MiniHero
+          title="SETTINGS"
+          meta={`ATELIER · ${t("settings.title")} · 2026`}
+          ornament="❦"
+        />
+      </div>
+
       <main className="mx-auto flex w-full max-w-[1440px] flex-1">
         <div className="w-full">
           {!lockStateQuery.data?.unlocked ? (
-            <div className="mb-6 flex flex-col gap-3 px-5 py-8 md:flex-row md:items-end md:justify-between lg:px-8 lg:py-10">
-              <div>
-                <div className="mb-2 inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:border-violet-400/35 dark:bg-violet-500/15 dark:text-violet-100">
-                  <SettingsIcon size={13} className="mr-1.5" />
-                  {t("settings.runtimeConfig")}
-                </div>
-                <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                  {t("settings.title")}
-                </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("settings.description")}</p>
-              </div>
+            <div className="mb-6 flex justify-end px-5 py-6 lg:px-8">
               <button
                 type="button"
                 onClick={() => navigate("/products")}
-                className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-slate-400 dark:hover:text-white"
+                className="text-sm font-medium text-atelier-smoke hover:text-atelier-ink dark:text-atelier-smoke dark:hover:text-atelier-cream"
               >
                 {t("settings.back")}
               </button>
@@ -2127,31 +2126,31 @@ export function SettingsPage() {
           ) : null}
 
           {isCheckingLockState ? (
-            <div className="flex justify-center py-20 text-zinc-400 dark:text-slate-500">
+            <div className="flex justify-center py-20 text-atelier-smoke dark:text-atelier-smoke">
               <Loader2 size={22} className="animate-spin" />
             </div>
           ) : lockStateQuery.isError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-4 py-3 text-sm text-atelier-vermilion-dark">
               {t("settings.lockLoadFailed")}
             </div>
           ) : !lockStateQuery.data?.configured ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            <div className="rounded-lg border border-atelier-smoke/40 bg-atelier-kraft px-5 py-4 text-sm text-atelier-sepia">
               {t("settings.tokenMissing")}
             </div>
           ) : !lockStateQuery.data.unlocked ? (
             <form
               onSubmit={handleUnlock}
-              className="mx-auto max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#0f1726]"
+              className="mx-auto max-w-xl rounded-lg border border-atelier-smoke/30 bg-atelier-paper p-6 shadow-sm dark:border-atelier-cream/15 dark:bg-[#1F1812]"
             >
               <div className="mb-5 flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-violet-500/15 dark:text-violet-100">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-atelier-vermilion/5 text-atelier-vermilion dark:bg-atelier-vermilion/10 dark:text-atelier-cream">
                   <LockKeyhole size={18} />
                 </span>
                 <div>
-                  <h2 className="text-base font-semibold text-slate-950 dark:text-white">
+                  <h2 className="text-base font-semibold text-atelier-ink dark:text-atelier-cream">
                     {t("settings.unlockTitle")}
                   </h2>
-                  <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-sm leading-6 text-atelier-smoke dark:text-atelier-smoke">
                     {t("settings.unlockDescription")}
                   </p>
                 </div>
@@ -2165,7 +2164,7 @@ export function SettingsPage() {
                 autoComplete="current-password"
               />
               {error ? (
-                <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="mt-4 rounded-md border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-4 py-3 text-sm text-atelier-vermilion-dark">
                   {error}
                 </div>
               ) : null}
@@ -2173,7 +2172,7 @@ export function SettingsPage() {
                 <button
                   type="submit"
                   disabled={unlockMutation.isPending || !unlockToken.trim()}
-                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 dark:bg-violet-500"
+                  className="inline-flex items-center rounded-lg bg-atelier-ink px-4 py-2 text-sm font-semibold text-atelier-cream hover:bg-atelier-vermilion disabled:opacity-50 dark:bg-atelier-vermilion"
                 >
                   {unlockMutation.isPending ? (
                     <Loader2 size={14} className="mr-2 animate-spin" />
@@ -2185,30 +2184,30 @@ export function SettingsPage() {
               </div>
             </form>
           ) : loadingMain ? (
-            <div className="flex justify-center py-20 text-zinc-400 dark:text-slate-500">
+            <div className="flex justify-center py-20 text-atelier-smoke dark:text-atelier-smoke">
               <Loader2 size={22} className="animate-spin" />
             </div>
           ) : configQuery.isError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-4 py-3 text-sm text-atelier-vermilion-dark">
               {configQuery.error instanceof ApiError ? configQuery.error.detail : t("settings.loadFailed")}
             </div>
           ) : (
             <div className="grid min-h-full lg:grid-cols-[280px_minmax(0,1fr)]">
-              <aside className="border-b border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-[#0f1726] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
-                <div className="border-b border-slate-200 px-5 py-7 dark:border-slate-800">
-                  <div className="flex items-center gap-3 text-lg font-semibold text-slate-950 dark:text-white">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-violet-500/15 dark:text-violet-200">
+              <aside className="border-b border-atelier-smoke/30 bg-atelier-paper/70 dark:border-atelier-cream/15 dark:bg-[#1F1812] lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
+                <div className="border-b border-atelier-smoke/30 px-5 py-7 dark:border-atelier-cream/15">
+                  <div className="flex items-center gap-3 text-lg font-semibold text-atelier-ink dark:text-atelier-cream">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-atelier-vermilion/5 text-atelier-vermilion dark:bg-atelier-vermilion/10 dark:text-atelier-vermilion">
                       <SettingsIcon size={20} />
                     </span>
                     {t("settings.title")}
                   </div>
-                  <label className="mt-6 flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 shadow-sm shadow-slate-200/30 dark:border-slate-700 dark:bg-[#0b1220] dark:text-slate-500 dark:shadow-black/20">
+                  <label className="mt-6 flex h-10 items-center gap-2 rounded-lg border border-atelier-smoke/30 bg-atelier-paper px-3 text-sm text-atelier-smoke shadow-sm shadow-paper-md dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-smoke dark:shadow-paper-md">
                     <Search size={16} />
                     <input
                       value={sectionSearch}
                       onChange={(event) => setSectionSearch(event.target.value)}
                       placeholder={t("settings.searchPlaceholder")}
-                      className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+                      className="min-w-0 flex-1 bg-transparent text-sm text-atelier-ink outline-none placeholder:text-atelier-smoke dark:text-atelier-cream dark:placeholder:text-atelier-smoke"
                     />
                   </label>
                 </div>
@@ -2220,7 +2219,7 @@ export function SettingsPage() {
                     }
                     return (
                       <div key={group}>
-                        <div className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <div className="px-2 text-xs font-semibold uppercase tracking-wide text-atelier-smoke dark:text-atelier-smoke">
                           {t(group)}
                         </div>
                         <div className="mt-2 space-y-1">
@@ -2234,11 +2233,11 @@ export function SettingsPage() {
                                 onClick={() => setActiveSection(section.id)}
                                 className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors ${
                                   active
-                                    ? "bg-indigo-50 font-semibold text-indigo-700 ring-1 ring-indigo-200 dark:bg-violet-500/18 dark:text-violet-100 dark:ring-violet-400/35"
-                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-violet-500/12 dark:hover:text-white"
+                                    ? "bg-atelier-vermilion/5 font-semibold text-atelier-vermilion ring-1 ring-atelier-vermilion/30 dark:bg-atelier-vermilion/15 dark:text-atelier-cream dark:ring-atelier-vermilion/30"
+                                    : "text-atelier-sepia hover:bg-atelier-paper hover:text-atelier-ink dark:text-atelier-smoke dark:hover:bg-atelier-vermilion/10 dark:hover:text-atelier-cream"
                                 }`}
                               >
-                                <Icon size={15} className={active ? "shrink-0 text-indigo-600 dark:text-violet-200" : "shrink-0 text-slate-400 dark:text-slate-500"} />
+                                <Icon size={15} className={active ? "shrink-0 text-atelier-vermilion dark:text-atelier-vermilion" : "shrink-0 text-atelier-smoke dark:text-atelier-smoke"} />
                                 <span className="truncate">{t(section.labelKey)}</span>
                               </button>
                             );
@@ -2249,7 +2248,7 @@ export function SettingsPage() {
                   })}
                 </nav>
                 <div className="p-4 lg:hidden">
-                  <label htmlFor="settings-section" className="mb-2 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <label htmlFor="settings-section" className="mb-2 block text-xs font-semibold text-atelier-smoke dark:text-atelier-smoke">
                     {t("settings.mobileSectionLabel")}
                   </label>
                   <SelectField
@@ -2268,18 +2267,18 @@ export function SettingsPage() {
                 </div>
               </aside>
 
-              <section className="min-w-0 bg-white px-5 py-8 dark:bg-[#0b1220] sm:px-8 lg:px-12 lg:py-12">
+              <section className="min-w-0 bg-atelier-paper px-5 py-8 dark:bg-[#1F1812] sm:px-8 lg:px-12 lg:py-12">
                 <div className="mx-auto max-w-4xl">
                   <div className="mb-10">
-                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-atelier-smoke dark:text-atelier-smoke">
                       <span>{t("settings.title")}</span>
                       <span>/</span>
                       <span>{t(activeMeta.labelKey)}</span>
                     </div>
-                    <h1 className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                    <h1 className="text-3xl font-semibold tracking-tight text-atelier-ink dark:text-atelier-cream">
                       {t(activeMeta.labelKey)}
                     </h1>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-atelier-smoke dark:text-atelier-smoke">
                       {t(activeMeta.descriptionKey)}
                     </p>
                   </div>
@@ -2307,12 +2306,12 @@ export function SettingsPage() {
                     />
                   ) : null}
                   {error ? (
-                    <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
+                    <div className="mb-5 rounded-md border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-4 py-3 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">
                       {error}
                     </div>
                   ) : null}
                   {savedMessage ? (
-                    <div className="mb-5 flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/10 dark:text-emerald-200">
+                    <div className="mb-5 flex items-center rounded-md border border-atelier-smoke/40 bg-atelier-cream px-4 py-3 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/10 dark:text-atelier-cream/70">
                       <CheckCircle2 size={16} className="mr-2" />
                       {savedMessage}
                     </div>
@@ -2447,15 +2446,15 @@ export function SettingsPage() {
                             ))
                           )
                         ) : (
-                          <div className="rounded-lg border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                          <div className="rounded-lg border border-dashed border-atelier-smoke/50 px-4 py-10 text-center text-sm text-atelier-smoke dark:border-atelier-cream/15 dark:text-atelier-smoke">
                             {t("settings.section.empty")}
                           </div>
                         )}
-                        <div className="flex justify-end gap-3 border-t border-slate-100 pt-5 dark:border-slate-800">
+                        <div className="flex justify-end gap-3 border-t border-atelier-smoke/20 pt-5 dark:border-atelier-cream/15">
                           <button
                             type="button"
                             onClick={() => resetDraftsFromConfig(configQuery.data)}
-                            className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-slate-300 dark:hover:text-white"
+                            className="px-4 py-2 text-sm font-medium text-atelier-sepia hover:text-atelier-ink dark:text-atelier-smoke dark:hover:text-atelier-cream"
                           >
                             {t("settings.discard")}
                           </button>
@@ -2481,12 +2480,12 @@ export function SettingsPage() {
           )}
 
           {!isUnlocked && error ? (
-            <div className="mx-8 mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-400/35 dark:bg-red-500/10 dark:text-red-200">
+            <div className="mx-8 mt-5 rounded-md border border-atelier-vermilion-dark/30 bg-atelier-vermilion-dark/5 px-4 py-3 text-sm text-atelier-vermilion-dark dark:border-atelier-vermilion/40 dark:bg-atelier-vermilion-dark/15 dark:text-atelier-vermilion">
               {error}
             </div>
           ) : null}
           {!isUnlocked && savedMessage ? (
-            <div className="mx-8 mt-5 flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/35 dark:bg-emerald-500/10 dark:text-emerald-200">
+            <div className="mx-8 mt-5 flex items-center rounded-md border border-atelier-smoke/40 bg-atelier-cream px-4 py-3 text-sm text-atelier-sepia dark:border-atelier-cream/15 dark:bg-atelier-cream/10 dark:text-atelier-cream/70">
               <CheckCircle2 size={16} className="mr-2" />
               {savedMessage}
             </div>
