@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Flag,
@@ -12,10 +12,9 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { GalleryImagePreviewDialog } from "../components/GalleryImagePreviewDialog";
-import { MiniHero } from "../components/MiniHero";
 import { TopNav } from "../components/TopNav";
 import { api, ApiError } from "../lib/api";
-import { formatDateTime } from "../lib/format";
+import { formatDateTime, formatShortDate } from "../lib/format";
 import { type TranslationKey } from "../lib/i18n";
 import { useI18n } from "../lib/preferences";
 import type { CanvasTemplateSummary, GalleryEntry } from "../lib/types";
@@ -25,7 +24,6 @@ import {
   galleryEntryAuthorLabelForLocale,
   galleryEntrySizeLabel,
   galleryTemplateAuthorLabelForLocale,
-  galleryTileLayout,
   selectGalleryEntry,
   selectGalleryTemplate,
 } from "./gallery/helpers";
@@ -246,14 +244,11 @@ export function GalleryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [gridContentWidth, setGridContentWidth] = useState<number | null>(null);
-  const [isDesktopGrid, setIsDesktopGrid] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [reportingEntryId, setReportingEntryId] = useState<string | null>(null);
   const [reportReasonCode, setReportReasonCode] = useState<(typeof REPORT_REASON_OPTIONS)[number]>("inappropriate");
   const [reportReasonText, setReportReasonText] = useState("");
-  const gridRef = useRef<HTMLDivElement | null>(null);
 
   const tabFromUrl = normalizeGalleryTab(searchParams.get("tab"));
   const [activeTab, setActiveTabState] = useState<GalleryTab>(() => {
@@ -300,30 +295,6 @@ export function GalleryPage() {
   useEffect(() => {
     window.localStorage.setItem(GALLERY_TAB_STORAGE_KEY, activeTab);
   }, [activeTab]);
-
-  useEffect(() => {
-    const updateGridMetrics = () => {
-      setIsDesktopGrid(window.matchMedia("(min-width: 1024px)").matches);
-      if (gridRef.current) {
-        setGridContentWidth(gridRef.current.clientWidth);
-      }
-    };
-
-    updateGridMetrics();
-    window.addEventListener("resize", updateGridMetrics);
-
-    const gridElement = gridRef.current;
-    const resizeObserver =
-      typeof ResizeObserver === "undefined" || !gridElement ? null : new ResizeObserver(updateGridMetrics);
-    if (gridElement) {
-      resizeObserver?.observe(gridElement);
-    }
-
-    return () => {
-      window.removeEventListener("resize", updateGridMetrics);
-      resizeObserver?.disconnect();
-    };
-  }, []);
 
   const logoutMutation = useMutation({
     mutationFn: api.destroySession,
@@ -578,13 +549,38 @@ export function GalleryPage() {
         session={sessionQuery.data}
       />
 
-      <MiniHero
-        title="GALLERY"
-        meta="Recent works · 2026"
-        ornament="❦"
-      />
-
       <main className="w-full">
+        <section className="relative isolate min-h-[420px] overflow-hidden bg-atelier-kraft sm:min-h-[480px] lg:min-h-[460px] dark:bg-[#241B14]">
+          <img
+            src="/hero.png"
+            alt=""
+            decoding="async"
+            className="absolute inset-y-0 right-0 h-full w-full object-cover object-center opacity-35 sm:opacity-50 lg:w-[62%] lg:opacity-100"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#E8DDC4_0%,rgba(232,221,196,0.99)_36%,rgba(232,221,196,0.72)_52%,rgba(232,221,196,0.08)_76%,rgba(232,221,196,0)_100%)] dark:bg-[linear-gradient(90deg,#241B14_0%,rgba(36,27,20,0.99)_36%,rgba(36,27,20,0.72)_52%,rgba(36,27,20,0.08)_76%,rgba(36,27,20,0)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-atelier-smoke/30" />
+          <div className="relative z-10 mx-auto grid min-h-[420px] max-w-7xl grid-cols-1 px-6 py-14 sm:min-h-[480px] sm:px-10 lg:min-h-[460px] lg:grid-cols-[minmax(0,0.43fr)_minmax(360px,0.57fr)] lg:items-center lg:px-14">
+            <div className="max-w-xl">
+              <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-atelier-smoke">
+                {t("gallery.feed")}
+              </p>
+              <h1 className="mt-6 font-display text-7xl italic leading-none text-atelier-ink sm:text-8xl lg:text-[7rem] dark:text-atelier-cream">
+                {t("gallery.title")}
+              </h1>
+              <p className="mt-6 max-w-md text-base leading-relaxed text-atelier-sepia dark:text-atelier-cream/70">
+                {t("gallery.description")}
+              </p>
+              <span
+                aria-hidden="true"
+                className="mt-8 inline-block font-display text-3xl text-atelier-ink/30 dark:text-atelier-cream/30"
+              >
+                ❦
+              </span>
+            </div>
+            <div className="hidden lg:block" />
+          </div>
+        </section>
+
         <section className="bg-atelier-cream px-4 py-12 sm:px-6 lg:px-10 dark:bg-[#1A1410]">
           <div className="mx-auto mb-8 flex max-w-7xl flex-col gap-4 border-b border-atelier-smoke/30 pb-6 dark:border-atelier-cream/15 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -640,23 +636,8 @@ export function GalleryPage() {
             </div>
           ) : activeTab === "images" ? (
             entries.length ? (
-              <div
-                ref={gridRef}
-                className="mx-auto grid max-w-7xl grid-flow-dense grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:auto-rows-[8px]"
-              >
-                {entries.map((entry, index) => {
-                  const tileLayout = galleryTileLayout(entry, index, gridContentWidth ?? undefined);
-                  const isFirst = index === 0;
-                  const effectiveRowSpan = isFirst
-                    ? Math.round(tileLayout.rowSpan * 1.5)
-                    : tileLayout.rowSpan;
-                  const tileColSpan = isFirst
-                    ? "sm:col-span-2 lg:col-span-6"
-                    : tileLayout.className;
-                  const tileStyle: CSSProperties = {
-                    aspectRatio: tileLayout.aspectRatio,
-                    ...(isDesktopGrid ? { gridRowEnd: `span ${effectiveRowSpan}` } : {}),
-                  };
+              <div className="mx-auto max-w-7xl gap-6 sm:columns-2 lg:columns-3">
+                {entries.map((entry) => {
                   const authorLabel = galleryEntryAuthorLabelForLocale(entry, locale);
                   return (
                     <button
@@ -664,34 +645,39 @@ export function GalleryPage() {
                       type="button"
                       onClick={() => openEntry(entry.id)}
                       aria-label={`${t("gallery.openDetail")}: ${authorLabel}`}
-                      className={`group relative min-w-0 overflow-hidden bg-atelier-ink text-left shadow-paper-sm transition duration-300 hover:scale-[1.02] hover:shadow-paper-md ${tileColSpan}`}
-                      style={tileStyle}
+                      className="group mb-6 block w-full break-inside-avoid overflow-hidden border border-atelier-smoke/30 bg-atelier-paper text-left shadow-paper-sm transition duration-300 hover:shadow-paper-md dark:border-atelier-cream/15 dark:bg-[#221A14]"
                     >
-                      <div className="relative h-full overflow-hidden bg-atelier-ink">
+                      <div className="relative overflow-hidden bg-atelier-cream dark:bg-[#1A1410]">
                         <img
                           src={api.toApiUrl(entry.image.thumbnail_url)}
                           alt={entry.prompt ?? entry.image.original_filename}
                           loading="lazy"
                           decoding="async"
-                          className="h-full w-full object-contain transition duration-300"
+                          className="block w-full transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-atelier-ink/82 via-atelier-ink/10 to-transparent opacity-80 transition-opacity group-hover:opacity-95" />
                         {entry.forked_from_entry_id ? (
                           <div className="absolute left-3 top-3 rounded-full bg-atelier-cream/88 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-atelier-ink shadow-paper-sm">
                             {t("gallery.remix")}
                           </div>
                         ) : null}
-                        <div className="absolute inset-x-0 bottom-0 p-4 text-atelier-cream">
-                          <div className="line-clamp-2 font-display text-base italic leading-5">
-                            {entry.prompt ?? entry.image.original_filename}
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-atelier-ink/85 via-atelier-ink/15 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                          <div className="absolute inset-x-0 bottom-0 p-4 text-atelier-cream">
+                            <p className="line-clamp-3 font-display text-base italic leading-5">
+                              {entry.prompt ?? entry.image.original_filename}
+                            </p>
+                            <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-atelier-cream/70">
+                              {galleryEntrySizeLabel(entry, locale)}
+                            </p>
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-wider text-atelier-cream/75">
-                            <span>{authorLabel}</span>
-                            <span>{galleryEntrySizeLabel(entry, locale)}</span>
-                            <span>{formatDateTime(entry.created_at)}</span>
-                          </div>
-                          <div className="mt-1 truncate text-[11px] text-atelier-cream/60">{entry.image_session_title}</div>
                         </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 border-t border-atelier-smoke/30 px-4 py-2.5 dark:border-atelier-cream/15">
+                        <span className="truncate font-mono text-[10px] uppercase tracking-widest text-atelier-sepia dark:text-atelier-cream/60">
+                          {authorLabel}
+                        </span>
+                        <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-atelier-smoke">
+                          {formatShortDate(entry.created_at)}
+                        </span>
                       </div>
                     </button>
                   );
