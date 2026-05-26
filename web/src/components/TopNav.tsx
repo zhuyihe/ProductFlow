@@ -9,7 +9,6 @@ import {
   Moon,
   Settings,
   Sun,
-  Wand2,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -103,9 +102,25 @@ export function TopNav({ breadcrumbs, onHome, onLogout, session }: TopNavProps) 
               className="flex min-w-0 shrink-0 items-center text-base font-semibold text-atelier-ink transition-colors hover:text-atelier-vermilion dark:text-atelier-cream dark:hover:text-atelier-vermilion"
               onClick={onHome}
             >
-              <span className="mr-2 inline-flex h-8 w-8 items-center justify-center bg-atelier-ink text-atelier-cream shadow-paper-md">
-                <Wand2 size={17} />
-              </span>
+              <picture className="mr-2 block h-8 w-8 shrink-0">
+                <source
+                  type="image/avif"
+                  srcSet="/illustrations/logo-mark.avif 1x, /illustrations/logo-mark@2x.avif 2x"
+                />
+                <source
+                  type="image/webp"
+                  srcSet="/illustrations/logo-mark.webp 1x, /illustrations/logo-mark@2x.webp 2x"
+                />
+                <img
+                  src="/illustrations/logo-mark.webp"
+                  alt=""
+                  aria-hidden="true"
+                  decoding="async"
+                  width={32}
+                  height={32}
+                  className="block h-8 w-8 select-none"
+                />
+              </picture>
               <span className="hidden sm:inline">Atelier</span>
             </button>
             {breadcrumbs ? (

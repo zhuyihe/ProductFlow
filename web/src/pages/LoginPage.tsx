@@ -33,13 +33,26 @@ export function LoginPage({ authenticated, ssoStartUrl }: LoginPageProps) {
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[2fr_3fr]">
       {/* 左半屏 — paper 背景 + wordmark + tagline + form */}
       <section className="relative flex flex-col justify-between bg-atelier-paper px-12 py-16 dark:bg-[#1F1812]">
-        {/* Wordmark */}
+        {/* Wordmark — R4 #1 A monogram + Atelier */}
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center border border-atelier-smoke/40 bg-atelier-cream dark:border-atelier-cream/20 dark:bg-[#2A2017]">
-            <span className="font-display text-3xl italic leading-none text-atelier-ink dark:text-atelier-cream">
-              A
-            </span>
-          </div>
+          <picture className="block h-12 w-12">
+            <source
+              type="image/avif"
+              srcSet="/illustrations/logo-mark.avif 1x, /illustrations/logo-mark@2x.avif 2x"
+            />
+            <source
+              type="image/webp"
+              srcSet="/illustrations/logo-mark.webp 1x, /illustrations/logo-mark@2x.webp 2x"
+            />
+            <img
+              src="/illustrations/logo-mark.webp"
+              alt="Atelier"
+              decoding="async"
+              width={48}
+              height={48}
+              className="block h-12 w-12 select-none"
+            />
+          </picture>
           <span className="font-display text-3xl italic text-atelier-ink dark:text-atelier-cream">
             Atelier
           </span>
@@ -105,7 +118,7 @@ export function LoginPage({ authenticated, ssoStartUrl }: LoginPageProps) {
         </p>
       </section>
 
-      {/* 右半屏 — kraft 背景 + Hero R4 #2 占位 */}
+      {/* 右半屏 — full bleed hero illustration */}
       <motion.section
         initial={reduced ? false : { opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -114,10 +127,10 @@ export function LoginPage({ authenticated, ssoStartUrl }: LoginPageProps) {
           duration: motionTokens.duration.slow,
           ease: motionTokens.ease.out,
         }}
-        className="relative hidden items-center justify-center overflow-hidden bg-atelier-kraft dark:bg-[#241B14] lg:flex"
+        className="relative hidden overflow-hidden bg-atelier-kraft dark:bg-[#241B14] lg:block"
       >
-        {/* R4 #2 Hero illustration — French atelier scene */}
-        <picture className="relative block">
+        {/* R4 #2 Hero illustration — full bleed, object-cover */}
+        <picture className="absolute inset-0 block h-full w-full">
           <source
             type="image/avif"
             srcSet="/illustrations/login-hero.avif 1x, /illustrations/login-hero@2x.avif 2x"
@@ -132,22 +145,20 @@ export function LoginPage({ authenticated, ssoStartUrl }: LoginPageProps) {
             aria-hidden="true"
             fetchPriority="high"
             decoding="async"
-            width={1024}
-            height={1280}
-            className="block max-h-[78vh] w-auto select-none"
+            className="absolute inset-0 h-full w-full select-none object-cover object-center"
           />
         </picture>
 
-        {/* 装饰 ornament 散点 (UQ10 A wordmark+ornament 简化) */}
+        {/* 装饰 ornament 散点 — 浮于 hero 之上 */}
         <span
           aria-hidden="true"
-          className="absolute left-12 top-20 font-display text-2xl text-atelier-ink/20 dark:text-atelier-cream/20"
+          className="absolute left-12 top-20 z-10 font-display text-2xl text-atelier-ink/30 dark:text-atelier-cream/30"
         >
           ❦
         </span>
         <span
           aria-hidden="true"
-          className="absolute bottom-24 right-16 font-display text-2xl text-atelier-ink/20 dark:text-atelier-cream/20"
+          className="absolute bottom-24 right-16 z-10 font-display text-2xl text-atelier-ink/30 dark:text-atelier-cream/30"
         >
           ※
         </span>
