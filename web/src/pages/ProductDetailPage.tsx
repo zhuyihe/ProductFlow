@@ -1970,12 +1970,6 @@ export function ProductDetailPage() {
         imageSizeOptions={imageSizeOptions}
         imageGenerationMaxDimension={imageGenerationMaxDimension}
         imageToolAllowedFields={imageToolAllowedFields}
-        imageModelOptions={imageModelOptions}
-        selectedImageModel={selectedImageModel}
-        onImageModelChange={setSelectedImageModel}
-        textModelOptions={textModelOptions}
-        selectedTextModel={selectedTextModel}
-        onTextModelChange={setSelectedTextModel}
         onPreviewImage={setPreviewImage}
         onDraftChange={handleDraftChange}
         onRun={() => void handleRunWorkflow(selectedNode.id)}

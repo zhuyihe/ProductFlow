@@ -102,6 +102,8 @@ class WorkflowRunResponse(BaseModel):
     queue_max_concurrent_tasks: int
     queued_ahead_count: int | None = None
     queue_position: int | None = None
+    new_api_image_model: str | None = None
+    new_api_text_model: str | None = None
     node_runs: list[WorkflowNodeRunResponse]
 
 
@@ -121,6 +123,8 @@ class WorkflowRunStatusResponse(BaseModel):
     queue_max_concurrent_tasks: int
     queued_ahead_count: int | None = None
     queue_position: int | None = None
+    new_api_image_model: str | None = None
+    new_api_text_model: str | None = None
     node_runs: list[WorkflowNodeRunStatusResponse]
 
 
@@ -486,6 +490,8 @@ def serialize_workflow_run(run: WorkflowRun) -> WorkflowRunResponse:
         is_retryable=workflow_run_is_retryable(run),
         is_cancelable=workflow_run_is_cancelable(run),
         **workflow_run_queue_fields(run),
+        new_api_image_model=run.new_api_image_model,
+        new_api_text_model=run.new_api_text_model,
         node_runs=[serialize_workflow_node_run(item) for item in node_runs],
     )
 
@@ -503,6 +509,8 @@ def serialize_workflow_run_status(run: WorkflowRun) -> WorkflowRunStatusResponse
         is_retryable=workflow_run_is_retryable(run),
         is_cancelable=workflow_run_is_cancelable(run),
         **workflow_run_queue_fields(run),
+        new_api_image_model=run.new_api_image_model,
+        new_api_text_model=run.new_api_text_model,
         node_runs=[serialize_workflow_node_run_status(item) for item in node_runs],
     )
 

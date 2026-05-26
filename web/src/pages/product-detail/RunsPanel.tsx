@@ -176,6 +176,14 @@ export function RunsPanel({
             const promptItems = imagePromptItems(workflow, run);
             const queueText = workflowRunQueueText(run, t);
             const runBusy = busyRunId === run.id;
+            const runModels = [
+              run.new_api_text_model
+                ? `${t("detail.runSettingsTextModel")} · ${run.new_api_text_model}`
+                : null,
+              run.new_api_image_model
+                ? `${t("detail.runSettingsImageModel")} · ${run.new_api_image_model}`
+                : null,
+            ].filter(Boolean) as string[];
             return (
               <div
                 key={run.id}
@@ -212,6 +220,18 @@ export function RunsPanel({
                         ) : null}
                       </div>
                       {queueText ? <div className="mt-2 text-[11px] leading-5 text-atelier-smoke dark:text-atelier-smoke">{queueText}</div> : null}
+                      {runModels.length ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {runModels.map((model) => (
+                            <span
+                              key={model}
+                              className="rounded-full border border-atelier-smoke/30 bg-atelier-paper px-2 py-0.5 text-[10px] font-medium text-atelier-sepia dark:border-atelier-cream/15 dark:bg-[#1F1812] dark:text-atelier-cream/70"
+                            >
+                              {model}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                     {run.is_retryable ? (
                       <button

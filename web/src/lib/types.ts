@@ -269,6 +269,8 @@ export interface WorkflowRun {
   queue_max_concurrent_tasks: number;
   queued_ahead_count: number | null;
   queue_position: number | null;
+  new_api_image_model?: string | null;
+  new_api_text_model?: string | null;
   node_runs: WorkflowNodeRun[];
 }
 
@@ -288,6 +290,8 @@ export interface WorkflowRunStatusSummary {
   queue_max_concurrent_tasks: number;
   queued_ahead_count: number | null;
   queue_position: number | null;
+  new_api_image_model?: string | null;
+  new_api_text_model?: string | null;
   node_runs: WorkflowNodeRunStatus[];
 }
 

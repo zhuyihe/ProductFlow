@@ -94,12 +94,6 @@ interface InspectorPanelProps {
   imageSizeOptions: ImageSizeOption[];
   imageGenerationMaxDimension: number;
   imageToolAllowedFields: readonly ImageToolOptionKey[];
-  imageModelOptions: readonly string[];
-  selectedImageModel: string;
-  onImageModelChange: (model: string) => void;
-  textModelOptions: readonly string[];
-  selectedTextModel: string;
-  onTextModelChange: (model: string) => void;
   onDraftChange: (draft: NodeConfigDraft) => void;
   onPreviewImage: (image: DownloadableImage) => void;
   onRun: () => void;
@@ -121,12 +115,6 @@ export function InspectorPanel({
   imageSizeOptions,
   imageGenerationMaxDimension,
   imageToolAllowedFields,
-  imageModelOptions,
-  selectedImageModel,
-  onImageModelChange,
-  textModelOptions,
-  selectedTextModel,
-  onTextModelChange,
   onDraftChange,
   onPreviewImage,
   onRun,
@@ -356,9 +344,6 @@ export function InspectorPanel({
           <CopyNodeInspector
             node={node}
             draft={draft}
-            textModelOptions={textModelOptions}
-            selectedTextModel={selectedTextModel}
-            onTextModelChange={onTextModelChange}
             onDraftChange={onDraftChange}
             t={t}
           />
@@ -370,9 +355,6 @@ export function InspectorPanel({
             imageSizeOptions={imageSizeOptions}
             imageGenerationMaxDimension={imageGenerationMaxDimension}
             imageToolAllowedFields={imageToolAllowedFields}
-            imageModelOptions={imageModelOptions}
-            selectedImageModel={selectedImageModel}
-            onImageModelChange={onImageModelChange}
             onDraftChange={onDraftChange}
             downstreamReferenceCount={downstreamReferenceCount}
             onPreviewPrompt={setPromptPreview}
@@ -604,17 +586,11 @@ function ReferenceImageInspector({
 function CopyNodeInspector({
   node,
   draft,
-  textModelOptions,
-  selectedTextModel,
-  onTextModelChange,
   onDraftChange,
   t,
 }: {
   node: WorkflowNode;
   draft: NodeConfigDraft;
-  textModelOptions: readonly string[];
-  selectedTextModel: string;
-  onTextModelChange: (model: string) => void;
   onDraftChange: (draft: NodeConfigDraft) => void;
   t: TFunction;
 }) {
@@ -624,21 +600,6 @@ function CopyNodeInspector({
   const copyPayload = draft.copyStructuredPayload;
   return (
     <div className="space-y-3">
-      <label className="block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
-          {t("detail.inspector.textModel")}
-        </span>
-        <SelectField
-          value={selectedTextModel}
-          options={
-            textModelOptions.length
-              ? textModelOptions.map((model) => ({ value: model, label: model }))
-              : [{ value: "", label: t("detail.inspector.noTextModels") }]
-          }
-          disabled={textModelOptions.length <= 1}
-          onChange={onTextModelChange}
-        />
-      </label>
       <TextArea
         label={t("detail.inspector.copyInstruction")}
         value={draft.instruction}
@@ -981,9 +942,6 @@ function ImageGenerationInspector({
   imageSizeOptions,
   imageGenerationMaxDimension,
   imageToolAllowedFields,
-  imageModelOptions,
-  selectedImageModel,
-  onImageModelChange,
   onDraftChange,
   downstreamReferenceCount,
   onPreviewPrompt,
@@ -994,9 +952,6 @@ function ImageGenerationInspector({
   imageSizeOptions: ImageSizeOption[];
   imageGenerationMaxDimension: number;
   imageToolAllowedFields: readonly ImageToolOptionKey[];
-  imageModelOptions: readonly string[];
-  selectedImageModel: string;
-  onImageModelChange: (model: string) => void;
   onDraftChange: (draft: NodeConfigDraft) => void;
   downstreamReferenceCount: number;
   onPreviewPrompt: (preview: PromptPreview) => void;
@@ -1006,21 +961,7 @@ function ImageGenerationInspector({
   const savedInstruction = node.output_json ? outputText(node.output_json, "instruction") : "";
   const previewText = savedInstruction || draft.instruction;
   const promptMeta = savedInstruction ? t("detail.inspector.savedPromptMeta") : t("detail.inspector.currentDraft");
-  const toolOptionsForDisplay = {
-    ...draft.toolOptions,
-    ...(selectedImageModel ? { model: selectedImageModel } : {}),
-  };
-  const updateToolOptions = (toolOptions: typeof draft.toolOptions) => {
-    if (typeof toolOptions.model === "string") {
-      onImageModelChange(toolOptions.model);
-    }
-    const nextToolOptions = { ...toolOptions };
-    delete nextToolOptions.model;
-    onDraftChange({ ...draft, toolOptions: nextToolOptions });
-  };
-  const advancedToolFields = imageModelOptions.length
-    ? imageToolAllowedFields.filter((field) => field !== "model")
-    : imageToolAllowedFields;
+  const workflowLevelToolFields = imageToolAllowedFields.filter((field) => field !== "model");
 
   return (
     <div className="space-y-3">
@@ -1073,12 +1014,10 @@ function ImageGenerationInspector({
               size={draft.size}
               sizeOptions={imageSizeOptions}
               maxDimension={imageGenerationMaxDimension}
-              toolOptions={toolOptionsForDisplay}
-              allowedToolFields={imageToolAllowedFields}
-              modelOptions={imageModelOptions}
-              lockModelToOptions={imageModelOptions.length > 0}
+              toolOptions={draft.toolOptions}
+              allowedToolFields={workflowLevelToolFields}
               onSizeChange={(size) => onDraftChange({ ...draft, size })}
-              onToolOptionsChange={updateToolOptions}
+              onToolOptionsChange={(toolOptions) => onDraftChange({ ...draft, toolOptions })}
               showToolOptions={false}
             />
           </div>
@@ -1087,8 +1026,8 @@ function ImageGenerationInspector({
           <ImageToolControls
             surface="plain"
             value={draft.toolOptions}
-            allowedFields={advancedToolFields}
-            onChange={updateToolOptions}
+            allowedFields={workflowLevelToolFields}
+            onChange={(toolOptions) => onDraftChange({ ...draft, toolOptions })}
           />
         }
       />
