@@ -31,6 +31,7 @@ import { formatDateTime } from "../lib/format";
 import { DEFAULT_IMAGE_TOOL_ALLOWED_FIELDS } from "../lib/imageToolOptions";
 import { useI18n } from "../lib/preferences";
 import { DEFAULT_IMAGE_GENERATION_MAX_DIMENSION, buildImageSizeOptions } from "../lib/imageSizes";
+import { getSessionImageModelOptions } from "../lib/sessionModels";
 import { imageRoundSizeLabel, placeholderStatusClass, placeholderStatusLabel } from "./image-chat/display";
 import { ImageChatHistoryPanel } from "./image-chat/ImageChatHistoryPanel";
 import { ImageChatMainStage } from "./image-chat/ImageChatMainStage";
@@ -84,7 +85,6 @@ import type {
   ImageSessionStatus,
   ImageToolOptionKey,
   ImageToolOptions,
-  SessionState,
 } from "../lib/types";
 
 const DUPLICATE_GENERATION_SUBMIT_WINDOW_MS = 1800;
@@ -138,19 +138,6 @@ function writeImageChatRouteState(scope: string, state: ImageChatRouteState) {
 
 function getSessionReferenceAssets(imageSession: ImageSessionDetail | undefined): ImageSessionAsset[] {
   return imageSession?.assets.filter((asset) => asset.kind === "reference_upload") ?? [];
-}
-
-function getSessionImageModelOptions(session: SessionState | undefined): string[] {
-  const models: string[] = [];
-  const addModel = (value: string | null | undefined) => {
-    const normalized = value?.trim();
-    if (normalized && !models.includes(normalized)) {
-      models.push(normalized);
-    }
-  };
-  addModel(session?.new_api_image_model);
-  session?.new_api_image_models?.forEach(addModel);
-  return models;
 }
 
 type PendingDeleteAction =

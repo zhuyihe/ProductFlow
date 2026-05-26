@@ -132,6 +132,7 @@ def test_start_product_workflow_run_persists_new_api_token_context(
         new_api_token=token,
         new_api_token_group="GPT-Image-2",
         new_api_image_model="gpt-image-2",
+        new_api_text_model="gpt-4.1-mini",
     )
 
     kickoff = start_product_workflow_run(db_session, product_id=product.id, principal=principal)
@@ -143,7 +144,73 @@ def test_start_product_workflow_run_persists_new_api_token_context(
     assert run.new_api_token_name == token_name
     assert run.new_api_token_group == "GPT-Image-2"
     assert run.new_api_image_model == "gpt-image-2"
+    assert run.new_api_text_model == "gpt-4.1-mini"
     assert run.new_api_token == token
+
+
+def test_start_product_workflow_run_snapshots_selected_new_api_models(db_session) -> None:
+    from productflow_backend.application.auth_sessions import Principal
+    from productflow_backend.application.product_workflows import start_product_workflow_run
+    from productflow_backend.domain.errors import BusinessValidationError
+
+    product = create_product(
+        db_session,
+        name="selected models workflow",
+        category="护肤",
+        price=None,
+        source_note=None,
+        image_bytes=_make_demo_image_bytes(),
+        filename="workflow.png",
+        content_type="image/png",
+    )
+    principal = Principal(
+        session_id="auth-session-1",
+        kind="user",
+        new_api_user_id="42",
+        username="alice",
+        email=None,
+        group="default",
+        role="user",
+        new_api_token_id="77",
+        new_api_token_name="Atelier",
+        new_api_token="sk-user-token",
+        new_api_token_group="Atelier",
+        new_api_image_model="gpt-image-2",
+        new_api_image_models=("gpt-image-2", "gpt-image-3"),
+        new_api_text_model="gpt-5.4",
+        new_api_text_models=("gpt-5.4", "gpt-5.5"),
+    )
+
+    kickoff = start_product_workflow_run(
+        db_session,
+        product_id=product.id,
+        principal=principal,
+        image_model="gpt-image-3",
+        text_model="gpt-5.5",
+    )
+
+    run = db_session.get(WorkflowRun, kickoff.run_id)
+    assert run is not None
+    assert run.new_api_image_model == "gpt-image-3"
+    assert run.new_api_text_model == "gpt-5.5"
+
+    invalid_product = create_product(
+        db_session,
+        name="invalid selected model",
+        category="护肤",
+        price=None,
+        source_note=None,
+        image_bytes=_make_demo_image_bytes(),
+        filename="workflow-invalid.png",
+        content_type="image/png",
+    )
+    with pytest.raises(BusinessValidationError, match="所选文案模型不可用"):
+        start_product_workflow_run(
+            db_session,
+            product_id=invalid_product.id,
+            principal=principal,
+            text_model="gpt-4o",
+        )
 
 
 def test_start_product_workflow_run_rejects_bootstrap_admin_without_new_api_token(db_session) -> None:
@@ -367,6 +434,7 @@ def test_workflow_status_exposes_queue_metadata_and_action_flags(
     assert payload["runs"][0]["queue_queued_count"] == 1
     assert payload["runs"][0]["queued_ahead_count"] == 0
     assert payload["runs"][0]["queue_position"] == 1
+
 
 def test_workflow_run_enqueue_failure_marks_run_failed(
     configured_env: Path,
@@ -899,15 +967,9 @@ def test_workflow_scheduler_dispatches_every_ready_node_run(
     run = db_session.get(WorkflowRun, kickoff.run_id)
     assert run is not None
     ready_node_ids = {
-        node.id
-        for node in run.workflow.nodes
-        if not any(edge.target_node_id == node.id for edge in run.workflow.edges)
+        node.id for node in run.workflow.nodes if not any(edge.target_node_id == node.id for edge in run.workflow.edges)
     }
-    dispatched_node_ids = {
-        node_run.node_id
-        for node_run in run.node_runs
-        if node_run.id in dispatched_node_run_ids
-    }
+    dispatched_node_ids = {node_run.node_id for node_run in run.node_runs if node_run.id in dispatched_node_run_ids}
     assert dispatched_node_ids == ready_node_ids
     assert isolated_node.id in dispatched_node_ids
 
@@ -1006,9 +1068,7 @@ def test_workflow_node_run_failure_does_not_block_independent_ready_branch(
     assert run is not None
     isolated_node_ids = {failing_node.id, succeeding_node.id}
     isolated_node_runs = {
-        node_run.node_id: node_run
-        for node_run in run.node_runs
-        if node_run.node_id in isolated_node_ids
+        node_run.node_id: node_run for node_run in run.node_runs if node_run.node_id in isolated_node_ids
     }
     assert set(isolated_node_runs) == isolated_node_ids
     for node_run in run.node_runs:
@@ -1143,20 +1203,21 @@ def test_workflow_image_generation_timeout_marks_run_node_and_queue_failed(
     db_session.expire_all()
 
     run = (
-        db_session.query(WorkflowRun)
-        .filter_by(workflow_id=workflow.id)
-        .order_by(WorkflowRun.started_at.desc())
-        .first()
+        db_session.query(WorkflowRun).filter_by(workflow_id=workflow.id).order_by(WorkflowRun.started_at.desc()).first()
     )
     assert run is not None
     assert run.status == WorkflowRunStatus.FAILED
     assert run.finished_at is not None
     assert run.failure_reason == WORKFLOW_IMAGE_GENERATION_TIMEOUT_FAILURE
 
-    image_node = db_session.query(WorkflowNode).filter_by(
-        workflow_id=workflow.id,
-        node_type=WorkflowNodeType.IMAGE_GENERATION,
-    ).one()
+    image_node = (
+        db_session.query(WorkflowNode)
+        .filter_by(
+            workflow_id=workflow.id,
+            node_type=WorkflowNodeType.IMAGE_GENERATION,
+        )
+        .one()
+    )
     assert image_node.status == WorkflowNodeStatus.FAILED
     assert image_node.failure_reason == WORKFLOW_IMAGE_GENERATION_TIMEOUT_FAILURE
     assert image_node.last_run_at is not None
@@ -1206,10 +1267,7 @@ def test_workflow_image_generation_provider_failure_uses_safe_reason(
     db_session.expire_all()
 
     run = (
-        db_session.query(WorkflowRun)
-        .filter_by(workflow_id=workflow.id)
-        .order_by(WorkflowRun.started_at.desc())
-        .first()
+        db_session.query(WorkflowRun).filter_by(workflow_id=workflow.id).order_by(WorkflowRun.started_at.desc()).first()
     )
     assert run is not None
     assert run.status == WorkflowRunStatus.FAILED
@@ -1219,10 +1277,14 @@ def test_workflow_image_generation_provider_failure_uses_safe_reason(
     assert "secret-provider" not in run.failure_reason
     assert "full-prompt" not in run.failure_reason
 
-    image_node = db_session.query(WorkflowNode).filter_by(
-        workflow_id=workflow.id,
-        node_type=WorkflowNodeType.IMAGE_GENERATION,
-    ).one()
+    image_node = (
+        db_session.query(WorkflowNode)
+        .filter_by(
+            workflow_id=workflow.id,
+            node_type=WorkflowNodeType.IMAGE_GENERATION,
+        )
+        .one()
+    )
     assert image_node.status == WorkflowNodeStatus.FAILED
     assert image_node.failure_reason == WORKFLOW_IMAGE_GENERATION_FAILURE
 
@@ -1259,10 +1321,7 @@ def test_workflow_image_generation_provider_failure_exposes_safe_detail(
     db_session.expire_all()
 
     run = (
-        db_session.query(WorkflowRun)
-        .filter_by(workflow_id=workflow.id)
-        .order_by(WorkflowRun.started_at.desc())
-        .first()
+        db_session.query(WorkflowRun).filter_by(workflow_id=workflow.id).order_by(WorkflowRun.started_at.desc()).first()
     )
     assert run is not None
     assert run.status == WorkflowRunStatus.FAILED
@@ -1274,10 +1333,14 @@ def test_workflow_image_generation_provider_failure_exposes_safe_detail(
         "last_failure_category": "unsupported_parameters",
     }
 
-    image_node = db_session.query(WorkflowNode).filter_by(
-        workflow_id=workflow.id,
-        node_type=WorkflowNodeType.IMAGE_GENERATION,
-    ).one()
+    image_node = (
+        db_session.query(WorkflowNode)
+        .filter_by(
+            workflow_id=workflow.id,
+            node_type=WorkflowNodeType.IMAGE_GENERATION,
+        )
+        .one()
+    )
     assert image_node.status == WorkflowNodeStatus.FAILED
     assert image_node.failure_reason == run.failure_reason
     payload = serialize_product_workflow(workflow).model_dump(mode="json")
@@ -1317,10 +1380,7 @@ def test_workflow_image_generation_provider_failure_categorizes_wrapped_rate_lim
     db_session.expire_all()
 
     run = (
-        db_session.query(WorkflowRun)
-        .filter_by(workflow_id=workflow.id)
-        .order_by(WorkflowRun.started_at.desc())
-        .first()
+        db_session.query(WorkflowRun).filter_by(workflow_id=workflow.id).order_by(WorkflowRun.started_at.desc()).first()
     )
     assert run is not None
     assert run.status == WorkflowRunStatus.FAILED
@@ -1365,10 +1425,7 @@ def test_workflow_image_generation_policy_reject_is_not_retryable(
     db_session.expire_all()
 
     run = (
-        db_session.query(WorkflowRun)
-        .filter_by(workflow_id=workflow.id)
-        .order_by(WorkflowRun.started_at.desc())
-        .first()
+        db_session.query(WorkflowRun).filter_by(workflow_id=workflow.id).order_by(WorkflowRun.started_at.desc()).first()
     )
     assert run is not None
     assert run.status == WorkflowRunStatus.FAILED

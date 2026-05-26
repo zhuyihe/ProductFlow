@@ -140,9 +140,9 @@ A change that touches secrets is in scope. Ask:
    the production-mode validator?
 5. Does an interactive provider call have an SSO principal? If yes, does it use
    that principal's New API token rather than Atelier's shared provider key?
-6. For SSO image generation, does the effective image model come from the user's
-   Atelier generation-setting selection against the SSO model list rather than a
-   stale local provider binding?
+6. For SSO generation, do effective image/text models come from the user's
+   Atelier generation or run-setting selection against the SSO model lists
+   rather than stale local provider binding model values?
 
 ## Anti-Patterns (Do Not Reintroduce)
 

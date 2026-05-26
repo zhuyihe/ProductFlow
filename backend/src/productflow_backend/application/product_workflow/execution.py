@@ -11,7 +11,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from productflow_backend.application.admission import ensure_generation_capacity
-from productflow_backend.application.auth_sessions import Principal
+from productflow_backend.application.auth_sessions import (
+    Principal,
+    normalize_image_model_options,
+    normalize_text_model_options,
+)
 from productflow_backend.application.contracts import ProductInput
 from productflow_backend.application.copy_payloads import (
     normalize_copy_node_config,
@@ -58,7 +62,7 @@ from productflow_backend.application.provider_runtime import (
     interactive_provider_execution_context_from_principal,
     provider_credential_override_from_context,
     provider_execution_context_from_workflow_run,
-    provider_execution_context_values,
+    workflow_provider_execution_context_values,
 )
 from productflow_backend.application.queue_submission import enqueue_or_mark_failed
 from productflow_backend.application.time import now_utc
@@ -168,6 +172,69 @@ def _workflow_run_retry_node_ids(run: WorkflowRun) -> set[str] | None:
     return retry_node_ids
 
 
+def _node_ids_include_type(
+    nodes: list[WorkflowNode],
+    node_ids: set[str],
+    node_type: WorkflowNodeType,
+) -> bool:
+    return any(node.id in node_ids and node.node_type == node_type for node in nodes)
+
+
+def _select_model_from_principal_options(
+    *,
+    requested_model: str | None,
+    options: tuple[str, ...],
+    missing_message: str,
+    invalid_message: str,
+) -> str | None:
+    requested = (requested_model or "").strip()
+    if not options:
+        raise BusinessValidationError(missing_message)
+    if not requested:
+        return options[0]
+    if requested not in options:
+        raise BusinessValidationError(invalid_message)
+    return requested
+
+
+def _select_workflow_image_model(
+    principal: Principal | None,
+    nodes: list[WorkflowNode],
+    node_ids: set[str],
+    requested_model: str | None,
+) -> str | None:
+    if principal is None or not _node_ids_include_type(nodes, node_ids, WorkflowNodeType.IMAGE_GENERATION):
+        return None
+    if not principal.new_api_token:
+        return None
+    options = normalize_image_model_options(principal.new_api_image_models, principal.new_api_image_model)
+    return _select_model_from_principal_options(
+        requested_model=requested_model,
+        options=options,
+        missing_message="当前会话缺少可用生图模型，请从 AYNC-API 重新进入 Atelier",
+        invalid_message="所选生图模型不可用，请重新选择",
+    )
+
+
+def _select_workflow_text_model(
+    principal: Principal | None,
+    nodes: list[WorkflowNode],
+    node_ids: set[str],
+    requested_model: str | None,
+) -> str | None:
+    if principal is None or not _node_ids_include_type(nodes, node_ids, WorkflowNodeType.COPY_GENERATION):
+        return None
+    if not principal.new_api_token:
+        return None
+    options = normalize_text_model_options(principal.new_api_text_models, principal.new_api_text_model)
+    return _select_model_from_principal_options(
+        requested_model=requested_model,
+        options=options,
+        missing_message="当前会话缺少可用文案模型，请从 AYNC-API 重新进入 Atelier",
+        invalid_message="所选文案模型不可用，请重新选择",
+    )
+
+
 def start_product_workflow_run(
     session: Session,
     *,
@@ -178,6 +245,8 @@ def start_product_workflow_run(
     node_ids_to_run_override: set[str] | None = None,
     principal: Principal | None = None,
     provider_execution_context: ProviderExecutionContext | None = None,
+    image_model: str | None = None,
+    text_model: str | None = None,
 ) -> WorkflowRunKickoff:
     workflow = get_or_create_product_workflow(session, product_id, owner_user_id)
     session.expire(workflow, ["nodes", "edges", "runs"])
@@ -208,12 +277,16 @@ def start_product_workflow_run(
             should_enqueue=_workflow_run_should_enqueue(active_run),
         )
 
-    provider_context = provider_execution_context or interactive_provider_execution_context_from_principal(principal)
+    provider_context = provider_execution_context or interactive_provider_execution_context_from_principal(
+        principal,
+        image_model_override=_select_workflow_image_model(principal, ordered_nodes, node_ids_to_run, image_model),
+        text_model_override=_select_workflow_text_model(principal, ordered_nodes, node_ids_to_run, text_model),
+    )
     ensure_generation_capacity(session)
     run = WorkflowRun(
         workflow_id=workflow.id,
         status=WorkflowRunStatus.RUNNING,
-        **provider_execution_context_values(provider_context),
+        **workflow_provider_execution_context_values(provider_context),
         progress_metadata=progress_metadata,
     )
     logger.info(
@@ -282,16 +355,15 @@ def retry_product_workflow_run(
     node_ids_to_run = retry_node_ids if retry_node_ids is not None else _node_ids_to_run(session, workflow, None)
     if _active_workflow_run_for_nodes(workflow, node_ids_to_run) is not None:
         raise BusinessValidationError("相关节点运行中，不能重试")
+    previous_provider_context = provider_execution_context_from_workflow_run(run)
     kickoff = start_product_workflow_run(
         session,
         product_id=product_id,
         owner_user_id=owner_user_id,
         progress_metadata=_workflow_run_retry_progress_metadata(run),
         node_ids_to_run_override=retry_node_ids,
-        principal=principal,
-        provider_execution_context=(
-            None if principal is not None else provider_execution_context_from_workflow_run(run)
-        ),
+        principal=None if previous_provider_context is not None else principal,
+        provider_execution_context=previous_provider_context,
     )
     if kickoff.should_enqueue:
         enqueue_or_mark_failed(
@@ -369,6 +441,8 @@ def submit_product_workflow_run(
     enqueue: Callable[[str], None] | None = None,
     progress_metadata: dict[str, Any] | None = None,
     principal: Principal | None = None,
+    image_model: str | None = None,
+    text_model: str | None = None,
 ) -> ProductWorkflow:
     kickoff = start_product_workflow_run(
         session,
@@ -377,6 +451,8 @@ def submit_product_workflow_run(
         start_node_id=start_node_id,
         progress_metadata=progress_metadata,
         principal=principal,
+        image_model=image_model,
+        text_model=text_model,
     )
     if kickoff.should_enqueue:
         enqueue_or_mark_failed(
@@ -693,9 +769,7 @@ def _mark_blocked_workflow_node_runs_failed(
 ) -> bool:
     incoming = _incoming_node_ids_by_target(_workflow_rule_edges(workflow))
     run_node_ids = {node_run.node_id for node_run in run.node_runs}
-    failed_node_ids = {
-        node_run.node_id for node_run in run.node_runs if node_run.status == WorkflowNodeStatus.FAILED
-    }
+    failed_node_ids = {node_run.node_id for node_run in run.node_runs if node_run.status == WorkflowNodeStatus.FAILED}
     changed = False
     while True:
         changed_this_pass = False
@@ -753,9 +827,7 @@ def _finalize_workflow_run_if_terminal(session: Session, *, run: WorkflowRun) ->
         None,
     ) or next((node_run for node_run in node_runs if node_run.status == WorkflowNodeStatus.FAILED), None)
     reason = (
-        failed_node_run.failure_reason
-        if failed_node_run and failed_node_run.failure_reason
-        else "工作流部分节点失败"
+        failed_node_run.failure_reason if failed_node_run and failed_node_run.failure_reason else "工作流部分节点失败"
     )
     failure_metadata = run.progress_metadata if isinstance(run.progress_metadata, dict) else {}
     is_retryable = failure_metadata.get("last_failure_retryable")
@@ -871,9 +943,7 @@ def _image_generation_filled_reference_target(
     """Return whether an image node's previous output satisfies a specific reference slot edge."""
     output = image_node.output_json or {}
     filled_reference_node_ids = output.get("filled_reference_node_ids")
-    output_names_target = (
-        isinstance(filled_reference_node_ids, list) and reference_node.id in filled_reference_node_ids
-    )
+    output_names_target = isinstance(filled_reference_node_ids, list) and reference_node.id in filled_reference_node_ids
     target_has_assets = _node_has_valid_reference_assets(session, workflow.product_id, reference_node)
     if output_names_target:
         return target_has_assets

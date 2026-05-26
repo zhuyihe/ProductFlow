@@ -33,6 +33,7 @@ import { api, ApiError } from "../lib/api";
 import { DEFAULT_IMAGE_TOOL_ALLOWED_FIELDS } from "../lib/imageToolOptions";
 import { DEFAULT_IMAGE_GENERATION_MAX_DIMENSION, buildImageSizeOptions } from "../lib/imageSizes";
 import { useI18n } from "../lib/preferences";
+import { getSessionImageModelOptions, getSessionTextModelOptions } from "../lib/sessionModels";
 import type {
   CanvasTemplateSummary,
   ProductWorkflow,
@@ -232,6 +233,10 @@ export function ProductDetailPage() {
     queryKey: ["runtime-config"],
     queryFn: api.getRuntimeConfig,
   });
+  const sessionQuery = useQuery({
+    queryKey: ["session"],
+    queryFn: api.getSessionState,
+  });
   const queueOverviewQuery = useQuery({
     queryKey: ["generation-queue"],
     queryFn: api.getGenerationQueueOverview,
@@ -244,6 +249,18 @@ export function ProductDetailPage() {
     () => buildImageSizeOptions(imageGenerationMaxDimension),
     [imageGenerationMaxDimension],
   );
+  const imageModelOptions = useMemo(() => getSessionImageModelOptions(sessionQuery.data), [sessionQuery.data]);
+  const textModelOptions = useMemo(() => getSessionTextModelOptions(sessionQuery.data), [sessionQuery.data]);
+  const [selectedImageModel, setSelectedImageModel] = useState("");
+  const [selectedTextModel, setSelectedTextModel] = useState("");
+
+  useEffect(() => {
+    setSelectedImageModel((current) => (current && imageModelOptions.includes(current) ? current : imageModelOptions[0] ?? ""));
+  }, [imageModelOptions]);
+
+  useEffect(() => {
+    setSelectedTextModel((current) => (current && textModelOptions.includes(current) ? current : textModelOptions[0] ?? ""));
+  }, [textModelOptions]);
 
   const selectedNode =
     workflow?.nodes.find((node) => node.id === selectedNodeId) ??
@@ -780,7 +797,11 @@ export function ProductDetailPage() {
     mutationFn: (startNodeId?: string) =>
       api.runProductWorkflow(
         productId,
-        startNodeId ? { start_node_id: startNodeId } : {},
+        {
+          ...(startNodeId ? { start_node_id: startNodeId } : {}),
+          ...(selectedImageModel ? { image_model: selectedImageModel } : {}),
+          ...(selectedTextModel ? { text_model: selectedTextModel } : {}),
+        },
       ),
     onSuccess: async (nextWorkflow) => {
       setError(
@@ -1949,6 +1970,12 @@ export function ProductDetailPage() {
         imageSizeOptions={imageSizeOptions}
         imageGenerationMaxDimension={imageGenerationMaxDimension}
         imageToolAllowedFields={imageToolAllowedFields}
+        imageModelOptions={imageModelOptions}
+        selectedImageModel={selectedImageModel}
+        onImageModelChange={setSelectedImageModel}
+        textModelOptions={textModelOptions}
+        selectedTextModel={selectedTextModel}
+        onTextModelChange={setSelectedTextModel}
         onPreviewImage={setPreviewImage}
         onDraftChange={handleDraftChange}
         onRun={() => void handleRunWorkflow(selectedNode.id)}
@@ -1984,6 +2011,12 @@ export function ProductDetailPage() {
           latestRun={latestRun}
           busyRunId={workflowRunActionBusyRunId ?? null}
           onRetryRun={handleRetryWorkflowRun}
+          imageModel={selectedImageModel}
+          imageModelOptions={imageModelOptions}
+          onImageModelChange={setSelectedImageModel}
+          textModel={selectedTextModel}
+          textModelOptions={textModelOptions}
+          onTextModelChange={setSelectedTextModel}
         />
       ) : null}
       {activeSidebarTab === "images" ? (

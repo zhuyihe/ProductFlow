@@ -296,6 +296,8 @@ class UpdateUserTemplateGroupRequest(BaseModel):
 
 class RunWorkflowRequest(BaseModel):
     start_node_id: str | None = None
+    image_model: str | None = Field(default=None, max_length=255)
+    text_model: str | None = Field(default=None, max_length=255)
 
 
 def workflow_run_is_retryable(run: WorkflowRun) -> bool:

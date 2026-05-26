@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from helpers import (
@@ -46,6 +47,7 @@ from productflow_backend.infrastructure.db.models import (
     AppSetting,
     ProviderBinding,
     ProviderProfile,
+    WorkflowRun,
 )
 from productflow_backend.infrastructure.db.session import get_session_factory
 from productflow_backend.infrastructure.image.gemini_provider import (
@@ -104,6 +106,28 @@ class DummyImagesAPIItem:
 class DummyImagesAPIResponse:
     def __init__(self, b64_json: str | None = None, *, b64_jsons: list[str | None] | None = None) -> None:
         self.data = [DummyImagesAPIItem(item) for item in (b64_jsons if b64_jsons is not None else [b64_json])]
+
+
+def _images_api_http_response(
+    b64_json: str | None = None,
+    *,
+    b64_jsons: list[str | None] | None = None,
+    status_code: int = 200,
+    text: str = "",
+) -> httpx.Response:
+    request = httpx.Request("POST", "https://example.test/v1/images/generations")
+    if status_code >= 400:
+        return httpx.Response(
+            status_code,
+            text=text,
+            headers={"content-type": "text/plain"},
+            request=request,
+        )
+    data = [
+        {"b64_json": item, "revised_prompt": "revised prompt"}
+        for item in (b64_jsons if b64_jsons is not None else [b64_json])
+    ]
+    return httpx.Response(status_code, json={"data": data}, request=request)
 
 
 def test_prompt_settings_reach_provider_prompt_builders(configured_env: Path, monkeypatch) -> None:
@@ -703,6 +727,123 @@ def test_product_workflow_copy_run_retries_provider_payload_contract_mismatch(
     assert copy_node["output_json"]["summary"] == "文案：轻巧稳固，随手收纳"
     assert copy_node["output_json"]["structured_payload"]["summary"] == "轻巧稳固，随手收纳"
 
+
+def test_product_workflow_uses_selected_new_api_text_model(
+    configured_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from productflow_backend.presentation.api import create_app
+
+    session = get_session_factory()()
+    try:
+        session.add(AppSetting(key="new_api_base_url", value="https://relay.example"))
+        profile = ProviderProfile(
+            name="relay text profile",
+            provider_type="openai_compatible",
+            base_url="https://upstream.example/v1",
+            api_key="shared-admin-key",
+            capabilities_json=["text_responses"],
+            default_models_json={},
+            config_json={},
+            enabled=True,
+        )
+        session.add(profile)
+        session.flush()
+        session.add(
+            ProviderBinding(
+                purpose="text",
+                provider_kind="openai",
+                provider_profile_id=profile.id,
+                model_settings_json={"brief_model": "admin-brief", "copy_model": "admin-copy"},
+                config_json={},
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+    get_settings.cache_clear()
+
+    models_seen: list[str] = []
+    client_kwargs: list[dict[str, object]] = []
+
+    class DummyTextResponse:
+        def __init__(self, output_text: str) -> None:
+            self.output_text = output_text
+
+    class DummyTextResponses:
+        def create(self, **kwargs):
+            models_seen.append(str(kwargs["model"]))
+            if len(models_seen) == 1:
+                return DummyTextResponse(
+                    '{"positioning":"轻便定位","audience":"露营用户","selling_angles":["轻","稳","耐用"],'
+                    '"taboo_phrases":[],"poster_style_hint":"自然光"}'
+                )
+            return DummyTextResponse(
+                '{"version":2,"summary":"轻便露营杯","content":{"kind":"freeform","text":"轻便露营杯，随手带走。"}}'
+            )
+
+    class DummyTextOpenAI:
+        def __init__(self, **kwargs) -> None:
+            client_kwargs.append(kwargs)
+            self.responses = DummyTextResponses()
+
+    monkeypatch.setattr("productflow_backend.infrastructure.text.openai_provider.OpenAI", DummyTextOpenAI)
+
+    app = create_app()
+    client = TestClient(app)
+    _login(
+        client,
+        user_id="42",
+        username="alice",
+        role="1",
+        token="sk-user-token",
+        token_id="77",
+        token_name="ProductFlow",
+        token_group="GPT-Text",
+        text_model="gpt-4.1-mini",
+        text_models=("gpt-4.1-mini", "gpt-4.1"),
+    )
+
+    created = client.post(
+        "/api/products",
+        data={"name": "露营杯"},
+        files={"image": ("cup.png", _make_demo_image_bytes(), "image/png")},
+    )
+    assert created.status_code == 201
+    product_id = created.json()["id"]
+
+    isolated_copy = client.post(
+        f"/api/products/{product_id}/workflow/nodes",
+        json={
+            "node_type": "copy_generation",
+            "title": "单独文案",
+            "position_x": 620,
+            "position_y": 420,
+            "config_json": {"instruction": "写一句轻便露营杯文案"},
+        },
+    )
+    assert isolated_copy.status_code == 201
+    copy_node = next(node for node in isolated_copy.json()["nodes"] if node["title"] == "单独文案")
+
+    run_response = client.post(
+        f"/api/products/{product_id}/workflow/run",
+        json={"start_node_id": copy_node["id"], "text_model": "gpt-4.1-mini"},
+    )
+    assert run_response.status_code == 200
+    run_id = run_response.json()["runs"][0]["id"]
+    _wait_for_workflow_run(client, product_id, status="succeeded")
+
+    db_session = get_session_factory()()
+    try:
+        latest_run = db_session.get(WorkflowRun, run_id)
+        assert latest_run is not None
+        assert latest_run.new_api_text_model == "gpt-4.1-mini"
+    finally:
+        db_session.close()
+    get_settings.cache_clear()
+
+    assert client_kwargs == [{"api_key": "sk-user-token", "base_url": "https://relay.example/v1"}]
+    assert models_seen == ["gpt-4.1-mini", "gpt-4.1-mini"]
 
 def test_mock_image_provider_does_not_read_runtime_settings_during_generation(
     configured_env: Path,

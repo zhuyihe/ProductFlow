@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileText, Loader2, RotateCcw, Layers3 } from "lucide-react";
 
 import { PromptPreviewDialog, type PromptPreview } from "../../components/PromptPreviewDialog";
+import { SelectField } from "../../components/SelectField";
 import { formatDateTime } from "../../lib/format";
 import { useI18n } from "../../lib/preferences";
 import type { ProductWorkflow, WorkflowNode, WorkflowRun, WorkflowRunStatus } from "../../lib/types";
@@ -35,6 +36,12 @@ interface RunsPanelProps {
   latestRun: ProductWorkflow["runs"][number] | null;
   busyRunId: string | null;
   onRetryRun: (run: WorkflowRun) => void;
+  imageModel: string;
+  imageModelOptions: readonly string[];
+  onImageModelChange: (model: string) => void;
+  textModel: string;
+  textModelOptions: readonly string[];
+  onTextModelChange: (model: string) => void;
 }
 
 function imagePromptItems(
@@ -64,9 +71,21 @@ function findWorkflowNode(workflow: ProductWorkflow, nodeId: string): WorkflowNo
   return workflow.nodes.find((node) => node.id === nodeId) ?? null;
 }
 
-export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPanelProps) {
+export function RunsPanel({
+  workflow,
+  latestRun,
+  busyRunId,
+  onRetryRun,
+  imageModel,
+  imageModelOptions,
+  onImageModelChange,
+  textModel,
+  textModelOptions,
+  onTextModelChange,
+}: RunsPanelProps) {
   const { t } = useI18n();
   const [promptPreview, setPromptPreview] = useState<PromptPreview | null>(null);
+  const showRunSettings = imageModelOptions.length > 0 || textModelOptions.length > 0;
 
   if (!workflow) {
     return (
@@ -99,6 +118,48 @@ export function RunsPanel({ workflow, latestRun, busyRunId, onRetryRun }: RunsPa
 
   return (
     <section>
+      {showRunSettings ? (
+        <div className="config-bubble mb-3 rounded-xl p-3 text-xs shadow-sm">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-atelier-smoke dark:text-atelier-smoke">
+            {t("detail.runSettingsTitle")}
+          </div>
+          <div className="mb-3 text-[11px] leading-5 text-atelier-smoke dark:text-atelier-smoke">
+            {t("detail.runSettingsHint")}
+          </div>
+          <div className="space-y-3">
+            {textModelOptions.length > 0 ? (
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold text-atelier-sepia dark:text-atelier-cream">
+                  {t("detail.runSettingsTextModel")}
+                </span>
+                <SelectField
+                  value={textModel}
+                  options={textModelOptions.map((model) => ({ value: model, label: model }))}
+                  disabled={textModelOptions.length <= 1}
+                  onChange={onTextModelChange}
+                  radius="lg"
+                  visualSize="sm"
+                />
+              </label>
+            ) : null}
+            {imageModelOptions.length > 0 ? (
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-semibold text-atelier-sepia dark:text-atelier-cream">
+                  {t("detail.runSettingsImageModel")}
+                </span>
+                <SelectField
+                  value={imageModel}
+                  options={imageModelOptions.map((model) => ({ value: model, label: model }))}
+                  disabled={imageModelOptions.length <= 1}
+                  onChange={onImageModelChange}
+                  radius="lg"
+                  visualSize="sm"
+                />
+              </label>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div className="mb-3 flex items-center justify-between">
         <div className="text-xs text-atelier-smoke dark:text-atelier-smoke">
           {workflow?.runs.length ? t("detail.runsCount", { count: workflow.runs.length }) : t("detail.noRunHistory")}

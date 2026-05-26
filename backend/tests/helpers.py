@@ -48,6 +48,14 @@ def _login(
     user_id: str | None = None,
     username: str = "admin",
     role: str = "10",
+    token: str | None = None,
+    token_id: str | None = None,
+    token_name: str | None = None,
+    token_group: str | None = None,
+    image_model: str | None = None,
+    image_models: tuple[str, ...] | list[str] | None = None,
+    text_model: str | None = None,
+    text_models: tuple[str, ...] | list[str] | None = None,
 ) -> None:
     session = get_session_factory()()
     try:
@@ -57,6 +65,14 @@ def _login(
                 user_id=user_id,
                 username=username,
                 role=role,
+                token=token,
+                token_id=token_id,
+                token_name=token_name,
+                token_group=token_group,
+                image_model=image_model,
+                image_models=tuple(image_models or ((image_model,) if image_model else ())),
+                text_model=text_model,
+                text_models=tuple(text_models or ((text_model,) if text_model else ())),
                 expires_in_seconds=24 * 60 * 60,
             ),
         )

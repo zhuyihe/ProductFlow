@@ -531,6 +531,8 @@ def run_product_workflow_endpoint(
         owner_user_id=owner_user_id,
         start_node_id=payload.start_node_id if payload else None,
         principal=principal,
+        image_model=payload.image_model if payload else None,
+        text_model=payload.text_model if payload else None,
     )
     _record_workflow_audit(
         session,

@@ -65,6 +65,7 @@ class ProviderCredentialOverride:
     api_key: str
     base_url: str
     image_model: str | None = None
+    text_model: str | None = None
     token_group: str | None = None
 
 
@@ -394,13 +395,14 @@ def resolve_text_provider_config(
             raise RuntimeError(f"暂不支持的文案 provider: {kind}")
         profile = _require_active_profile(binding)
         _require_capability(profile, CAPABILITY_TEXT_RESPONSES)
-        brief_model = _require_text_value(
+        override_text_model = _optional_str(credential_override.text_model) if credential_override is not None else None
+        brief_model = override_text_model or _require_text_value(
             binding.model_settings_json,
             "brief_model",
             "文案商品理解模型未配置",
             fallback_values=profile.default_models_json,
         )
-        copy_model = _require_text_value(
+        copy_model = override_text_model or _require_text_value(
             binding.model_settings_json,
             "copy_model",
             "文案生成模型未配置",
@@ -484,8 +486,7 @@ def resolve_image_provider_config(
 
 def _provider_config_exists(session: Session) -> bool:
     return bool(
-        session.scalar(select(ProviderProfile.id).limit(1))
-        or session.scalar(select(ProviderBinding.id).limit(1))
+        session.scalar(select(ProviderProfile.id).limit(1)) or session.scalar(select(ProviderBinding.id).limit(1))
     )
 
 

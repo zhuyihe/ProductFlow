@@ -57,6 +57,17 @@ def verify_new_api_sso_ticket(ticket: str, *, settings: Settings) -> NewApiSessi
         or _first_text_list(token_payload, "image_models", "available_image_models", "models")
         or ((image_model,) if image_model else ())
     )
+    text_model = (
+        _first_text(payload, "text_model", "selected_text_model")
+        or _first_text(productflow_payload, "text_model", "selected_text_model")
+        or _first_text(token_payload, "text_model", "selected_text_model")
+    )
+    text_models = (
+        _first_text_list(payload, "text_models", "available_text_models")
+        or _first_text_list(productflow_payload, "text_models", "available_text_models")
+        or _first_text_list(token_payload, "text_models", "available_text_models")
+        or ((text_model,) if text_model else ())
+    )
 
     return NewApiSessionClaims(
         user_id=user_id,
@@ -74,6 +85,8 @@ def verify_new_api_sso_ticket(ticket: str, *, settings: Settings) -> NewApiSessi
         ),
         image_model=image_model,
         image_models=tuple(image_models),
+        text_model=text_model,
+        text_models=tuple(text_models),
         expires_in_seconds=_first_int(payload, "expires_in", "session_expires_in"),
     )
 

@@ -16,4 +16,6 @@ class SessionStateResponse(BaseModel):
     new_api_token_group: str | None = None
     new_api_image_model: str | None = None
     new_api_image_models: list[str] | None = None
+    new_api_text_model: str | None = None
+    new_api_text_models: list[str] | None = None
     sso_start_url: str | None = None

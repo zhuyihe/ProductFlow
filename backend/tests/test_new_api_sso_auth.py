@@ -72,6 +72,8 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
                         "token_group": "GPT-Image-2",
                         "image_model": "gpt-image-2",
                         "image_models": ["gpt-image-3", "gpt-image-2", "gpt-image-2"],
+                        "text_model": "gpt-4.1-mini",
+                        "text_models": ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-mini"],
                         "expires_in": 3600,
                     }
                 }
@@ -99,6 +101,8 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
         "new_api_token_group": "GPT-Image-2",
         "new_api_image_model": "gpt-image-2",
         "new_api_image_models": ["gpt-image-2", "gpt-image-3"],
+        "new_api_text_model": "gpt-4.1-mini",
+        "new_api_text_models": ["gpt-4.1-mini", "gpt-4.1"],
     }
     assert "sk-productflow-secret" not in state.text
 
@@ -112,6 +116,8 @@ def test_new_api_sso_callback_creates_server_side_user_session(configured_env, m
         assert auth_session.new_api_token_group == "GPT-Image-2"
         assert auth_session.new_api_image_model == "gpt-image-2"
         assert auth_session.new_api_image_models == ["gpt-image-2", "gpt-image-3"]
+        assert auth_session.new_api_text_model == "gpt-4.1-mini"
+        assert auth_session.new_api_text_models == ["gpt-4.1-mini", "gpt-4.1"]
         assert 3595 <= (auth_session.expires_at - auth_session.created_at).total_seconds() <= 3605
     finally:
         session.close()
@@ -517,9 +523,7 @@ def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configu
             "title": "Alice template",
             "description": None,
             "node_ids": [
-                node["id"]
-                for node in workflow["nodes"]
-                if node["node_type"] != WorkflowNodeType.PRODUCT_CONTEXT.value
+                node["id"] for node in workflow["nodes"] if node["node_type"] != WorkflowNodeType.PRODUCT_CONTEXT.value
             ][:1],
         },
     )
@@ -528,10 +532,13 @@ def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configu
     bob_templates = bob.get("/api/workflow/canvas-templates")
     assert bob_templates.status_code == 200
     assert all(item["key"] != template["key"] for item in bob_templates.json()["items"])
-    assert bob.patch(
-        f"/api/workflow/user-template-groups/{template['user_template_id']}",
-        json={"title": "stolen", "description": None},
-    ).status_code == 404
+    assert (
+        bob.patch(
+            f"/api/workflow/user-template-groups/{template['user_template_id']}",
+            json={"title": "stolen", "description": None},
+        ).status_code
+        == 404
+    )
 
     alice_session = alice.post("/api/image-sessions", json={"product_id": product_id, "title": "Alice session"})
     assert alice_session.status_code == 201
@@ -549,10 +556,13 @@ def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configu
     assert bob.get(f"/api/image-sessions/{image_session_id}").status_code == 404
     assert bob.get(f"/api/image-sessions/{image_session_id}/status").status_code == 404
     assert bob.get(f"/api/image-session-assets/{session_asset_id}/download").status_code == 404
-    assert bob.post(
-        f"/api/image-sessions/{image_session_id}/assets/{session_asset_id}/attach-to-product",
-        json={"target": "reference"},
-    ).status_code == 404
+    assert (
+        bob.post(
+            f"/api/image-sessions/{image_session_id}/assets/{session_asset_id}/attach-to-product",
+            json={"target": "reference"},
+        ).status_code
+        == 404
+    )
 
     alice_generated = alice.post(
         f"/api/image-sessions/{image_session_id}/generate",

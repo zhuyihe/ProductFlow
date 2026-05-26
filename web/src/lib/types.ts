@@ -42,6 +42,8 @@ export interface SessionState {
   new_api_token_group?: string | null;
   new_api_image_model?: string | null;
   new_api_image_models?: string[] | null;
+  new_api_text_model?: string | null;
+  new_api_text_models?: string[] | null;
   sso_start_url?: string | null;
 }
 

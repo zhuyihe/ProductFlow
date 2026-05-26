@@ -1132,6 +1132,7 @@ def test_resolvers_override_real_provider_credentials_with_current_principal_tok
                 new_api_token="sk-user-token",
                 new_api_token_group="GPT-Image-2",
                 new_api_image_model="gpt-image-2",
+                new_api_text_model="gpt-4.1-mini",
             ),
             "sk-user-token",
         ),
@@ -1149,6 +1150,7 @@ def test_resolvers_override_real_provider_credentials_with_current_principal_tok
                 new_api_token="sk-admin-token",
                 new_api_token_group="GPT-Image-2",
                 new_api_image_model="gpt-image-2",
+                new_api_text_model="gpt-4.1-mini",
             ),
             "sk-admin-token",
         ),
@@ -1163,12 +1165,13 @@ def test_resolvers_override_real_provider_credentials_with_current_principal_tok
         assert credential_override.base_url == "https://relay.example/v1"
         assert credential_override.token_group == "GPT-Image-2"
         assert credential_override.image_model == "gpt-image-2"
+        assert credential_override.text_model == "gpt-4.1-mini"
 
         text_config = resolve_text_provider_config(credential_override)
         assert text_config.api_key == expected_token
         assert text_config.base_url == "https://relay.example/v1"
-        assert text_config.brief_model == "brief-model"
-        assert text_config.copy_model == "copy-model"
+        assert text_config.brief_model == "gpt-4.1-mini"
+        assert text_config.copy_model == "gpt-4.1-mini"
 
         image_config = resolve_image_provider_config(credential_override)
         assert image_config.api_key == expected_token
@@ -1329,6 +1332,7 @@ def test_settings_api_accepts_and_validates_optional_image_tool_fields(configure
     assert cleared.status_code == 200
     assert get_runtime_settings().image_tool_output_compression is None
 
+
 def test_prompt_settings_api_accepts_rejects_and_resets(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app
 
@@ -1368,6 +1372,7 @@ def test_prompt_settings_api_accepts_rejects_and_resets(configured_env: Path) ->
     assert reset_items["prompt_copy_system"]["source"] == "env_default"
     assert "淘宝电商文案助手" in reset_items["prompt_copy_system"]["value"]
 
+
 def test_settings_api_rejects_invalid_effective_config(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app
 
@@ -1383,6 +1388,7 @@ def test_settings_api_rejects_invalid_effective_config(configured_env: Path) -> 
 
     assert response.status_code == 400
     assert "主图尺寸" in response.json()["detail"]
+
 
 def test_settings_api_rejects_malformed_image_sizes_before_persist(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app
@@ -1411,6 +1417,7 @@ def test_settings_api_rejects_malformed_image_sizes_before_persist(configured_en
         assert session.get(AppSetting, "image_promo_poster_size") is None
     finally:
         session.close()
+
 
 def test_settings_api_normalizes_custom_image_sizes_for_generation(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app

@@ -19,6 +19,7 @@ class ProviderExecutionContext:
     new_api_token: str | None = field(default=None, repr=False)
     new_api_token_group: str | None = None
     new_api_image_model: str | None = None
+    new_api_text_model: str | None = None
 
     @property
     def enabled(self) -> bool:
@@ -37,6 +38,7 @@ def provider_execution_context_from_principal(
     principal: Principal | None,
     *,
     image_model_override: str | None = None,
+    text_model_override: str | None = None,
 ) -> ProviderExecutionContext | None:
     if principal is None:
         return None
@@ -47,6 +49,7 @@ def provider_execution_context_from_principal(
         new_api_token=principal.new_api_token,
         new_api_token_group=principal.new_api_token_group,
         new_api_image_model=image_model_override or principal.new_api_image_model,
+        new_api_text_model=text_model_override or principal.new_api_text_model,
     )
 
 
@@ -54,10 +57,15 @@ def interactive_provider_execution_context_from_principal(
     principal: Principal | None,
     *,
     image_model_override: str | None = None,
+    text_model_override: str | None = None,
 ) -> ProviderExecutionContext | None:
     if principal is None:
         return None
-    context = provider_execution_context_from_principal(principal, image_model_override=image_model_override)
+    context = provider_execution_context_from_principal(
+        principal,
+        image_model_override=image_model_override,
+        text_model_override=text_model_override,
+    )
     if context is not None and not context.new_api_token:
         raise BusinessValidationError(MISSING_NEW_API_TOKEN_DETAIL)
     return context
@@ -71,6 +79,7 @@ def provider_execution_context_from_workflow_run(run: WorkflowRun) -> ProviderEx
         new_api_token=run.new_api_token,
         new_api_token_group=run.new_api_token_group,
         new_api_image_model=run.new_api_image_model,
+        new_api_text_model=run.new_api_text_model,
     )
 
 
@@ -84,6 +93,7 @@ def provider_execution_context_from_image_generation_task(
         new_api_token=task.new_api_token,
         new_api_token_group=task.new_api_token_group,
         new_api_image_model=task.new_api_image_model,
+        new_api_text_model=None,
     )
 
 
@@ -109,6 +119,14 @@ def provider_execution_context_values(
     }
 
 
+def workflow_provider_execution_context_values(
+    context: ProviderExecutionContext | None,
+) -> dict[str, str | None]:
+    values = provider_execution_context_values(context)
+    values["new_api_text_model"] = context.new_api_text_model if context is not None else None
+    return values
+
+
 def provider_credential_override_from_context(
     context: ProviderExecutionContext | None,
 ) -> ProviderCredentialOverride | None:
@@ -123,6 +141,7 @@ def provider_credential_override_from_context(
         api_key=context.new_api_token,
         base_url=relay_base_url,
         image_model=context.new_api_image_model,
+        text_model=context.new_api_text_model,
         token_group=context.new_api_token_group,
     )
 
@@ -135,6 +154,7 @@ def _provider_execution_context(
     new_api_token: str | None,
     new_api_token_group: str | None,
     new_api_image_model: str | None,
+    new_api_text_model: str | None,
 ) -> ProviderExecutionContext | None:
     context = ProviderExecutionContext(
         new_api_user_id=new_api_user_id,
@@ -143,6 +163,7 @@ def _provider_execution_context(
         new_api_token=new_api_token,
         new_api_token_group=new_api_token_group,
         new_api_image_model=new_api_image_model,
+        new_api_text_model=new_api_text_model,
     )
     if not context.enabled:
         return None

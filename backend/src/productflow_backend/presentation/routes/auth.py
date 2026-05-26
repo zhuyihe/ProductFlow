@@ -52,6 +52,10 @@ def get_session_state(
         new_api_image_models=(
             list(principal.new_api_image_models) if principal is not None and principal.new_api_image_models else None
         ),
+        new_api_text_model=principal.new_api_text_model if principal is not None else None,
+        new_api_text_models=(
+            list(principal.new_api_text_models) if principal is not None and principal.new_api_text_models else None
+        ),
         sso_start_url=_configured_sso_start_url(runtime_settings),
     )
 

@@ -40,8 +40,7 @@ from productflow_backend.infrastructure.db.models import (
 )
 
 MODEL_LEGACY_COPY_COLUMNS = [
-    "model_" + suffix
-    for suffix in ("title", "selling" + "_points", "poster" + "_headline", "c" + "ta")
+    "model_" + suffix for suffix in ("title", "selling" + "_points", "poster" + "_headline", "c" + "ta")
 ]
 LEGACY_COPY_COLUMNS = ["title", "selling" + "_points", "poster" + "_headline", "c" + "ta"]
 
@@ -189,6 +188,9 @@ def test_auth_session_model_matches_migration_contract() -> None:
     assert table.c.new_api_image_model.type.length == 255
     assert table.c.new_api_image_model.nullable
     assert table.c.new_api_image_models.nullable
+    assert table.c.new_api_text_model.type.length == 255
+    assert table.c.new_api_text_model.nullable
+    assert table.c.new_api_text_models.nullable
     assert table.c.new_api_token.nullable
     assert table.c.revoked_at.nullable
     assert table.c.expires_at.nullable
@@ -261,6 +263,9 @@ def test_generation_task_new_api_token_context_model_columns_match_migration_con
         assert table.c.new_api_token_name.nullable
         assert table.c.new_api_token_group.type.length == 120
         assert table.c.new_api_token_group.nullable
+        if table.name == "workflow_runs":
+            assert table.c.new_api_text_model.type.length == 255
+            assert table.c.new_api_text_model.nullable
         assert table.c.new_api_image_model.type.length == 255
         assert table.c.new_api_image_model.nullable
         assert table.c.new_api_token.nullable
@@ -313,6 +318,8 @@ def test_auth_session_migration_schema_and_downgrade_support_sqlite(tmp_path: Pa
     assert columns["new_api_token_group"]["nullable"] is True
     assert columns["new_api_image_model"]["nullable"] is True
     assert columns["new_api_image_models"]["nullable"] is True
+    assert columns["new_api_text_model"]["nullable"] is True
+    assert columns["new_api_text_models"]["nullable"] is True
     assert columns["new_api_token"]["nullable"] is True
     assert columns["revoked_at"]["nullable"] is True
     assert columns["expires_at"]["nullable"] is True
@@ -404,6 +411,8 @@ def test_generation_task_token_context_migration_schema_and_downgrade_support_sq
         assert columns["new_api_token_name"]["nullable"] is True
         assert columns["new_api_token_group"]["nullable"] is True
         assert columns["new_api_image_model"]["nullable"] is True
+        if table_name == "workflow_runs":
+            assert columns["new_api_text_model"]["nullable"] is True
         assert columns["new_api_token"]["nullable"] is True
         indexes = {index["name"]: index for index in inspector.get_indexes(table_name)}
         assert indexes[index_name]["column_names"] == ["new_api_user_id"]
@@ -414,14 +423,18 @@ def test_generation_task_token_context_migration_schema_and_downgrade_support_sq
     inspector = sa.inspect(engine)
     for table_name in expected:
         columns = {column["name"] for column in inspector.get_columns(table_name)}
-        assert not {
-            "new_api_user_id",
-            "new_api_token_id",
-            "new_api_token_name",
-            "new_api_token_group",
-            "new_api_image_model",
-            "new_api_token",
-        } & columns
+        assert (
+            not {
+                "new_api_user_id",
+                "new_api_token_id",
+                "new_api_token_name",
+                "new_api_token_group",
+                "new_api_image_model",
+                "new_api_text_model",
+                "new_api_token",
+            }
+            & columns
+        )
     engine.dispose()
     get_settings.cache_clear()
 
@@ -526,9 +539,9 @@ def test_legacy_copy_fields_migrate_to_structured_payload_and_drop_columns(
                     :provider_name, :model_name, :prompt_version,
                     NULL, NULL, :now, :now
                 )
-                """
-                .replace("__LEGACY_COPY_COLUMNS__", ", ".join(LEGACY_COPY_COLUMNS))
-                .replace("__MODEL_LEGACY_COLUMNS__", ", ".join(MODEL_LEGACY_COPY_COLUMNS))
+                """.replace("__LEGACY_COPY_COLUMNS__", ", ".join(LEGACY_COPY_COLUMNS)).replace(
+                    "__MODEL_LEGACY_COLUMNS__", ", ".join(MODEL_LEGACY_COPY_COLUMNS)
+                )
             ),
             {
                 "id": "copy-set-1",
@@ -555,16 +568,23 @@ def test_legacy_copy_fields_migrate_to_structured_payload_and_drop_columns(
     engine = sa.create_engine(f"sqlite:///{database_path}")
     inspector = sa.inspect(engine)
     copy_set_columns = {column["name"] for column in inspector.get_columns("copy_sets")}
-    assert not {
-        *LEGACY_COPY_COLUMNS,
-        *MODEL_LEGACY_COPY_COLUMNS,
-    } & copy_set_columns
+    assert (
+        not {
+            *LEGACY_COPY_COLUMNS,
+            *MODEL_LEGACY_COPY_COLUMNS,
+        }
+        & copy_set_columns
+    )
     assert {"structured_payload", "model_structured_payload"} <= copy_set_columns
     with engine.connect() as connection:
-        row = connection.execute(
-            sa.text("SELECT structured_payload, model_structured_payload FROM copy_sets WHERE id = :id"),
-            {"id": "copy-set-1"},
-        ).mappings().one()
+        row = (
+            connection.execute(
+                sa.text("SELECT structured_payload, model_structured_payload FROM copy_sets WHERE id = :id"),
+                {"id": "copy-set-1"},
+            )
+            .mappings()
+            .one()
+        )
     structured_payload = json.loads(row["structured_payload"])
     model_structured_payload = json.loads(row["model_structured_payload"])
     assert structured_payload["version"] == 2
@@ -584,18 +604,22 @@ def test_legacy_copy_fields_migrate_to_structured_payload_and_drop_columns(
     downgraded_columns = {column["name"] for column in inspector.get_columns("copy_sets")}
     assert {*LEGACY_COPY_COLUMNS, *MODEL_LEGACY_COPY_COLUMNS} <= downgraded_columns
     with engine.connect() as connection:
-        row = connection.execute(
-            sa.text(
-                """
+        row = (
+            connection.execute(
+                sa.text(
+                    """
                 SELECT __LEGACY_COPY_COLUMNS__, __MODEL_LEGACY_COLUMNS__
                 FROM copy_sets
                 WHERE id = :id
-                """
-                .replace("__LEGACY_COPY_COLUMNS__", ", ".join(LEGACY_COPY_COLUMNS))
-                .replace("__MODEL_LEGACY_COLUMNS__", ", ".join(MODEL_LEGACY_COPY_COLUMNS))
-            ),
-            {"id": "copy-set-1"},
-        ).mappings().one()
+                """.replace("__LEGACY_COPY_COLUMNS__", ", ".join(LEGACY_COPY_COLUMNS)).replace(
+                        "__MODEL_LEGACY_COLUMNS__", ", ".join(MODEL_LEGACY_COPY_COLUMNS)
+                    )
+                ),
+                {"id": "copy-set-1"},
+            )
+            .mappings()
+            .one()
+        )
     assert row[LEGACY_COPY_COLUMNS[0]] == "旧标题"
     assert json.loads(row[LEGACY_COPY_COLUMNS[1]]) == ["卖点一", "卖点二"]
     assert row[LEGACY_COPY_COLUMNS[2]] == "旧海报标题"
@@ -894,9 +918,7 @@ def test_job_runs_drop_migration_and_downgrade_support_sqlite(tmp_path: Path, mo
     engine = sa.create_engine(f"sqlite:///{database_path}")
     inspector = sa.inspect(engine)
     assert "job_runs" in inspector.get_table_names()
-    assert "uq_job_runs_one_active_per_product_kind" in {
-        index["name"] for index in inspector.get_indexes("job_runs")
-    }
+    assert "uq_job_runs_one_active_per_product_kind" in {index["name"] for index in inspector.get_indexes("job_runs")}
 
     engine.dispose()
     command.upgrade(config, "head")
@@ -913,9 +935,7 @@ def test_job_runs_drop_migration_and_downgrade_support_sqlite(tmp_path: Path, mo
     assert columns["product_id"]["nullable"] is False
     assert columns["kind"]["nullable"] is False
     assert columns["status"]["nullable"] is False
-    assert "uq_job_runs_one_active_per_product_kind" in {
-        index["name"] for index in inspector.get_indexes("job_runs")
-    }
+    assert "uq_job_runs_one_active_per_product_kind" in {index["name"] for index in inspector.get_indexes("job_runs")}
 
     engine.dispose()
     get_settings.cache_clear()

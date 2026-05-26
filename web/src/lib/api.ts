@@ -448,7 +448,10 @@ export const api = {
   deleteWorkflowNode(nodeId: string): Promise<ProductWorkflow> {
     return request(`/api/workflow-nodes/${nodeId}`, { method: "DELETE" });
   },
-  runProductWorkflow(productId: string, input?: { start_node_id?: string }): Promise<ProductWorkflow> {
+  runProductWorkflow(
+    productId: string,
+    input?: { start_node_id?: string; image_model?: string; text_model?: string },
+  ): Promise<ProductWorkflow> {
     return request(`/api/products/${productId}/workflow/run`, {
       method: "POST",
       body: JSON.stringify(input ?? {}),
