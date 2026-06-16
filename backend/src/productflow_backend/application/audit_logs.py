@@ -26,11 +26,14 @@ def record_admin_user_content_access(
 ) -> None:
     if not principal.is_admin or not target_user_id:
         return
+    admin_user_id = principal.new_api_user_id or "emergency-admin"
+    if admin_user_id == target_user_id:
+        return
     context = request_context or AuditRequestContext()
 
     session.add(
         AuditLog(
-            admin_user_id=principal.new_api_user_id or "emergency-admin",
+            admin_user_id=admin_user_id,
             admin_session_id=principal.session_id,
             admin_username=principal.username,
             target_user_id=target_user_id,

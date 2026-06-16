@@ -24,7 +24,7 @@ from productflow_backend.application.use_cases import (
 from productflow_backend.domain.enums import ProductWorkflowState
 from productflow_backend.infrastructure.storage import ImageVariantName, LocalStorage
 from productflow_backend.presentation.deps import (
-    current_owner_user_id,
+    current_workspace_owner_user_id,
     get_session,
     request_audit_context,
     require_deletion_enabled,
@@ -60,7 +60,7 @@ async def create_product_endpoint(
     source_note: str | None = Form(default=None),
     canvas_template_key: str | None = Form(default=None),
     session: Session = Depends(get_session),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
 ) -> ProductDetailResponse:
     main_image = await read_validated_image_upload(image, fallback_filename="upload.bin")
     reference_payloads: list[tuple[bytes, str, str]] = []
@@ -96,7 +96,7 @@ def list_products_endpoint(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     session: Session = Depends(get_session),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
 ) -> ProductListResponse:
     items, total = list_products(session, status=status, page=page, page_size=page_size, owner_user_id=owner_user_id)
     return ProductListResponse(
@@ -112,7 +112,7 @@ def get_product_detail_endpoint(
     product_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductDetailResponse:
     product = get_product_detail(session, product_id, owner_user_id)
@@ -137,7 +137,7 @@ def delete_product_endpoint(
     product_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> None:
     product = get_product_detail(session, product_id, owner_user_id)
@@ -160,7 +160,7 @@ async def upload_reference_images_endpoint(
     reference_images: list[UploadFile] = File(...),
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductDetailResponse:
     reference_payloads: list[tuple[bytes, str, str]] = []
@@ -198,7 +198,7 @@ def update_copy_set_endpoint(
     payload: CopySetUpdateRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> CopySetResponse:
     copy_set = update_copy_set(
@@ -224,7 +224,7 @@ def confirm_copy_set_endpoint(
     copy_set_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> CopySetResponse:
     copy_set = confirm_copy_set(session, copy_set_id=copy_set_id, owner_user_id=owner_user_id)
@@ -246,7 +246,7 @@ def download_poster_endpoint(
     variant: ImageVariantName = Query(default="original"),
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> FileResponse:
     poster = get_poster_variant_or_raise(session, poster_id, owner_user_id=owner_user_id)
@@ -284,7 +284,7 @@ def download_source_asset_endpoint(
     variant: ImageVariantName = Query(default="original"),
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> FileResponse:
     asset = get_source_asset_or_raise(session, asset_id, owner_user_id=owner_user_id)
@@ -317,7 +317,7 @@ def delete_source_asset_endpoint(
     asset_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductDetailResponse:
     product = delete_reference_image(session, asset_id=asset_id, owner_user_id=owner_user_id)
@@ -338,7 +338,7 @@ def get_product_history_endpoint(
     product_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductHistoryResponse:
     product = get_product_detail(session, product_id, owner_user_id)

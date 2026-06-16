@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -121,6 +122,7 @@ def test_product_workflow_status_endpoint_returns_lightweight_state(db_session) 
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="桌面收纳盒",
         category=None,
         price=None,
@@ -133,9 +135,9 @@ def test_product_workflow_status_endpoint_returns_lightweight_state(db_session) 
 
     persisted_workflow = get_or_create_product_workflow(db_session, product_id)
     workflow = serialize_product_workflow(persisted_workflow).model_dump(mode="json")
-    status_payload = serialize_product_workflow_status(
-        get_product_workflow_status(db_session, product_id)
-    ).model_dump(mode="json")
+    status_payload = serialize_product_workflow_status(get_product_workflow_status(db_session, product_id)).model_dump(
+        mode="json"
+    )
     assert status_payload["id"] == workflow["id"]
     assert status_payload["product_id"] == product_id
     assert status_payload["title"] == workflow["title"]
@@ -202,6 +204,8 @@ def test_product_workflow_status_endpoint_returns_lightweight_state(db_session) 
         "finished_at",
         "failure_reason",
         "progress_metadata",
+        "new_api_image_model",
+        "new_api_text_model",
         "is_retryable",
         "is_cancelable",
         "queue_active_count",
@@ -276,6 +280,7 @@ def test_reference_workflow_node_upload_replaces_current_image(configured_env: P
         asset["id"] for asset in product_after.json()["source_assets"] if asset["kind"] == "reference_image"
     }
     assert {first_asset_id, second_asset_id}.issubset(reference_asset_ids)
+
 
 def test_reference_workflow_node_can_bind_existing_source_or_poster_image(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app
@@ -419,6 +424,7 @@ def test_reference_workflow_node_can_bind_existing_source_or_poster_image(config
     ]
     assert sorted(reference_asset_ids_after_rebound) == sorted(reference_asset_ids_after_conflicting_upload)
 
+
 def test_reference_workflow_node_bind_poster_reports_missing_file_as_bad_request(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app
 
@@ -451,6 +457,7 @@ def test_reference_workflow_node_bind_poster_reports_missing_file_as_bad_request
 
     assert response.status_code == 400
     assert response.json()["detail"] == "海报文件不存在"
+
 
 def test_image_generation_fill_replaces_reference_node_current_image(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app
@@ -509,6 +516,7 @@ def test_image_generation_fill_replaces_reference_node_current_image(configured_
         asset["id"] for asset in product_after.json()["source_assets"] if asset["kind"] == "reference_image"
     }
     assert {old_asset_id, new_asset_id}.issubset(reference_asset_ids)
+
 
 def test_image_generation_fills_multiple_targets_with_concurrent_provider_calls(
     configured_env: Path,
@@ -755,6 +763,198 @@ def test_image_generation_batches_downstream_targets_with_batch_provider(
     assert len(image_output["filled_source_asset_ids"]) == 2
     assert len(image_output["generated_poster_variant_ids"]) == 2
     assert [result["target_index"] for result in image_output["provider_results"]] == [1, 2]
+
+
+def test_image_generation_large_downstream_count_uses_per_target_calls(
+    configured_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from productflow_backend.application.product_workflow.image_generation import (
+        WorkflowImageCallPlan,
+        generate_workflow_images_concurrently,
+    )
+    from productflow_backend.infrastructure.image.base import GeneratedImagePayload
+
+    class BatchCapableImageProvider:
+        provider_name = "batch-capable"
+        prompt_version = "batch-capable-v1"
+
+        def __init__(self) -> None:
+            self.batch_calls: list[int] = []
+            self.single_calls = 0
+
+        def generate_poster_images(
+            self,
+            poster: PosterGenerationInput,
+            kind: PosterKind,
+            count: int,
+        ) -> list[tuple[GeneratedImagePayload, str]]:
+            del poster, kind
+            self.batch_calls.append(count)
+            return []
+
+        def generate_poster_image(
+            self,
+            poster: PosterGenerationInput,
+            kind: PosterKind,
+        ) -> tuple[GeneratedImagePayload, str]:
+            self.single_calls += 1
+            return (
+                GeneratedImagePayload(
+                    kind=kind,
+                    bytes_data=_make_demo_image_bytes(),
+                    mime_type="image/png",
+                    width=800,
+                    height=800,
+                    variant_label=f"single-{self.single_calls}",
+                ),
+                "single-v1",
+            )
+
+    fake_provider = BatchCapableImageProvider()
+    plans = [
+        WorkflowImageCallPlan(
+            provider=fake_provider,
+            event_id=None,
+            atelier_request_id=f"atr-{index}",
+            target_index=index,
+            target_count=11,
+        )
+        for index in range(1, 12)
+    ]
+    generated = generate_workflow_images_concurrently(
+        render_input=PosterGenerationInput(product_name="大批量目标商品"),
+        kind=PosterKind.MAIN_IMAGE,
+        target_count=11,
+        poster_generation_mode="generated",
+        poster_font_path=Path("/tmp/productflow-test-font.ttf"),
+        image_call_plans=plans,
+    )
+
+    assert fake_provider.batch_calls == []
+    assert fake_provider.single_calls == 11
+    assert len(generated) == 11
+
+
+def test_image_generation_concurrent_failure_settles_all_audit_events(
+    configured_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from productflow_backend.infrastructure.db.models import AuditEvent
+    from productflow_backend.infrastructure.image.base import GeneratedImagePayload
+    from productflow_backend.presentation.api import create_app
+
+    session = get_session_factory()()
+    try:
+        session.add(AppSetting(key="poster_generation_mode", value="generated"))
+        session.commit()
+    finally:
+        session.close()
+
+    class FailingImageProvider:
+        provider_name = "failing-image"
+        prompt_version = "failing-v1"
+
+        def __init__(self, call_index: int) -> None:
+            self.call_index = call_index
+
+        def generate_poster_image(
+            self,
+            poster: PosterGenerationInput,
+            kind: PosterKind,
+        ) -> tuple[GeneratedImagePayload, str]:
+            del poster
+            if self.call_index == 1:
+                time.sleep(0.2)
+                return (
+                    GeneratedImagePayload(
+                        kind=kind,
+                        bytes_data=_make_demo_image_bytes(),
+                        mime_type="image/png",
+                        width=800,
+                        height=800,
+                        variant_label="ok",
+                    ),
+                    "ok-model",
+                )
+            raise RuntimeError("provider rejected")
+
+    created_providers = 0
+
+    def provider_factory() -> FailingImageProvider:
+        nonlocal created_providers
+        created_providers += 1
+        return FailingImageProvider(created_providers)
+
+    _execute_workflow_queue_inline(
+        monkeypatch,
+        dependencies=WorkflowExecutionDependencies(image_provider_resolver=provider_factory),
+    )
+
+    app = create_app()
+    client = TestClient(app)
+    _login(client)
+
+    created = client.post(
+        "/api/products",
+        data={"name": "失败审计商品"},
+        files={"image": ("audit-failure.png", _make_demo_image_bytes(), "image/png")},
+    )
+    assert created.status_code == 201
+    product_id = created.json()["id"]
+    workflow = client.get(f"/api/products/{product_id}/workflow").json()
+    image_node = next(node for node in workflow["nodes"] if node["node_type"] == "image_generation")
+    second_target = client.post(
+        f"/api/products/{product_id}/workflow/nodes",
+        json={
+            "node_type": "reference_image",
+            "title": "失败目标 2",
+            "position_x": 1180,
+            "position_y": 240,
+            "config_json": {"role": "reference", "label": "失败目标 2"},
+        },
+    )
+    assert second_target.status_code == 201
+    second_target_node = next(node for node in second_target.json()["nodes"] if node["title"] == "失败目标 2")
+    connected = client.post(
+        f"/api/products/{product_id}/workflow/edges",
+        json={
+            "source_node_id": image_node["id"],
+            "target_node_id": second_target_node["id"],
+            "source_handle": "output",
+            "target_handle": "input",
+        },
+    )
+    assert connected.status_code == 201
+
+    run_response = client.post(f"/api/products/{product_id}/workflow/run", json={})
+    assert run_response.status_code == 200
+    _wait_for_workflow_run(client, product_id, status="failed")
+
+    db = get_session_factory()()
+    try:
+        events = (
+            db.query(AuditEvent)
+            .filter(
+                AuditEvent.event_type == "model_call",
+                AuditEvent.resource_type == "workflow_node_run",
+            )
+            .order_by(AuditEvent.created_at, AuditEvent.id)
+            .all()
+        )
+        events = [
+            event
+            for event in events
+            if isinstance(event.metadata_json, dict) and event.metadata_json.get("operation") == "image_generation"
+        ]
+        assert len(events) == 2
+        statuses = {event.status for event in events}
+        assert "running" not in statuses
+        assert statuses <= {"succeeded", "failed"}
+        assert sorted(statuses) == ["failed", "succeeded"]
+        assert all(event.metadata_json["billing_lookup_status"] == "skipped" for event in events)
+    finally:
+        db.close()
 
 
 def test_workflow_node_can_be_deleted_with_connected_edges(configured_env: Path) -> None:

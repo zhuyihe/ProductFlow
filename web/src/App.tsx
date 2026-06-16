@@ -33,6 +33,12 @@ const ProductListPage = lazy(loadProductListPage);
 const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((module) => ({ default: module.SettingsPage })),
 );
+const RecordsPage = lazy(() =>
+  import("./pages/RecordsPage").then((module) => ({ default: module.RecordsPage })),
+);
+const AuditPage = lazy(() =>
+  import("./pages/AdminAuditPage").then((module) => ({ default: module.AdminAuditPage })),
+);
 const NotFoundPage = lazy(() =>
   import("./pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
 );
@@ -106,6 +112,18 @@ function AppRoutes() {
           element={
             authenticated
               ? (isAdmin ? <SettingsPage /> : <Navigate to="/products" replace />)
+              : <Navigate to={workspaceLoginTarget} replace />
+          }
+        />
+        <Route
+          path="/records"
+          element={authenticated ? <RecordsPage /> : <Navigate to={workspaceLoginTarget} replace />}
+        />
+        <Route
+          path="/admin/audit"
+          element={
+            authenticated
+              ? (isAdmin ? <AuditPage /> : <Navigate to="/products" replace />)
               : <Navigate to={workspaceLoginTarget} replace />
           }
         />

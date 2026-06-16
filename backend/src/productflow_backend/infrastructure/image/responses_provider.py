@@ -216,6 +216,7 @@ class OpenAIResponsesImageClient:
         self.api_key = resolved_config.api_key
         self.base_url = resolved_config.base_url
         self.model = resolved_config.model
+        self.atelier_request_id = resolved_config.atelier_request_id
         self.background_enabled = resolved_config.responses_background_enabled
         self.tool_model = settings.image_tool_model
         self.tool_quality = settings.image_tool_quality
@@ -258,6 +259,8 @@ class OpenAIResponsesImageClient:
         client_kwargs: dict[str, Any] = {"api_key": self.api_key}
         if self.base_url:
             client_kwargs["base_url"] = self.base_url
+        if self.atelier_request_id:
+            client_kwargs["default_headers"] = {"X-Atelier-Request-Id": self.atelier_request_id}
         fallback_used = False
         requested_tool = dict(tool)
         try:

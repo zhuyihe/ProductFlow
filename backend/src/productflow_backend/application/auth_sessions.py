@@ -49,6 +49,13 @@ def principal_owner_user_id(principal: Principal | None) -> str | None:
     return normalized or None
 
 
+def principal_workspace_owner_user_id(principal: Principal) -> str:
+    normalized = (principal.new_api_user_id or "").strip()
+    if normalized:
+        return normalized
+    raise PrincipalIntegrityError("Invalid authenticated principal")
+
+
 @dataclass(frozen=True, slots=True)
 class Viewer:
     kind: Literal["admin", "user"]

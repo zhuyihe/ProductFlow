@@ -27,8 +27,8 @@ from productflow_backend.application.product_workflows import (
     upload_workflow_node_image,
 )
 from productflow_backend.presentation.deps import (
-    current_owner_user_id,
     current_principal,
+    current_workspace_owner_user_id,
     get_session,
     request_audit_context,
     require_workspace_principal,
@@ -86,7 +86,7 @@ def get_product_workflow_endpoint(
     product_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = get_or_create_product_workflow(session, product_id, owner_user_id)
@@ -107,7 +107,7 @@ def get_product_workflow_status_endpoint(
     product_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowStatusResponse:
     workflow = get_product_workflow_status(session, product_id, owner_user_id)
@@ -126,7 +126,7 @@ def get_product_workflow_status_endpoint(
 @router.get("/workflow/canvas-templates", response_model=CanvasTemplateListResponse)
 def list_canvas_templates_endpoint(
     session: Session = Depends(get_session),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
 ) -> CanvasTemplateListResponse:
     templates = [
         serialize_canvas_template_summary(template)
@@ -145,7 +145,7 @@ def create_user_template_group_endpoint(
     payload: CreateUserTemplateGroupRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> CanvasTemplateSummaryResponse:
     template = create_user_canvas_template_from_workflow_nodes(
@@ -176,7 +176,7 @@ def update_user_template_group_endpoint(
     payload: UpdateUserTemplateGroupRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> CanvasTemplateSummaryResponse:
     template = rename_user_canvas_template(
@@ -203,7 +203,7 @@ def archive_user_template_group_endpoint(
     template_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> None:
     template = archive_user_canvas_template(session, template_id=template_id, owner_user_id=owner_user_id)
@@ -228,7 +228,7 @@ def create_workflow_node_endpoint(
     payload: CreateWorkflowNodeRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = create_workflow_node(
@@ -263,7 +263,7 @@ def apply_workflow_template_group_endpoint(
     payload: ApplyWorkflowTemplateGroupRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = apply_node_group_template_to_workflow(
@@ -296,7 +296,7 @@ def duplicate_workflow_node_group_endpoint(
     payload: DuplicateWorkflowNodeGroupRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = duplicate_workflow_node_group(
@@ -327,7 +327,7 @@ def update_workflow_node_endpoint(
     payload: UpdateWorkflowNodeRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = update_workflow_node(
@@ -357,7 +357,7 @@ def update_workflow_copy_set_endpoint(
     payload: UpdateWorkflowCopySetRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = update_workflow_copy_set(
@@ -386,7 +386,7 @@ async def upload_workflow_node_image_endpoint(
     label: str | None = Form(default=None),
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     validated = await read_validated_image_upload(image, fallback_filename="workflow-image.bin")
@@ -418,7 +418,7 @@ def bind_workflow_node_image_endpoint(
     payload: BindWorkflowNodeImageRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = bind_workflow_node_image(
@@ -450,7 +450,7 @@ def create_workflow_edge_endpoint(
     payload: CreateWorkflowEdgeRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = create_workflow_edge(
@@ -479,7 +479,7 @@ def delete_workflow_edge_endpoint(
     edge_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = delete_workflow_edge(session, edge_id=edge_id, owner_user_id=owner_user_id)
@@ -500,7 +500,7 @@ def delete_workflow_node_endpoint(
     node_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = delete_workflow_node(session, node_id=node_id, owner_user_id=owner_user_id)
@@ -522,7 +522,7 @@ def run_product_workflow_endpoint(
     payload: RunWorkflowRequest | None = None,
     session: Session = Depends(get_session),
     principal: Principal | None = Depends(current_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = submit_product_workflow_run(
@@ -552,7 +552,7 @@ def cancel_product_workflow_run_endpoint(
     run_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = cancel_product_workflow_run(
@@ -583,7 +583,7 @@ def retry_product_workflow_run_endpoint(
     run_id: str,
     session: Session = Depends(get_session),
     principal: Principal | None = Depends(current_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWorkflowResponse:
     workflow = retry_product_workflow_run(

@@ -603,6 +603,63 @@ export interface GalleryEntryReport {
   created_at: string;
 }
 
+export type AuditEventStatus = "running" | "succeeded" | "failed" | "cancelled";
+export type AuditEventType = "model_call" | "admin_content_view" | "session" | "settings_change" | "export";
+export type AuditNumericValue = string | number;
+
+export interface AuditEvent {
+  id: string;
+  event_type: AuditEventType | string;
+  actor_user_id: string | null;
+  actor_username: string | null;
+  actor_principal_kind: string | null;
+  subject_user_id: string | null;
+  subject_username: string | null;
+  status: AuditEventStatus | string;
+  source: string;
+  atelier_request_id: string | null;
+  new_api_request_id: string | null;
+  new_api_upstream_request_id: string | null;
+  new_api_log_id: string | null;
+  new_api_token_id: string | null;
+  new_api_token_name: string | null;
+  new_api_token_group: string | null;
+  model_name: string | null;
+  provider_name: string | null;
+  quota: AuditNumericValue | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  use_time_seconds: AuditNumericValue | null;
+  error_code: string | null;
+  error_message: string | null;
+  resource_type: string | null;
+  resource_id: string | null;
+  parent_resource_type: string | null;
+  parent_resource_id: string | null;
+  metadata_json: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditEventListResponse {
+  items: AuditEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AuditEventSummaryResponse {
+  total_events: number;
+  total_quota: AuditNumericValue;
+  failed_events: number;
+}
+
+export interface AdminContentViewRequest {
+  event_id?: string | null;
+  resource_type: string;
+  resource_id: string;
+}
+
 export type ConfigSource = "database" | "env_default";
 export type ConfigInputType = "text" | "password" | "number" | "boolean" | "select" | "multi_select" | "textarea";
 

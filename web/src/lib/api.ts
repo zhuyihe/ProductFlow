@@ -15,6 +15,10 @@ import type {
   GalleryTemplateDetail,
   GenerationQueueOverview,
   CreateUserTemplateGroupInput,
+  AdminContentViewRequest,
+  AuditEvent,
+  AuditEventListResponse,
+  AuditEventSummaryResponse,
   CreateProductInput,
   ImageSessionDetail,
   ImageSessionListResponse,
@@ -169,6 +173,74 @@ export const api = {
   },
   importSettings(payload: SettingsExportPayload): Promise<SettingsImportCommitResponse> {
     return request("/api/settings/import", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  listUsageEvents(query?: {
+    page?: number;
+    page_size?: number;
+    event_type?: string;
+    status?: string;
+    model_name?: string;
+    resource_type?: string;
+    resource_id?: string;
+    created_from?: string;
+    created_to?: string;
+  }): Promise<AuditEventListResponse> {
+    const params = new URLSearchParams();
+    if (query?.page) params.set("page", String(query.page));
+    if (query?.page_size) params.set("page_size", String(query.page_size));
+    if (query?.event_type) params.set("event_type", query.event_type);
+    if (query?.status) params.set("status", query.status);
+    if (query?.model_name) params.set("model_name", query.model_name);
+    if (query?.resource_type) params.set("resource_type", query.resource_type);
+    if (query?.resource_id) params.set("resource_id", query.resource_id);
+    if (query?.created_from) params.set("created_from", query.created_from);
+    if (query?.created_to) params.set("created_to", query.created_to);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return request(`/api/usage/events${suffix}`);
+  },
+  getUsageSummary(): Promise<AuditEventSummaryResponse> {
+    return request("/api/usage/summary");
+  },
+  listAdminAuditEvents(query?: {
+    page?: number;
+    page_size?: number;
+    subject_user_id?: string;
+    event_type?: string;
+    status?: string;
+    model_name?: string;
+    token_group?: string;
+    resource_type?: string;
+    resource_id?: string;
+    request_id?: string;
+    created_from?: string;
+    created_to?: string;
+    historical_unowned?: boolean;
+  }): Promise<AuditEventListResponse> {
+    const params = new URLSearchParams();
+    if (query?.page) params.set("page", String(query.page));
+    if (query?.page_size) params.set("page_size", String(query.page_size));
+    if (query?.subject_user_id) params.set("subject_user_id", query.subject_user_id);
+    if (query?.event_type) params.set("event_type", query.event_type);
+    if (query?.status) params.set("status", query.status);
+    if (query?.model_name) params.set("model_name", query.model_name);
+    if (query?.token_group) params.set("token_group", query.token_group);
+    if (query?.resource_type) params.set("resource_type", query.resource_type);
+    if (query?.resource_id) params.set("resource_id", query.resource_id);
+    if (query?.request_id) params.set("request_id", query.request_id);
+    if (query?.created_from) params.set("created_from", query.created_from);
+    if (query?.created_to) params.set("created_to", query.created_to);
+    if (query?.historical_unowned) params.set("historical_unowned", "true");
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return request(`/api/admin/audit/events${suffix}`);
+  },
+  getAdminAuditEvent(eventId: string): Promise<AuditEvent> {
+    return request(`/api/admin/audit/events/${eventId}`);
+  },
+  createAdminContentViewEvent(payload: AdminContentViewRequest): Promise<AuditEvent> {
+    return request("/api/admin/audit/content-view", {
       method: "POST",
       body: JSON.stringify(payload),
     });

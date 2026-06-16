@@ -11,6 +11,29 @@ hangs off them). A single bypass anywhere collapses the tenant boundary for
 the whole instance, and silent fall-through is more dangerous than an explicit
 500.
 
+## Workspace Scope vs Admin Viewer
+
+Normal workspace pages are not admin consoles. `products`, `image_sessions`,
+product workbench, and user canvas-template APIs must resolve a concrete
+workspace owner for every authenticated SSO principal:
+
+```python
+@dataclass(frozen=True, slots=True)
+class WorkspaceScope:
+    owner_user_id: str       # user/admin -> new_api_user_id (non-empty)
+    principal: Principal
+```
+
+`build_workspace_scope(principal)` raises `PrincipalIntegrityError` when
+`new_api_user_id` is empty or whitespace, regardless of whether the principal
+is a normal user or an admin. CLI/bootstrap admin sessions without a New API
+user id may access admin/settings recovery surfaces, but they must not list
+or mutate normal workspace data.
+
+Admin cross-user access belongs only in explicit admin audit APIs such as
+`/api/admin/audit/*`. Do not add `?user_id=...` or `admin=true` escape hatches
+to normal workspace routes.
+
 ## The Viewer Type
 
 ```python
@@ -21,9 +44,9 @@ class Viewer:
     principal: Principal    # for audit metadata
 ```
 
-`Viewer` is the **only** acceptable owner-context parameter for
-application-layer query and mutation helpers. Functions that previously took
-`owner_user_id: str | None` must be migrated.
+`Viewer` is for explicit admin/audit/moderation flows and owner-sensitive
+gallery mutations. It is not permission to make normal workspace routes
+globally visible.
 
 `build_viewer(principal)` raises `PrincipalIntegrityError` when:
 
@@ -36,16 +59,27 @@ admin behavior.
 
 ## Query Predicate
 
-The single sanctioned shape:
+For normal workspace APIs, the sanctioned shape is:
+
+```python
+stmt = stmt.where(Model.owner_user_id == scope.owner_user_id)
+```
+
+For explicit admin audit APIs, the sanctioned shape is:
 
 ```python
 if viewer.kind == "user":
     stmt = stmt.where(Model.owner_user_id == viewer.user_id)
-# admin viewer: no owner filter (explicit, intentional)
+# admin viewer in /api/admin/audit/* may inspect cross-user metadata
 ```
 
-Do not introduce other shapes (no `if owner_user_id is not None:`, no
-`Optional[str]` parameter resurrecting the legacy contract).
+Do not introduce other shapes:
+
+- no `if owner_user_id is not None:` in normal workspace code;
+- no optional owner parameter where `None` means "global";
+- no admin global reads from `/api/products`, `/api/image-sessions`, or product
+  workbench routes;
+- no direct child lookup without resolving the owner-bearing parent.
 
 ## Child Resource Access
 
@@ -95,15 +129,30 @@ Returning an empty list to a foreign-product request is an information leak
 When reviewing a change that touches an owner-bearing table or any table
 reachable through one:
 
-1. Does every new application-layer function accept `viewer: Viewer`?
+1. Does every normal workspace route resolve a concrete `WorkspaceScope`?
 2. Are child lookups gated by a parent fetch under the viewer?
 3. If the change adds a unique constraint, is it composite with `owner_user_id`?
 4. If the change adds an index, does it include `owner_user_id` as the first
    column when the workload is owner-scoped?
-5. If the change introduces a query shape, does it use the sanctioned
-   `if viewer.kind == "user": ... .where(...)` predicate?
+5. If the change introduces an admin cross-user query, is it under an
+   admin-only audit/moderation route with audit-event coverage?
 
 A "no" anywhere is a blocking review comment.
+
+## Admin Audit Scenario
+
+Admin support and compliance review use dedicated admin-only audit APIs.
+
+- Audit list/detail APIs return metadata first: user id, model, group, status,
+  request ids, safe error detail, resource id, and timestamps.
+- Generated user content is not returned by default. A separate explicit
+  content-view endpoint must record an `admin_content_view` event before
+  returning content metadata or a file response.
+- Audit APIs are read-only unless a separate moderation task explicitly adds
+  audited mutation endpoints.
+- Historical rows with `owner_user_id IS NULL` are excluded from normal
+  workspace APIs. Admin audit may expose them under a "historical unowned"
+  filter.
 
 ## Gallery Scenario
 
@@ -132,6 +181,11 @@ def get_product(session, product_id, owner_user_id: str | None = None):
         stmt = stmt.where(Product.owner_user_id == owner_user_id)
     ...
 
+# WRONG: admin normal workspace route gets global data
+def list_products(principal):
+    owner_user_id = principal_owner_user_id(principal)  # admin -> None
+    return list_products(session, owner_user_id=owner_user_id)
+
 # WRONG: returning empty list for cross-owner access
 def list_sessions(viewer, product_id):
     return _query(viewer).where(ImageSession.product_id == product_id).all()
@@ -140,5 +194,5 @@ def list_sessions(viewer, product_id):
 # WRONG: silent owner-fallback
 def principal_owner_user_id(principal):
     if principal is None or not principal.is_user:
-        return None    # admin reads everything; bad data reads everything too
+    return None    # admin reads everything; bad data reads everything too
 ```

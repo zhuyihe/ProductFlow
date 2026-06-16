@@ -6,6 +6,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal, cast
 
 from dramatiq.middleware.time_limit import TimeLimitExceeded
@@ -21,6 +22,12 @@ from productflow_backend.application.admission import (
     get_generation_task_queue_metadata,
     get_queued_generation_positions,
 )
+from productflow_backend.application.audit_events import (
+    create_audit_event,
+    generate_atelier_request_id,
+    safe_audit_error_message,
+    settle_model_call_audit_event,
+)
 from productflow_backend.application.auth_sessions import Principal, normalize_image_model_options
 from productflow_backend.application.image_generation_core import (
     normalize_image_generation_tool_options,
@@ -32,6 +39,7 @@ from productflow_backend.application.image_generation_failures import (
     classify_image_generation_failure,
 )
 from productflow_backend.application.provider_runtime import (
+    ProviderExecutionContext,
     interactive_provider_execution_context_from_principal,
     provider_credential_override_from_context,
     provider_execution_context_from_image_generation_task,
@@ -59,7 +67,10 @@ from productflow_backend.infrastructure.db.session import get_session_factory
 from productflow_backend.infrastructure.image.base import infer_extension
 from productflow_backend.infrastructure.image.chat_service import ImageChatService, ImageChatTurn
 from productflow_backend.infrastructure.image.responses_provider import PROVIDER_TEXT_OUTPUT_MESSAGE
-from productflow_backend.infrastructure.provider_config import resolve_image_provider_config
+from productflow_backend.infrastructure.provider_config import (
+    ResolvedImageProviderConfig,
+    resolve_image_provider_config,
+)
 from productflow_backend.infrastructure.queue import (
     enqueue_image_session_generation_task,
     enqueue_image_session_generation_task_later,
@@ -396,6 +407,21 @@ def _images_api_batch_count(
     return max(1, min(remaining_count, IMAGE_SESSION_IMAGES_API_N_MAX_COUNT))
 
 
+def _resolve_image_provider_config_for_context(
+    provider_context: ProviderExecutionContext | None,
+    *,
+    atelier_request_id: str | None = None,
+) -> ResolvedImageProviderConfig:
+    if provider_context is None:
+        return resolve_image_provider_config()
+    return resolve_image_provider_config(
+        provider_credential_override_from_context(
+            provider_context,
+            atelier_request_id=atelier_request_id,
+        )
+    )
+
+
 def _provider_output_with_actual_size(
     provider_output_json: dict[str, Any] | None,
     *,
@@ -406,6 +432,98 @@ def _provider_output_with_actual_size(
         provider_output_json,
         requested_size=requested_size,
         image_bytes=image_bytes,
+    )
+
+
+def _create_image_session_model_call_event(
+    session: Session,
+    *,
+    image_session: ImageSession,
+    generation_task: ImageSessionGenerationTask | None,
+    atelier_request_id: str,
+    candidate_index: int,
+    batch_count: int,
+    generation_count: int,
+    model_name: str | None,
+    provider_name: str | None,
+) -> str | None:
+    subject_user_id = (
+        generation_task.new_api_user_id if generation_task is not None and generation_task.new_api_user_id else None
+    )
+    subject_user_id = subject_user_id or image_session.owner_user_id
+    if not subject_user_id:
+        return None
+    event = create_audit_event(
+        session,
+        event_type="model_call",
+        subject_user_id=subject_user_id,
+        status="running",
+        source="atelier",
+        atelier_request_id=atelier_request_id,
+        new_api_token_id=generation_task.new_api_token_id if generation_task is not None else None,
+        new_api_token_name=generation_task.new_api_token_name if generation_task is not None else None,
+        new_api_token_group=generation_task.new_api_token_group if generation_task is not None else None,
+        model_name=model_name,
+        provider_name=provider_name,
+        resource_type="image_generation_task" if generation_task is not None else "image_session",
+        resource_id=generation_task.id if generation_task is not None else image_session.id,
+        parent_resource_type="image_session",
+        parent_resource_id=image_session.id,
+        metadata_json={
+            "candidate_index": candidate_index,
+            "batch_count": batch_count,
+            "candidate_count": generation_count,
+        },
+    )
+    return event.id
+
+
+def _mark_image_session_model_call_succeeded(
+    session: Session,
+    *,
+    event_id: str | None,
+    atelier_request_id: str,
+    new_api_token: str | None,
+    result: Any,
+    batch_count: int,
+) -> None:
+    settle_model_call_audit_event(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        new_api_token=new_api_token,
+        status="succeeded",
+        model_name=result.model_name,
+        provider_name=result.provider_name,
+        metadata_json={
+            "batch_count": batch_count,
+            "provider_response_id": result.provider_response_id,
+            "image_generation_call_id": result.image_generation_call_id,
+        },
+    )
+
+
+def _mark_image_session_model_call_failed(
+    session: Session,
+    *,
+    event_id: str | None,
+    atelier_request_id: str,
+    new_api_token: str | None,
+    exc: BaseException,
+    model_name: str | None,
+    provider_name: str | None,
+) -> None:
+    settle_model_call_audit_event(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        new_api_token=new_api_token,
+        status="failed",
+        model_name=model_name,
+        provider_name=provider_name,
+        quota_if_not_found=Decimal("0"),
+        error_code=exc.__class__.__name__,
+        error_message=safe_audit_error_message(str(exc)),
     )
 
 
@@ -600,12 +718,6 @@ def _execute_image_session_round_generation(
         if generation_task is not None
         else None
     )
-    provider_config = (
-        resolve_image_provider_config(provider_credential_override_from_context(provider_context))
-        if provider_context is not None
-        else None
-    )
-    service = ImageChatService(provider_config=provider_config)
     normalized_size, normalized_base_asset_id, normalized_reference_ids = _validate_generation_request(
         image_session,
         size=size,
@@ -680,39 +792,79 @@ def _execute_image_session_round_generation(
             if pending_provider_results:
                 result = pending_provider_results.pop(0)
             else:
+                atelier_request_id = generate_atelier_request_id()
+                provider_config = _resolve_image_provider_config_for_context(
+                    provider_context,
+                    atelier_request_id=atelier_request_id,
+                )
+                service = ImageChatService(provider_config=provider_config)
                 remaining_count = generation_count - candidate_index + 1
                 batch_count = _images_api_batch_count(
                     provider_kind=service.provider_kind,
                     remaining_count=remaining_count,
                 )
-                if batch_count > 1:
-                    provider_results = service.generate_many(
-                        prompt=prompt,
-                        size=normalized_size,
-                        history=history,
-                        manual_reference_images=manual_references,
-                        candidate_count=batch_count,
-                        tool_options=normalized_tool_options,
+                audit_event_id = _create_image_session_model_call_event(
+                    session,
+                    image_session=image_session,
+                    generation_task=generation_task,
+                    atelier_request_id=atelier_request_id,
+                    candidate_index=candidate_index,
+                    batch_count=batch_count,
+                    generation_count=generation_count,
+                    model_name=provider_config.model,
+                    provider_name=service.provider_kind,
+                )
+                session.commit()
+                try:
+                    if batch_count > 1:
+                        provider_results = service.generate_many(
+                            prompt=prompt,
+                            size=normalized_size,
+                            history=history,
+                            manual_reference_images=manual_references,
+                            candidate_count=batch_count,
+                            tool_options=normalized_tool_options,
+                        )
+                        result = provider_results[0]
+                        pending_provider_results.extend(provider_results[1:])
+                    else:
+                        result = service.generate(
+                            prompt=prompt,
+                            size=normalized_size,
+                            history=history,
+                            manual_reference_images=manual_references,
+                            previous_response_id=previous_response_id,
+                            tool_options=normalized_tool_options,
+                            progress_callback=_provider_progress_callback(
+                                session,
+                                task_id=generation_task_id,
+                                session_id=image_session_id,
+                                candidate_index=candidate_index,
+                                generation_count=generation_count,
+                                completed_candidates=completed_candidates,
+                            ),
+                        )
+                except BaseException as exc:  # noqa: BLE001
+                    _mark_image_session_model_call_failed(
+                        session,
+                        event_id=audit_event_id,
+                        atelier_request_id=atelier_request_id,
+                        new_api_token=provider_context.new_api_token if provider_context is not None else None,
+                        exc=exc,
+                        model_name=provider_config.model,
+                        provider_name=service.provider_kind,
                     )
-                    result = provider_results[0]
-                    pending_provider_results.extend(provider_results[1:])
-                else:
-                    result = service.generate(
-                        prompt=prompt,
-                        size=normalized_size,
-                        history=history,
-                        manual_reference_images=manual_references,
-                        previous_response_id=previous_response_id,
-                        tool_options=normalized_tool_options,
-                        progress_callback=_provider_progress_callback(
-                            session,
-                            task_id=generation_task_id,
-                            session_id=image_session_id,
-                            candidate_index=candidate_index,
-                            generation_count=generation_count,
-                            completed_candidates=completed_candidates,
-                        ),
-                    )
+                    session.commit()
+                    raise
+                _mark_image_session_model_call_succeeded(
+                    session,
+                    event_id=audit_event_id,
+                    atelier_request_id=atelier_request_id,
+                    new_api_token=provider_context.new_api_token if provider_context is not None else None,
+                    result=result,
+                    batch_count=batch_count,
+                )
+                session.commit()
             _raise_if_image_generation_task_cancelled(session, generation_task_id)
 
             relative_path = storage.save_image_session_generated(

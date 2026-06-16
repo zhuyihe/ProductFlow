@@ -68,8 +68,7 @@ def list_gallery_templates_endpoint(
     viewer: Viewer = Depends(require_workspace_viewer),  # noqa: ARG001
 ) -> CanvasTemplateListResponse:
     items = [
-        serialize_user_canvas_template_summary(template)
-        for template in list_public_user_canvas_templates(session)
+        serialize_user_canvas_template_summary(template) for template in list_public_user_canvas_templates(session)
     ]
     return CanvasTemplateListResponse(items=items)
 
@@ -174,7 +173,8 @@ def import_gallery_entry_endpoint(
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(require_workspace_viewer),
 ) -> ImageSessionDetailResponse:
-    imported = import_gallery_entry_to_image_session(session, viewer=viewer, entry_id=entry_id)
+    user_viewer = _require_user_viewer(viewer)
+    imported = import_gallery_entry_to_image_session(session, viewer=user_viewer, entry_id=entry_id)
     return serialize_image_session_detail(imported)
 
 

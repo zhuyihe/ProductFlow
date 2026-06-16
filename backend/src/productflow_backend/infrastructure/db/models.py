@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -111,6 +111,50 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class AuditEvent(Base, TimestampMixin):
+    """Atelier usage/audit event ledger for user records and admin audit metadata."""
+
+    __tablename__ = "audit_events"
+    __table_args__ = (
+        Index("ix_audit_events_subject_created_at", "subject_user_id", "created_at"),
+        Index("ix_audit_events_event_type_created_at", "event_type", "created_at"),
+        Index("ix_audit_events_atelier_request_id", "atelier_request_id"),
+        Index("ix_audit_events_new_api_request_id", "new_api_request_id"),
+        Index("ix_audit_events_resource", "resource_type", "resource_id"),
+        Index("ix_audit_events_status_created_at", "status", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    event_type: Mapped[str] = mapped_column(String(40))
+    actor_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    actor_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    actor_principal_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    subject_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    subject_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="succeeded")
+    source: Mapped[str] = mapped_column(String(32), default="atelier")
+    atelier_request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_request_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    new_api_upstream_request_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    new_api_log_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_token_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    new_api_token_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    new_api_token_group: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    quota: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    use_time_seconds: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resource_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    resource_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    parent_resource_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    parent_resource_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
+
 class ProviderProfile(Base, TimestampMixin):
     """统一供应商档案，持有连接信息和可用能力。"""
 
@@ -157,6 +201,7 @@ class UserCanvasTemplate(Base, TimestampMixin):
 
     __tablename__ = "user_canvas_templates"
     __table_args__ = (
+        CheckConstraint("owner_user_id IS NOT NULL", name="ck_user_canvas_templates_owner_user_id_not_null"),
         Index("ix_user_canvas_templates_archived_at", "archived_at"),
         Index("ix_user_canvas_templates_owner_user_id", "owner_user_id"),
         Index("ix_user_canvas_templates_is_public_shared_at", "is_public", "shared_at"),
@@ -184,7 +229,10 @@ class UserCanvasTemplate(Base, TimestampMixin):
 
 class Product(Base, TimestampMixin):
     __tablename__ = "products"
-    __table_args__ = (Index("ix_products_owner_user_id", "owner_user_id"),)
+    __table_args__ = (
+        CheckConstraint("owner_user_id IS NOT NULL", name="ck_products_owner_user_id_not_null"),
+        Index("ix_products_owner_user_id", "owner_user_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -496,7 +544,10 @@ class ImageSession(Base, TimestampMixin):
     """连续生图会话，含多轮对话历史与生成结果。"""
 
     __tablename__ = "image_sessions"
-    __table_args__ = (Index("ix_image_sessions_owner_user_id", "owner_user_id"),)
+    __table_args__ = (
+        CheckConstraint("owner_user_id IS NOT NULL", name="ck_image_sessions_owner_user_id_not_null"),
+        Index("ix_image_sessions_owner_user_id", "owner_user_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)

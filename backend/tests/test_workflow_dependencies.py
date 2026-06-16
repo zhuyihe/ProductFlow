@@ -114,7 +114,7 @@ def test_workflow_image_generation_uses_injected_renderer_factory() -> None:
         target_count=1,
         poster_generation_mode="rendered",
         poster_font_path=font_path,
-        image_providers=None,
+        image_call_plans=None,
         renderer_factory=FakeRenderer,
     )
 

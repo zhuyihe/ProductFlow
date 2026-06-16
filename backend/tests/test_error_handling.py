@@ -167,6 +167,7 @@ def test_high_risk_business_paths_raise_typed_validation_errors(db_session, conf
     with pytest.raises(BusinessValidationError, match="商品名不能为空"):
         create_product(
             db_session,
+            owner_user_id="test-user",
             name="   ",
             category=None,
             price=None,
@@ -180,6 +181,7 @@ def test_high_risk_business_paths_raise_typed_validation_errors(db_session, conf
     with pytest.raises(BusinessValidationError, match="价格格式不正确"):
         create_product(
             db_session,
+            owner_user_id="test-user",
             name="价格格式错误商品",
             category=None,
             price="abc",
@@ -192,6 +194,7 @@ def test_high_risk_business_paths_raise_typed_validation_errors(db_session, conf
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="typed error 商品",
         category=None,
         price=None,
@@ -223,7 +226,12 @@ def test_high_risk_business_paths_raise_typed_validation_errors(db_session, conf
         )
     db_session.rollback()
 
-    image_session = create_image_session(db_session, product_id=None, title="typed error 生图")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="typed error 生图",
+    )
     with pytest.raises(BusinessValidationError, match="一次生成数量必须在 1-10 张之间"):
         submit_image_session_generation_task(
             db_session,
@@ -240,6 +248,7 @@ def test_high_risk_business_paths_raise_typed_validation_errors(db_session, conf
 def test_update_copy_set_payload_validation_uses_typed_business_error(db_session, configured_env) -> None:  # noqa: ARG001
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="bad copy payload 商品",
         category=None,
         price=None,
@@ -278,6 +287,7 @@ def test_workflow_edge_rollback_preserves_typed_business_errors(
 ) -> None:
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="typed edge error 商品",
         category=None,
         price=None,

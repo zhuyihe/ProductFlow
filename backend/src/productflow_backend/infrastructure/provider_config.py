@@ -58,6 +58,7 @@ class ResolvedTextProviderConfig:
     provider_profile_id: str | None = None
     api_key: str | None = None
     base_url: str | None = None
+    atelier_request_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +68,7 @@ class ProviderCredentialOverride:
     image_model: str | None = None
     text_model: str | None = None
     token_group: str | None = None
+    atelier_request_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +83,7 @@ class ResolvedImageProviderConfig:
     responses_background_enabled: bool = False
     gemini_api_version: str = "v1beta"
     gemini_output_mime_type: str | None = None
+    atelier_request_id: str | None = None
 
 
 def ensure_provider_config_bootstrapped(session: Session | None = None) -> None:
@@ -415,6 +418,7 @@ def resolve_text_provider_config(
             provider_profile_id=profile.id,
             api_key=credential_override.api_key if credential_override is not None else profile.api_key,
             base_url=credential_override.base_url if credential_override is not None else profile.base_url,
+            atelier_request_id=credential_override.atelier_request_id if credential_override is not None else None,
         )
     finally:
         session.close()
@@ -431,6 +435,8 @@ def resolve_image_provider_config(
         override_image_model = (
             _optional_str(credential_override.image_model) if credential_override is not None else None
         )
+        if credential_override is not None and kind not in {"openai_responses", "openai_images"}:
+            raise RuntimeError("New API relay 当前只支持 OpenAI 兼容图片 provider")
         if kind == "mock":
             return ResolvedImageProviderConfig(
                 provider_kind="mock",
@@ -438,8 +444,6 @@ def resolve_image_provider_config(
             )
         if kind not in {"openai_responses", "openai_images", "google_gemini_image"}:
             raise RuntimeError(f"暂不支持的图片 provider: {kind}")
-        if credential_override is not None and kind == "google_gemini_image":
-            raise RuntimeError("New API relay 当前只支持 OpenAI 兼容图片 provider")
         profile = _require_active_profile(binding)
         capability = _capability_for_kind(kind)
         _require_capability(profile, capability)
@@ -479,6 +483,7 @@ def resolve_image_provider_config(
                 if kind == "google_gemini_image"
                 else None
             ),
+            atelier_request_id=credential_override.atelier_request_id if credential_override is not None else None,
         )
     finally:
         session.close()

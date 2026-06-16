@@ -10,7 +10,7 @@ from productflow_backend.application.auth_sessions import (
     Viewer,
     build_viewer,
     load_principal,
-    principal_owner_user_id,
+    principal_workspace_owner_user_id,
 )
 from productflow_backend.config import get_runtime_settings
 from productflow_backend.infrastructure.db.session import get_db_session
@@ -56,8 +56,8 @@ def require_admin(
     return None
 
 
-def current_owner_user_id(principal: Principal = Depends(require_workspace_principal)) -> str | None:
-    return principal_owner_user_id(principal)
+def current_workspace_owner_user_id(principal: Principal = Depends(require_workspace_principal)) -> str:
+    return principal_workspace_owner_user_id(principal)
 
 
 def request_audit_context(request: Request) -> AuditRequestContext:

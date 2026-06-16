@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 
 from dramatiq.middleware.time_limit import TimeLimitExceeded
@@ -11,6 +12,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from productflow_backend.application.admission import ensure_generation_capacity
+from productflow_backend.application.audit_events import (
+    create_audit_event,
+    generate_atelier_request_id,
+    safe_audit_error_message,
+    settle_model_call_audit_event,
+)
 from productflow_backend.application.auth_sessions import (
     Principal,
     normalize_image_model_options,
@@ -95,6 +102,21 @@ from productflow_backend.infrastructure.queue import enqueue_workflow_node_run, 
 from productflow_backend.infrastructure.storage import LocalStorage
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowModelCallAuditContext:
+    subject_user_id: str | None
+    new_api_token_id: str | None
+    new_api_token_name: str | None
+    new_api_token_group: str | None
+    text_model: str | None
+    image_model: str | None
+    workflow_run_id: str
+    workflow_node_run_id: str
+    workflow_node_id: str
+    product_id: str
+    new_api_token: str | None = field(default=None, repr=False)
 
 COPY_PROVIDER_CONTRACT_MAX_ATTEMPTS = 2
 
@@ -658,7 +680,13 @@ def _execute_workflow_node_run(
             node.id,
             node.node_type.value,
         )
-        output = _execute_node(session, workflow_id=workflow.id, node=node, dependencies=dependencies)
+        output = _execute_node(
+            session,
+            workflow_id=workflow.id,
+            node=node,
+            dependencies=dependencies,
+            audit_context=_workflow_model_call_audit_context(run, node_run, workflow),
+        )
     except TimeLimitExceeded as exc:
         session.rollback()
         _mark_node_run_failed_and_schedule(
@@ -991,6 +1019,7 @@ def _execute_node(
     workflow_id: str,
     node: WorkflowNode,
     dependencies: WorkflowExecutionDependencies | None = None,
+    audit_context: WorkflowModelCallAuditContext | None = None,
 ) -> dict[str, Any]:
     workflow = product_workflow_graph.get_workflow_or_raise(session, workflow_id)
     product = workflow.product
@@ -1000,9 +1029,21 @@ def _execute_node(
     if node.node_type == WorkflowNodeType.REFERENCE_IMAGE:
         return _execute_reference_image(session, workflow=workflow, node=node)
     if node.node_type == WorkflowNodeType.COPY_GENERATION:
-        return _execute_copy_generation(session, workflow=workflow, node=node, dependencies=dependencies)
+        return _execute_copy_generation(
+            session,
+            workflow=workflow,
+            node=node,
+            dependencies=dependencies,
+            audit_context=audit_context,
+        )
     if node.node_type == WorkflowNodeType.IMAGE_GENERATION:
-        return execute_workflow_image_generation(session, workflow=workflow, node=node, dependencies=dependencies)
+        return execute_workflow_image_generation(
+            session,
+            workflow=workflow,
+            node=node,
+            dependencies=dependencies,
+            audit_context=audit_context,
+        )
     raise BusinessValidationError("工作流节点类型不支持")
 
 
@@ -1040,6 +1081,7 @@ def _execute_copy_generation(
     workflow: ProductWorkflow,
     node: WorkflowNode,
     dependencies: WorkflowExecutionDependencies | None = None,
+    audit_context: WorkflowModelCallAuditContext | None = None,
 ) -> dict[str, Any]:
     dependencies = dependencies or default_workflow_execution_dependencies()
     product = workflow.product
@@ -1069,26 +1111,41 @@ def _execute_copy_generation(
         incoming_context,
     )
     config = config.model_copy(update={"instruction": instruction})
-    provider = dependencies.text_provider()
-    brief_payload, brief_model = _generate_brief_with_provider(provider, product_input, node_id=node.id)
-    brief = CreativeBrief(
-        product_id=product.id,
-        payload=brief_payload.model_dump(),
-        provider_name=provider.provider_name,
-        model_name=brief_model,
-        prompt_version=provider.prompt_version,
+    brief_request_id = generate_atelier_request_id()
+    provider = dependencies.text_provider(brief_request_id)
+    brief_payload, brief_model = _generate_brief_with_provider(
+        session,
+        provider,
+        product_input,
+        node_id=node.id,
+        audit_context=audit_context,
+        atelier_request_id=brief_request_id,
+        operation="brief",
     )
-    session.add(brief)
-    session.flush()
-
+    brief_provider_name = provider.provider_name
+    brief_prompt_version = provider.prompt_version
+    copy_request_id = generate_atelier_request_id()
+    provider = dependencies.text_provider(copy_request_id)
     copy_payload, copy_model = _generate_copy_with_provider(
+        session,
         provider,
         product_input,
         brief_payload,
         config=config,
         reference_images=reference_images,
         node_id=node.id,
+        audit_context=audit_context,
+        atelier_request_id=copy_request_id,
     )
+    brief = CreativeBrief(
+        product_id=product.id,
+        payload=brief_payload.model_dump(),
+        provider_name=brief_provider_name,
+        model_name=brief_model,
+        prompt_version=brief_prompt_version,
+    )
+    session.add(brief)
+    session.flush()
     structured_payload = copy_payload.model_dump(mode="json")
     copy_set = CopySet(
         product_id=product.id,
@@ -1126,20 +1183,230 @@ def _normalize_copy_node_config_for_execution(raw_config: dict[str, Any] | None)
         ) from exc
 
 
+def _workflow_model_call_audit_context(
+    run: WorkflowRun,
+    node_run: WorkflowNodeRun,
+    workflow: ProductWorkflow,
+) -> WorkflowModelCallAuditContext | None:
+    subject_user_id = run.new_api_user_id or workflow.product.owner_user_id
+    if not subject_user_id:
+        return None
+    return WorkflowModelCallAuditContext(
+        subject_user_id=subject_user_id,
+        new_api_token_id=run.new_api_token_id,
+        new_api_token_name=run.new_api_token_name,
+        new_api_token=run.new_api_token,
+        new_api_token_group=run.new_api_token_group,
+        text_model=run.new_api_text_model,
+        image_model=run.new_api_image_model,
+        workflow_run_id=run.id,
+        workflow_node_run_id=node_run.id,
+        workflow_node_id=node_run.node_id,
+        product_id=workflow.product_id,
+    )
+
+
+def _create_workflow_model_call_event(
+    session: Session,
+    *,
+    audit_context: WorkflowModelCallAuditContext | None,
+    atelier_request_id: str,
+    model_name: str | None,
+    provider_name: str | None,
+    metadata_json: dict[str, Any] | None = None,
+) -> str | None:
+    if audit_context is None:
+        return None
+    event = create_audit_event(
+        session,
+        event_type="model_call",
+        subject_user_id=audit_context.subject_user_id,
+        status="running",
+        source="atelier",
+        atelier_request_id=atelier_request_id,
+        new_api_token_id=audit_context.new_api_token_id,
+        new_api_token_name=audit_context.new_api_token_name,
+        new_api_token_group=audit_context.new_api_token_group,
+        model_name=model_name,
+        provider_name=provider_name,
+        resource_type="workflow_node_run",
+        resource_id=audit_context.workflow_node_run_id,
+        parent_resource_type="workflow_run",
+        parent_resource_id=audit_context.workflow_run_id,
+        metadata_json={
+            "product_id": audit_context.product_id,
+            "workflow_node_id": audit_context.workflow_node_id,
+            **(metadata_json or {}),
+        },
+    )
+    return event.id
+
+
+def _mark_workflow_model_call_succeeded(
+    session: Session,
+    *,
+    event_id: str | None,
+    atelier_request_id: str,
+    audit_context: WorkflowModelCallAuditContext | None,
+    model_name: str | None,
+    provider_name: str | None,
+    metadata_json: dict[str, Any] | None = None,
+) -> None:
+    settle_model_call_audit_event(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        new_api_token=audit_context.new_api_token if audit_context is not None else None,
+        status="succeeded",
+        model_name=model_name,
+        provider_name=provider_name,
+        metadata_json=metadata_json,
+    )
+
+
+def _mark_workflow_model_call_failed(
+    session: Session,
+    *,
+    event_id: str | None,
+    atelier_request_id: str,
+    audit_context: WorkflowModelCallAuditContext | None,
+    exc: BaseException,
+    model_name: str | None,
+    provider_name: str | None,
+) -> None:
+    settle_model_call_audit_event(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        new_api_token=audit_context.new_api_token if audit_context is not None else None,
+        status="failed",
+        model_name=model_name,
+        provider_name=provider_name,
+        quota_if_not_found=Decimal("0"),
+        error_code=exc.__class__.__name__,
+        error_message=safe_audit_error_message(str(exc)),
+    )
+
+
 def _generate_brief_with_provider(
+    session: Session,
     provider: Any,
     product_input: ProductInput,
     *,
     node_id: str,
+    audit_context: WorkflowModelCallAuditContext | None,
+    atelier_request_id: str,
+    operation: str,
 ) -> tuple[Any, str]:
-    return _call_text_provider_with_payload_retry(
-        lambda: provider.generate_brief(product_input),
-        operation="brief",
-        node_id=node_id,
+    fallback_model = audit_context.text_model if audit_context is not None else getattr(provider, "brief_model", None)
+    event_id = _create_workflow_model_call_event(
+        session,
+        audit_context=audit_context,
+        atelier_request_id=atelier_request_id,
+        model_name=fallback_model,
+        provider_name=getattr(provider, "provider_name", None),
+        metadata_json={"operation": operation},
     )
+    if event_id is not None:
+        session.commit()
+    try:
+        payload, model_name = _call_text_provider_with_payload_retry(
+            lambda: provider.generate_brief(product_input),
+            operation="brief",
+            node_id=node_id,
+        )
+    except BaseException as exc:  # noqa: BLE001
+        _mark_workflow_model_call_failed(
+            session,
+            event_id=event_id,
+            atelier_request_id=atelier_request_id,
+            audit_context=audit_context,
+            exc=exc,
+            model_name=fallback_model,
+            provider_name=getattr(provider, "provider_name", None),
+        )
+        if event_id is not None:
+            session.commit()
+        raise
+    _mark_workflow_model_call_succeeded(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        audit_context=audit_context,
+        model_name=model_name,
+        provider_name=getattr(provider, "provider_name", None),
+        metadata_json={"operation": operation},
+    )
+    if event_id is not None:
+        session.commit()
+    return payload, model_name
 
 
 def _generate_copy_with_provider(
+    session: Session,
+    provider: Any,
+    product_input: ProductInput,
+    brief_payload: Any,
+    *,
+    config: Any,
+    reference_images: list[Any],
+    node_id: str | None = None,
+    audit_context: WorkflowModelCallAuditContext | None,
+    atelier_request_id: str,
+) -> tuple[Any, str]:
+    event_id = _create_workflow_model_call_event(
+        session,
+        audit_context=audit_context,
+        atelier_request_id=atelier_request_id,
+        model_name=audit_context.text_model if audit_context is not None else getattr(provider, "copy_model", None),
+        provider_name=getattr(provider, "provider_name", None),
+        metadata_json={
+            "operation": "copy",
+            "reference_image_count": len(reference_images),
+        },
+    )
+    if event_id is not None:
+        session.commit()
+    try:
+        result = _generate_copy_with_provider_inner(
+            provider,
+            product_input,
+            brief_payload,
+            config=config,
+            reference_images=reference_images,
+            node_id=node_id,
+        )
+    except BaseException as exc:  # noqa: BLE001
+        _mark_workflow_model_call_failed(
+            session,
+            event_id=event_id,
+            atelier_request_id=atelier_request_id,
+            audit_context=audit_context,
+            exc=exc,
+            model_name=audit_context.text_model if audit_context is not None else getattr(provider, "copy_model", None),
+            provider_name=getattr(provider, "provider_name", None),
+        )
+        if event_id is not None:
+            session.commit()
+        raise
+    _mark_workflow_model_call_succeeded(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        audit_context=audit_context,
+        model_name=result[1],
+        provider_name=getattr(provider, "provider_name", None),
+        metadata_json={
+            "operation": "copy",
+            "reference_image_count": len(reference_images),
+        },
+    )
+    if event_id is not None:
+        session.commit()
+    return result
+
+
+def _generate_copy_with_provider_inner(
     provider: Any,
     product_input: ProductInput,
     brief_payload: Any,

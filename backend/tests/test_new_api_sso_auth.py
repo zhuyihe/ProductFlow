@@ -599,7 +599,7 @@ def test_new_api_sso_users_cannot_access_each_others_workspace_resources(configu
     assert bob.get(f"/api/gallery/{alice_share.json()['id']}").status_code == 404
 
 
-def test_admin_user_content_inspection_writes_audit_log(configured_env, monkeypatch) -> None:
+def test_admin_normal_workspace_cannot_inspect_user_product(configured_env, monkeypatch) -> None:
     from productflow_backend.presentation.api import create_app
 
     _seed_new_api_sso_settings(base_url="https://api.example.test", shared_secret="server-secret")
@@ -661,21 +661,12 @@ def test_admin_user_content_inspection_writes_audit_log(configured_env, monkeypa
         f"/api/products/{product_id}",
         headers={"user-agent": "productflow-test-agent"},
     )
-    assert inspected.status_code == 200
+    assert inspected.status_code == 404
 
     session = get_session_factory()()
     try:
         logs = session.scalars(select(AuditLog)).all()
-        assert len(logs) == 1
-        audit_log = logs[0]
-        assert audit_log.admin_user_id == "admin-1"
-        assert audit_log.admin_username == "root"
-        assert audit_log.target_user_id == "user-a"
-        assert audit_log.action == "read"
-        assert audit_log.resource_type == "product"
-        assert audit_log.resource_id == product_id
-        assert audit_log.client_address == "testclient"
-        assert audit_log.user_agent == "productflow-test-agent"
+        assert logs == []
     finally:
         session.close()
 

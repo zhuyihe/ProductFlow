@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from productflow_backend.application.auth_sessions import PrincipalIntegrityError
 from productflow_backend.domain.errors import BusinessError
 
 
@@ -14,5 +15,10 @@ async def business_error_exception_handler(_: Request, exc: BusinessError) -> JS
     return business_error_to_response(exc)
 
 
+async def principal_integrity_exception_handler(_: Request, exc: PrincipalIntegrityError) -> JSONResponse:
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(BusinessError, business_error_exception_handler)
+    app.add_exception_handler(PrincipalIntegrityError, principal_integrity_exception_handler)

@@ -50,7 +50,7 @@ def _write_storage_image(storage_root: Path, relative_path: str) -> None:
 def test_generated_image_can_be_saved_to_gallery_idempotently(configured_env: Path, db_session) -> None:
     app = create_app()
     client = TestClient(app)
-    _login(client)
+    _login(client, user_id="user-a", username="alice", role="1")
     product = client.post(
         "/api/products",
         data={"name": "画廊商品"},
@@ -63,21 +63,44 @@ def test_generated_image_can_be_saved_to_gallery_idempotently(configured_env: Pa
     assert created_session.status_code == 201
     session_id = created_session.json()["id"]
 
-    generated = client.post(
-        f"/api/image-sessions/{session_id}/generate",
-        json={"prompt": "一张用于画廊的图", "size": "1024x1024", "generation_count": 2},
+    asset = ImageSessionAsset(
+        session_id=session_id,
+        kind=ImageSessionAssetKind.GENERATED_IMAGE,
+        original_filename="generated.png",
+        mime_type="image/png",
+        storage_path="image-sessions/generated.png",
     )
-    assert generated.status_code == 202
-    first_round = generated.json()["rounds"][0]
-    asset_id = first_round["generated_asset"]["id"]
+    db_session.add(asset)
+    db_session.flush()
+    round_item = ImageSessionRound(
+        session_id=session_id,
+        prompt="一张用于画廊的图",
+        assistant_message="ok",
+        size="1024x1024",
+        model_name="mock-image-chat-v1",
+        provider_name="mock",
+        prompt_version="responses-image-session-v1",
+        provider_output_json={
+            "_productflow": {
+                "actual_image_size": "1024x1024",
+                "notes": [],
+            }
+        },
+        candidate_count=2,
+        generated_asset_id=asset.id,
+    )
+    db_session.add(round_item)
+    db_session.commit()
+    asset_id = asset.id
+    first_round = round_item
 
     saved = client.post("/api/gallery", json={"image_session_asset_id": asset_id})
     assert saved.status_code == 201
     payload = saved.json()
     assert payload["image_session_asset_id"] == asset_id
-    assert payload["image_session_round_id"] == first_round["id"]
-    assert payload["shared_by_user_id"] is None
-    assert payload["shared_by_username"] == "admin"
+    assert payload["image_session_round_id"] == first_round.id
+    assert payload["shared_by_user_id"] == "user-a"
+    assert payload["shared_by_username"] == "alice"
     assert payload["forked_from_entry_id"] is None
     assert payload["image_session_id"] == session_id
     assert payload["image_session_title"] == "画廊会话"
@@ -128,7 +151,7 @@ def test_gallery_rejects_non_generated_session_assets(configured_env: Path) -> N
 
 
 def test_gallery_rejects_generated_asset_without_round(configured_env: Path, db_session) -> None:
-    session = ImageSession(title="孤立生成图")
+    session = ImageSession(title="孤立生成图", owner_user_id="user-a")
     db_session.add(session)
     db_session.flush()
     asset = ImageSessionAsset(
@@ -143,7 +166,7 @@ def test_gallery_rejects_generated_asset_without_round(configured_env: Path, db_
 
     app = create_app()
     client = TestClient(app)
-    _login(client)
+    _login(client, user_id="user-a", username="alice", role="1")
 
     saved = client.post("/api/gallery", json={"image_session_asset_id": asset.id})
     assert saved.status_code == 404
@@ -155,7 +178,7 @@ def test_gallery_save_handles_integrity_race(
     db_session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    session = ImageSession(title="并发保存会话")
+    session = ImageSession(title="并发保存会话", owner_user_id="user-a")
     db_session.add(session)
     db_session.flush()
     asset = ImageSessionAsset(
@@ -204,7 +227,7 @@ def test_gallery_save_handles_integrity_race(
     try:
         result = gallery_app.save_generated_asset_to_gallery(
             race_session,
-            viewer=_viewer(),
+            viewer=_viewer(user_id="user-a", username="alice"),
             image_session_asset_id=asset.id,
         )
 
@@ -515,7 +538,7 @@ def test_admin_can_delete_user_gallery_entry_through_api_with_audit(configured_e
 
     app = create_app()
     client = TestClient(app)
-    _login(client)
+    _login(client, user_id=None)
 
     deleted = client.delete(f"/api/gallery/{entry_id}", headers={"user-agent": "gallery-admin"})
     assert deleted.status_code == 204

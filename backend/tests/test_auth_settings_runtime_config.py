@@ -1450,7 +1450,7 @@ def test_settings_api_normalizes_custom_image_sizes_for_generation(configured_en
     )
 
     assert generated.status_code == 202
-    assert generated.json()["rounds"][-1]["size"] == "512x512"
+    assert generated.json()["generation_tasks"][-1]["size"] == "512x512"
 
 
 def test_runtime_image_size_env_defaults_are_generation_bounded(configured_env: Path, monkeypatch) -> None:
@@ -1505,7 +1505,7 @@ def test_image_generation_max_dimension_runtime_config_controls_size_bounds(conf
         json={"prompt": "尺寸应被运行时上限校准", "size": "3840x2160"},
     )
     assert generated.status_code == 202
-    assert generated.json()["rounds"][-1]["size"] == "2048x1152"
+    assert generated.json()["generation_tasks"][-1]["size"] == "2048x1152"
 
     rejected = client.patch(
         "/api/settings",

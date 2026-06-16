@@ -4,11 +4,20 @@ import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeoutError
+from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from dramatiq.middleware.time_limit import TimeLimitExceeded
 from sqlalchemy.orm import Session
 
+from productflow_backend.application.audit_events import (
+    create_audit_event,
+    generate_atelier_request_id,
+    safe_audit_error_message,
+    settle_model_call_audit_event,
+)
 from productflow_backend.application.contracts import PosterGenerationInput
 from productflow_backend.application.copy_payloads import copy_payload_context_text, normalize_copy_payload
 from productflow_backend.application.image_generation_core import build_stored_image_reference_payload
@@ -57,6 +66,7 @@ logger = logging.getLogger(__name__)
 
 WORKFLOW_IMAGE_GENERATION_FAILURE = "图片生成失败，请稍后重试"
 WORKFLOW_IMAGE_GENERATION_TIMEOUT_FAILURE = "图片生成超时，请稍后重试"
+WORKFLOW_IMAGES_API_MAX_BATCH_COUNT = 10
 
 
 class WorkflowImageGenerationTimeoutError(WorkflowSafeExecutionError):
@@ -67,8 +77,184 @@ class WorkflowImageGenerationProviderError(WorkflowSafeExecutionError):
     """Raised when workflow image provider failures must be hidden behind a safe user message."""
 
 
+class WorkflowImageGenerationConcurrentError(WorkflowImageGenerationProviderError):
+    def __init__(
+        self,
+        source: WorkflowImageGenerationProviderError,
+        *,
+        completed_results: dict[int, GeneratedWorkflowImage],
+        failed_target_indices: set[int],
+    ) -> None:
+        super().__init__(
+            source.safe_message,
+            retryable=source.retryable,
+            retry_hint=source.retry_hint,
+            failure_category=source.failure_category,
+        )
+        self.completed_results = completed_results
+        self.failed_target_indices = failed_target_indices
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowImageCallPlan:
+    provider: ImageProvider
+    event_id: str | None
+    atelier_request_id: str
+    target_index: int
+    target_count: int
+    batch_count: int = 1
+
+
+def _create_workflow_image_model_call_event(
+    session: Session,
+    *,
+    audit_context: Any | None,
+    atelier_request_id: str,
+    model_name: str | None,
+    provider_name: str | None,
+    metadata_json: dict[str, Any] | None = None,
+) -> str | None:
+    if audit_context is None or not getattr(audit_context, "subject_user_id", None):
+        return None
+    event = create_audit_event(
+        session,
+        event_type="model_call",
+        subject_user_id=audit_context.subject_user_id,
+        status="running",
+        source="atelier",
+        atelier_request_id=atelier_request_id,
+        new_api_token_id=audit_context.new_api_token_id,
+        new_api_token_name=audit_context.new_api_token_name,
+        new_api_token_group=audit_context.new_api_token_group,
+        model_name=model_name,
+        provider_name=provider_name,
+        resource_type="workflow_node_run",
+        resource_id=audit_context.workflow_node_run_id,
+        parent_resource_type="workflow_run",
+        parent_resource_id=audit_context.workflow_run_id,
+        metadata_json={
+            "product_id": audit_context.product_id,
+            "workflow_node_id": audit_context.workflow_node_id,
+            "operation": "image_generation",
+            **(metadata_json or {}),
+        },
+    )
+    return event.id
+
+
+def _mark_workflow_image_model_call_succeeded(
+    session: Session,
+    *,
+    event_id: str | None,
+    atelier_request_id: str,
+    audit_context: Any | None,
+    model_name: str | None,
+    provider_name: str | None,
+    provider_response_id: str | None,
+    metadata_json: dict[str, Any],
+) -> None:
+    settle_model_call_audit_event(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        new_api_token=getattr(audit_context, "new_api_token", None),
+        status="succeeded",
+        model_name=model_name,
+        provider_name=provider_name,
+        metadata_json={
+            "operation": "image_generation",
+            "provider_response_id": provider_response_id,
+            **metadata_json,
+        },
+    )
+
+
+def _mark_workflow_image_model_call_failed(
+    session: Session,
+    *,
+    event_id: str | None,
+    atelier_request_id: str,
+    audit_context: Any | None,
+    exc: BaseException,
+    model_name: str | None,
+    provider_name: str | None,
+) -> None:
+    settle_model_call_audit_event(
+        session,
+        event_id=event_id,
+        atelier_request_id=atelier_request_id,
+        new_api_token=getattr(audit_context, "new_api_token", None),
+        status="failed",
+        model_name=model_name,
+        provider_name=provider_name,
+        quota_if_not_found=Decimal("0"),
+        error_code=exc.__class__.__name__,
+        error_message=safe_audit_error_message(str(exc)),
+    )
+
+
 def workflow_image_generation_provider_timeout_seconds() -> float:
     return float(get_runtime_settings().workflow_image_generation_provider_timeout_seconds)
+
+
+def _settle_failed_workflow_image_call_plans(
+    session: Session,
+    *,
+    image_call_plans: list[WorkflowImageCallPlan] | None,
+    audit_context: Any | None,
+    exc: BaseException,
+    completed_results: dict[int, GeneratedWorkflowImage],
+    failed_target_indices: set[int],
+) -> None:
+    if not image_call_plans:
+        return
+    if len(image_call_plans) == 1 and image_call_plans[0].batch_count > 1:
+        plan = image_call_plans[0]
+        _mark_workflow_image_model_call_failed(
+            session,
+            event_id=plan.event_id,
+            atelier_request_id=plan.atelier_request_id,
+            audit_context=audit_context,
+            exc=exc,
+            model_name=getattr(audit_context, "image_model", None),
+            provider_name=plan.provider.provider_name,
+        )
+        return
+    plans_by_index = {plan.target_index: plan for plan in image_call_plans}
+    settled_indices: set[int] = set()
+    for target_index, generated_image in completed_results.items():
+        plan = plans_by_index.get(target_index)
+        if plan is None:
+            continue
+        settled_indices.add(target_index)
+        _mark_workflow_image_model_call_succeeded(
+            session,
+            event_id=plan.event_id,
+            atelier_request_id=plan.atelier_request_id,
+            audit_context=audit_context,
+            model_name=generated_image.model_name,
+            provider_name=generated_image.provider_name,
+            provider_response_id=generated_image.provider_response_id,
+            metadata_json={
+                "target_index": plan.target_index,
+                "target_count": plan.target_count,
+                "batch_count": plan.batch_count,
+            },
+        )
+    remaining_failed_indices = (set(plans_by_index) - settled_indices) | failed_target_indices
+    for target_index in remaining_failed_indices:
+        plan = plans_by_index.get(target_index)
+        if plan is None:
+            continue
+        _mark_workflow_image_model_call_failed(
+            session,
+            event_id=plan.event_id,
+            atelier_request_id=plan.atelier_request_id,
+            audit_context=audit_context,
+            exc=exc,
+            model_name=getattr(audit_context, "image_model", None),
+            provider_name=plan.provider.provider_name,
+        )
 
 
 def effective_workflow_image_generation_mode(configured_mode: str, image_provider_kind: str | None) -> str:
@@ -108,6 +294,7 @@ def execute_workflow_image_generation(
     workflow: ProductWorkflow,
     node: WorkflowNode,
     dependencies: WorkflowExecutionDependencies | None = None,
+    audit_context: Any | None = None,
 ) -> dict[str, object]:
     dependencies = dependencies or default_workflow_execution_dependencies()
     product = workflow.product
@@ -128,8 +315,7 @@ def execute_workflow_image_generation(
         and copy_set.product_id == product.id
         and not _is_workflow_context_copy_set(copy_set)
     )
-    if copy_set is None or copy_set.product_id != product.id:
-        copy_set = create_context_copy_set(session, product=product, product_context=product_context, node=node)
+    needs_context_copy_set = copy_set is None or copy_set.product_id != product.id
     structured_copy_context = None
     if has_real_copy_context and isinstance(copy_set.structured_payload, dict):
         try:
@@ -174,22 +360,143 @@ def execute_workflow_image_generation(
         settings.poster_generation_mode,
         image_provider_config.provider_kind if image_provider_config is not None else None,
     )
-    image_providers: list[ImageProvider] | None = None
+    image_call_plans: list[WorkflowImageCallPlan] | None = None
     if poster_generation_mode == "generated":
-        first_provider = dependencies.image_provider()
-        if callable(getattr(first_provider, "generate_poster_images", None)):
-            image_providers = [first_provider]
+        first_request_id = generate_atelier_request_id()
+        first_provider = dependencies.image_provider(first_request_id)
+        first_batch_generate = getattr(first_provider, "generate_poster_images", None)
+        uses_real_batch = (
+            callable(first_batch_generate)
+            and len(downstream_nodes) > 1
+            and len(downstream_nodes) <= WORKFLOW_IMAGES_API_MAX_BATCH_COUNT
+        )
+        first_event_id = _create_workflow_image_model_call_event(
+            session,
+            audit_context=audit_context,
+            atelier_request_id=first_request_id,
+            model_name=getattr(audit_context, "image_model", None),
+            provider_name=getattr(first_provider, "provider_name", None),
+            metadata_json={
+                "target_count": len(downstream_nodes),
+                "target_index": 1,
+                "batch_count": len(downstream_nodes) if uses_real_batch else 1,
+            },
+        )
+        if uses_real_batch:
+            image_call_plans = [
+                WorkflowImageCallPlan(
+                    provider=first_provider,
+                    event_id=first_event_id,
+                    atelier_request_id=first_request_id,
+                    target_index=1,
+                    target_count=len(downstream_nodes),
+                    batch_count=len(downstream_nodes),
+                )
+            ]
         else:
-            image_providers = [first_provider, *[dependencies.image_provider() for _ in downstream_nodes[1:]]]
-    generated_images = generate_workflow_images_concurrently(
-        render_input=render_input,
-        kind=kind,
-        target_count=len(downstream_nodes),
-        poster_generation_mode=poster_generation_mode,
-        poster_font_path=settings.poster_font_path,
-        image_providers=image_providers,
-        renderer_factory=dependencies.poster_renderer,
-    )
+            image_call_plans = [
+                WorkflowImageCallPlan(
+                    provider=first_provider,
+                    event_id=first_event_id,
+                    atelier_request_id=first_request_id,
+                    target_index=1,
+                    target_count=len(downstream_nodes),
+                )
+            ]
+            for target_index in range(2, len(downstream_nodes) + 1):
+                request_id = generate_atelier_request_id()
+                provider = dependencies.image_provider(request_id)
+                event_id = _create_workflow_image_model_call_event(
+                    session,
+                    audit_context=audit_context,
+                    atelier_request_id=request_id,
+                    model_name=getattr(audit_context, "image_model", None),
+                    provider_name=getattr(provider, "provider_name", None),
+                    metadata_json={"target_count": len(downstream_nodes), "target_index": target_index},
+                )
+                image_call_plans.append(
+                    WorkflowImageCallPlan(
+                        provider=provider,
+                        event_id=event_id,
+                        atelier_request_id=request_id,
+                        target_index=target_index,
+                        target_count=len(downstream_nodes),
+                    )
+                )
+        if image_call_plans:
+            session.commit()
+    try:
+        generated_images = generate_workflow_images_concurrently(
+            render_input=render_input,
+            kind=kind,
+            target_count=len(downstream_nodes),
+            poster_generation_mode=poster_generation_mode,
+            poster_font_path=settings.poster_font_path,
+            image_call_plans=image_call_plans,
+            renderer_factory=dependencies.poster_renderer,
+        )
+    except WorkflowImageGenerationConcurrentError as exc:
+        _settle_failed_workflow_image_call_plans(
+            session,
+            image_call_plans=image_call_plans,
+            audit_context=audit_context,
+            exc=exc,
+            completed_results=exc.completed_results,
+            failed_target_indices=exc.failed_target_indices,
+        )
+        session.commit()
+        raise
+    except BaseException as exc:
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
+        _settle_failed_workflow_image_call_plans(
+            session,
+            image_call_plans=image_call_plans,
+            audit_context=audit_context,
+            exc=exc,
+            completed_results={},
+            failed_target_indices=set(range(1, len(downstream_nodes) + 1)),
+        )
+        session.commit()
+        raise
+    if image_call_plans:
+        if len(image_call_plans) == 1 and image_call_plans[0].batch_count > 1:
+            plan = image_call_plans[0]
+            first_image = generated_images[0] if generated_images else None
+            _mark_workflow_image_model_call_succeeded(
+                session,
+                event_id=plan.event_id,
+                atelier_request_id=plan.atelier_request_id,
+                audit_context=audit_context,
+                model_name=first_image.model_name if first_image else getattr(audit_context, "image_model", None),
+                provider_name=plan.provider.provider_name,
+                provider_response_id=first_image.provider_response_id if first_image else None,
+                metadata_json={
+                    "target_index": plan.target_index,
+                    "target_count": plan.target_count,
+                    "batch_count": plan.batch_count,
+                    "batch": True,
+                },
+            )
+        else:
+            for plan, generated_image in zip(image_call_plans, generated_images, strict=True):
+                _mark_workflow_image_model_call_succeeded(
+                    session,
+                    event_id=plan.event_id,
+                    atelier_request_id=plan.atelier_request_id,
+                    audit_context=audit_context,
+                    model_name=generated_image.model_name,
+                    provider_name=generated_image.provider_name,
+                    provider_response_id=generated_image.provider_response_id,
+                    metadata_json={
+                        "target_index": plan.target_index,
+                        "target_count": plan.target_count,
+                        "batch_count": plan.batch_count,
+                    },
+                )
+        session.commit()
+    if needs_context_copy_set:
+        copy_set = create_context_copy_set(session, product=product, product_context=product_context, node=node)
     for generated_image, target_node in zip(generated_images, downstream_nodes, strict=True):
         content = generated_image.content
         mime_type = generated_image.mime_type
@@ -277,7 +584,7 @@ def generate_workflow_images_concurrently(
     target_count: int,
     poster_generation_mode: str,
     poster_font_path: Path,
-    image_providers: list[ImageProvider] | None,
+    image_call_plans: list[WorkflowImageCallPlan] | None = None,
     renderer_factory: PosterRendererFactory | None = None,
 ) -> list[GeneratedWorkflowImage]:
     if target_count <= 0:
@@ -326,10 +633,11 @@ def generate_workflow_images_concurrently(
             failure_category=decision.category,
         ) from exc
 
-    if poster_generation_mode == "generated" and target_count > 1 and image_providers:
-        image_provider = image_providers[0]
+    if poster_generation_mode == "generated" and target_count > 1 and image_call_plans:
+        first_plan = image_call_plans[0]
+        image_provider = first_plan.provider
         batch_generate = getattr(image_provider, "generate_poster_images", None)
-        if callable(batch_generate):
+        if callable(batch_generate) and len(image_call_plans) == 1 and first_plan.batch_count == target_count:
 
             def generate_batch() -> list[GeneratedWorkflowImage]:
                 try:
@@ -360,9 +668,9 @@ def generate_workflow_images_concurrently(
 
     def generate_one(target_index: int) -> GeneratedWorkflowImage:
         if poster_generation_mode == "generated":
-            if image_providers is None:
+            if image_call_plans is None:
                 raise RuntimeError("图片生成供应商未初始化")
-            image_provider = image_providers[target_index - 1]
+            image_provider = image_call_plans[target_index - 1].provider
             try:
                 generated_image, image_model = image_provider.generate_poster_image(render_input, kind)
             except TimeLimitExceeded:
@@ -401,13 +709,19 @@ def generate_workflow_images_concurrently(
     executor = ThreadPoolExecutor(max_workers=target_count)
     futures = {executor.submit(generate_one, target_index): target_index for target_index in range(1, target_count + 1)}
     results: dict[int, GeneratedWorkflowImage] = {}
+    provider_error: WorkflowImageGenerationProviderError | None = None
+    failed_indices: set[int] = set()
     try:
         timeout = (
             workflow_image_generation_provider_timeout_seconds() if poster_generation_mode == "generated" else None
         )
         for future in as_completed(futures, timeout=timeout):
             target_index = futures[future]
-            results[target_index] = future.result()
+            try:
+                results[target_index] = future.result()
+            except WorkflowImageGenerationProviderError as exc:
+                failed_indices.add(target_index)
+                provider_error = provider_error or exc
     except FuturesTimeoutError as exc:
         for future in futures:
             future.cancel()
@@ -420,4 +734,10 @@ def generate_workflow_images_concurrently(
         raise
     else:
         executor.shutdown(wait=True)
+    if provider_error is not None:
+        raise WorkflowImageGenerationConcurrentError(
+            provider_error,
+            completed_results=dict(results),
+            failed_target_indices=failed_indices or set(range(1, target_count + 1)) - set(results),
+        ) from provider_error
     return [results[target_index] for target_index in range(1, target_count + 1)]

@@ -129,6 +129,8 @@ def workflow_provider_execution_context_values(
 
 def provider_credential_override_from_context(
     context: ProviderExecutionContext | None,
+    *,
+    atelier_request_id: str | None = None,
 ) -> ProviderCredentialOverride | None:
     if context is None:
         return None
@@ -143,6 +145,7 @@ def provider_credential_override_from_context(
         image_model=context.new_api_image_model,
         text_model=context.new_api_text_model,
         token_group=context.new_api_token_group,
+        atelier_request_id=atelier_request_id,
     )
 
 

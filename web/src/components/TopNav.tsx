@@ -7,7 +7,9 @@ import {
   MessagesSquare,
   Monitor,
   Moon,
+  ReceiptText,
   Settings,
+  ShieldCheck,
   Sun,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -44,6 +46,18 @@ const navItems = [
     match: (pathname: string) => pathname.startsWith("/gallery"),
   },
   {
+    labelKey: "nav.records",
+    to: "/records",
+    icon: ReceiptText,
+    match: (pathname: string) => pathname.startsWith("/records"),
+  },
+  {
+    labelKey: "nav.audit",
+    to: "/admin/audit",
+    icon: ShieldCheck,
+    match: (pathname: string) => pathname.startsWith("/admin/audit"),
+  },
+  {
     labelKey: "nav.help",
     to: "/help",
     icon: BookOpen,
@@ -57,7 +71,7 @@ const navItems = [
   },
 ] as const;
 
-const adminOnlyNavTargets = new Set(["/settings"]);
+const adminOnlyNavTargets = new Set(["/admin/audit", "/settings"]);
 
 const themeIcons: Record<ThemePreference, typeof Sun> = {
   light: Sun,
@@ -233,7 +247,10 @@ export function TopNav({ breadcrumbs, onHome, onLogout, session }: TopNavProps) 
         aria-label={t("nav.mobile")}
         className="fixed inset-x-0 bottom-0 z-50 border-t border-atelier-smoke/30 bg-atelier-paper/96 px-2 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.4rem)] shadow-[0_-10px_30px_rgba(61,40,23,0.10)] backdrop-blur dark:border-atelier-cream/15 dark:bg-[#1F1812]/94 dark:shadow-[0_-18px_40px_rgba(0,0,0,0.35)] lg:hidden"
       >
-        <div className="mx-auto grid w-full max-w-md grid-cols-5 gap-1">
+        <div
+          className="mx-auto grid w-full max-w-md gap-1"
+          style={{ gridTemplateColumns: `repeat(${visibleNavItems.length}, minmax(0, 1fr))` }}
+        >
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = item.match(location.pathname);

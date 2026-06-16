@@ -21,6 +21,7 @@ def _set_generation_cap(db_session, value: int) -> None:
 def _create_product(db_session, name: str):
     return create_product(
         db_session,
+        owner_user_id="admin-user",
         name=name,
         category=None,
         price=None,
@@ -83,7 +84,12 @@ def test_generation_cap_accepts_and_queues_image_session_generation_task_creatio
         lambda task_id: sent_task_ids.append(task_id),
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="同步占用会话")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="同步占用会话",
+    )
     running = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -123,7 +129,12 @@ def test_active_generation_task_count_includes_image_session_generation_tasks(
     from productflow_backend.application.admission import active_generation_task_count
 
     assert active_generation_task_count(db_session) == 0
-    image_session = create_image_session(db_session, product_id=None, title="并发计数")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="并发计数",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -147,8 +158,18 @@ def test_generation_queue_overview_and_positions_include_durable_tasks(
         get_queued_generation_positions,
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="队列会话")
-    second_image_session = create_image_session(db_session, product_id=None, title="队列会话 2")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="队列会话",
+    )
+    second_image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="队列会话 2",
+    )
     first = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -195,7 +216,12 @@ def test_generation_queue_overview_endpoint_returns_public_snapshot(
 ) -> None:
     from productflow_backend.presentation.api import create_app
 
-    image_session = create_image_session(db_session, product_id=None, title="队列 API 会话")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="队列 API 会话",
+    )
     running = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,

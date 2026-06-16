@@ -45,16 +45,16 @@ def _read_image_size(image_bytes: bytes) -> tuple[int, int]:
 def _login(
     client: TestClient,
     *,
-    user_id: str | None = None,
+    user_id: str | None = "admin-user",
     username: str = "admin",
     role: str = "10",
-    token: str | None = None,
-    token_id: str | None = None,
-    token_name: str | None = None,
-    token_group: str | None = None,
-    image_model: str | None = None,
+    token: str | None = "sk-test",
+    token_id: str | None = "token-test",
+    token_name: str | None = "Atelier test key",
+    token_group: str | None = "Atelier",
+    image_model: str | None = "mock-image-chat-v1",
     image_models: tuple[str, ...] | list[str] | None = None,
-    text_model: str | None = None,
+    text_model: str | None = "mock-text-v1",
     text_models: tuple[str, ...] | list[str] | None = None,
 ) -> None:
     session = get_session_factory()()
@@ -70,7 +70,14 @@ def _login(
                 token_name=token_name,
                 token_group=token_group,
                 image_model=image_model,
-                image_models=tuple(image_models or ((image_model,) if image_model else ())),
+                image_models=tuple(
+                    image_models
+                    or (
+                        ("mock-image-chat-v1", "gpt-image-2", "gpt-image-3")
+                        if image_model == "mock-image-chat-v1"
+                        else ((image_model,) if image_model else ())
+                    )
+                ),
                 text_model=text_model,
                 text_models=tuple(text_models or ((text_model,) if text_model else ())),
                 expires_in_seconds=24 * 60 * 60,
@@ -143,16 +150,24 @@ def _execute_workflow_queue_inline(
     *,
     dependencies: WorkflowExecutionDependencies | None = None,
 ) -> None:
+    from productflow_backend.application.product_workflow_dependencies import WorkflowExecutionDependencies
     from productflow_backend.application.product_workflows import (
         execute_product_workflow_node_run,
         execute_product_workflow_run,
     )
+    from productflow_backend.infrastructure.image.mock_provider import MockImageProvider
+    from productflow_backend.infrastructure.text.mock_provider import MockTextProvider
+
+    effective_dependencies = dependencies or WorkflowExecutionDependencies(
+        text_provider_resolver=lambda _atelier_request_id=None: MockTextProvider(),
+        image_provider_resolver=lambda _atelier_request_id=None: MockImageProvider(),
+    )
 
     def execute_inline(run_id: str) -> None:
-        execute_product_workflow_run(run_id, dependencies=dependencies)
+        execute_product_workflow_run(run_id, dependencies=effective_dependencies)
 
     def execute_node_inline(node_run_id: str) -> None:
-        execute_product_workflow_node_run(node_run_id, dependencies=dependencies)
+        execute_product_workflow_node_run(node_run_id, dependencies=effective_dependencies)
 
     monkeypatch.setattr(
         "productflow_backend.application.product_workflow.execution.enqueue_workflow_run",

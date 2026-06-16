@@ -160,9 +160,11 @@ def import_gallery_entry_to_image_session(
     entry_id: str,
     storage: LocalStorage | None = None,
 ) -> ImageSession:
+    if viewer.kind != "user":
+        raise BusinessValidationError("该操作仅普通用户可用")
     entry = get_gallery_entry(session, entry_id)
     storage = storage or LocalStorage()
-    owner_user_id = viewer.user_id if viewer.kind == "user" else None
+    owner_user_id = viewer.user_id
     imported_session = ImageSession(
         owner_user_id=owner_user_id,
         product_id=None,

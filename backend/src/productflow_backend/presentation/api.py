@@ -26,6 +26,8 @@ from productflow_backend.infrastructure.queue import (
     recover_unfinished_workflow_runs,
 )
 from productflow_backend.presentation.errors import register_exception_handlers
+from productflow_backend.presentation.routes.audit_events import admin_router as audit_events_admin_router
+from productflow_backend.presentation.routes.audit_events import usage_router as audit_events_usage_router
 from productflow_backend.presentation.routes.auth import admin_router as auth_admin_router
 from productflow_backend.presentation.routes.auth import browser_router as auth_browser_router
 from productflow_backend.presentation.routes.auth import router as auth_router
@@ -85,6 +87,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(auth_browser_router)
     app.include_router(auth_admin_router)
+    app.include_router(audit_events_usage_router)
+    app.include_router(audit_events_admin_router)
     app.include_router(generation_queue_router)
     app.include_router(gallery_router)
     app.include_router(products_router)

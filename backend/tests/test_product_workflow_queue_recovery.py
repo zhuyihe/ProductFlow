@@ -111,6 +111,7 @@ def test_start_product_workflow_run_persists_new_api_token_context(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="relay workflow",
         category="护肤",
         price=None,
@@ -155,6 +156,7 @@ def test_start_product_workflow_run_snapshots_selected_new_api_models(db_session
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="selected models workflow",
         category="护肤",
         price=None,
@@ -196,6 +198,7 @@ def test_start_product_workflow_run_snapshots_selected_new_api_models(db_session
 
     invalid_product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="invalid selected model",
         category="护肤",
         price=None,
@@ -221,6 +224,7 @@ def test_start_product_workflow_run_rejects_bootstrap_admin_without_new_api_toke
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="bootstrap workflow",
         category="护肤",
         price=None,
@@ -254,6 +258,7 @@ def test_workflow_run_kickoff_reuses_overlapping_active_node_runs(db_session, co
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="防重复运行商品",
         category=None,
         price=None,
@@ -300,6 +305,7 @@ def test_workflow_run_kickoff_allows_disjoint_active_node_runs(db_session, confi
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="独立节点并发商品",
         category=None,
         price=None,
@@ -492,6 +498,7 @@ def test_workflow_run_cancel_marks_active_run_cancelled_and_worker_noops(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="取消工作流商品",
         category=None,
         price=None,
@@ -535,6 +542,7 @@ def test_workflow_run_execution_fails_when_queued_nodes_have_no_ready_upstream(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="调度无就绪节点商品",
         category=None,
         price=None,
@@ -697,6 +705,7 @@ def test_recover_unfinished_workflow_runs_requeues_queued_runs(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="恢复队列工作流",
         category=None,
         price=None,
@@ -729,6 +738,7 @@ def test_recover_unfinished_workflow_runs_resets_stale_running_node_runs(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="恢复执行中工作流",
         category=None,
         price=None,
@@ -782,6 +792,7 @@ def test_product_workflow_worker_defers_queued_run_when_global_running_capacity_
 
     occupying_product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="占用运行容量商品",
         category=None,
         price=None,
@@ -800,6 +811,7 @@ def test_product_workflow_worker_defers_queued_run_when_global_running_capacity_
 
     queued_product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="等待运行容量商品",
         category=None,
         price=None,
@@ -880,6 +892,7 @@ def test_duplicate_workflow_messages_noop_for_terminal_or_running_runs(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="重复消息工作流",
         category=None,
         price=None,
@@ -901,6 +914,7 @@ def test_duplicate_workflow_messages_noop_for_terminal_or_running_runs(
 
     product_two = create_product(
         db_session,
+        owner_user_id="test-user",
         name="执行中重复消息工作流",
         category=None,
         price=None,
@@ -934,6 +948,7 @@ def test_workflow_scheduler_dispatches_every_ready_node_run(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="ready wave 工作流",
         category=None,
         price=None,
@@ -986,6 +1001,7 @@ def test_workflow_node_run_message_executes_queued_node_once(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="节点幂等商品",
         category=None,
         price=None,
@@ -1034,6 +1050,7 @@ def test_workflow_node_run_failure_does_not_block_independent_ready_branch(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="分支局部失败商品",
         category=None,
         price=None,
@@ -1116,6 +1133,7 @@ def test_workflow_retry_requeues_failed_and_blocked_node_runs_only(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="局部重试商品",
         category=None,
         price=None,
@@ -1184,6 +1202,7 @@ def test_workflow_image_generation_timeout_marks_run_node_and_queue_failed(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="生图超时商品",
         category=None,
         price=None,
@@ -1248,6 +1267,7 @@ def test_workflow_image_generation_provider_failure_uses_safe_reason(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="生图失败商品",
         category=None,
         price=None,
@@ -1302,6 +1322,7 @@ def test_workflow_image_generation_provider_failure_exposes_safe_detail(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="生图安全失败详情商品",
         category=None,
         price=None,
@@ -1361,6 +1382,7 @@ def test_workflow_image_generation_provider_failure_categorizes_wrapped_rate_lim
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="生图限流失败商品",
         category=None,
         price=None,
@@ -1406,6 +1428,7 @@ def test_workflow_image_generation_policy_reject_is_not_retryable(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="生图策略拒绝商品",
         category=None,
         price=None,
@@ -1505,6 +1528,7 @@ def test_workflow_copy_node_invalid_config_is_non_retryable(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="文案配置错误商品",
         category=None,
         price=None,
@@ -1563,6 +1587,7 @@ def test_workflow_time_limit_exception_marks_running_node_failed(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="worker 超时商品",
         category=None,
         price=None,

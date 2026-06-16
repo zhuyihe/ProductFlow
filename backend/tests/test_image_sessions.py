@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from dramatiq.middleware.time_limit import TimeLimitExceeded
 from fastapi.testclient import TestClient
@@ -17,6 +18,7 @@ from helpers import (
     _read_image_size,
 )
 
+from productflow_backend.application.auth_sessions import Principal
 from productflow_backend.config import get_settings
 from productflow_backend.infrastructure.db.models import (
     AppSetting,
@@ -30,17 +32,53 @@ from productflow_backend.infrastructure.db.models import (
 from productflow_backend.infrastructure.db.session import get_session_factory
 
 
+def _images_api_response(
+    b64_json: str | None = None,
+    *,
+    b64_jsons: list[str | None] | None = None,
+) -> httpx.Response:
+    request = httpx.Request("POST", "https://relay.example/v1/images/generations")
+    data = [
+        {"b64_json": item, "revised_prompt": f"revised-{index}"}
+        for index, item in enumerate(b64_jsons if b64_jsons is not None else [b64_json], start=1)
+    ]
+    return httpx.Response(200, json={"data": data}, request=request)
+
+
 @pytest.fixture(autouse=True)
-def _execute_workflow_queue_inline_fixture(monkeypatch: pytest.MonkeyPatch) -> None:
+def _execute_workflow_queue_inline_fixture(configured_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep API workflow tests deterministic while production delivery goes through Dramatiq."""
 
+    del configured_env
     _execute_workflow_queue_inline(monkeypatch)
+    monkeypatch.setenv("IMAGE_PROVIDER_KIND", "openai_images")
+    monkeypatch.setenv("IMAGE_API_KEY", "test-relay-key")
+    monkeypatch.setenv("IMAGE_GENERATE_MODEL", "mock-image-chat-v1")
+    get_settings.cache_clear()
     from productflow_backend.application.image_sessions import execute_image_session_generation_task
 
     monkeypatch.setattr(
         "productflow_backend.application.image_sessions.enqueue_image_session_generation_task",
         execute_image_session_generation_task,
     )
+
+    session = get_session_factory()()
+    try:
+        session.merge(AppSetting(key="new_api_base_url", value="https://relay.example"))
+        session.commit()
+    finally:
+        session.close()
+
+    encoded_result = b64encode(_make_demo_image_bytes()).decode("utf-8")
+
+    def fake_images_post(url, *, headers, json=None, data=None, files=None, timeout):
+        del url, headers, data, files, timeout
+        count = 1
+        if isinstance(json, dict):
+            count = int(json.get("n") or 1)
+        return _images_api_response(b64_jsons=[encoded_result] * max(1, count))
+
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_images_post)
 
 
 def test_image_session_rounds_support_same_conversation(configured_env: Path) -> None:
@@ -102,7 +140,7 @@ def test_image_session_rounds_support_same_conversation(configured_env: Path) ->
     assert second.status_code == 202
     second_payload = second.json()
     assert len(second_payload["rounds"]) == 2
-    assert second_payload["rounds"][-1]["provider_name"] == "mock"
+    assert second_payload["rounds"][-1]["provider_name"] == "openai-images"
     assert second_payload["rounds"][-1]["assistant_message"].startswith("已按本轮选择的图片上下文")
     assert second_payload["rounds"][-1]["previous_response_id"] is None
     assert second_payload["rounds"][-1]["base_asset_id"] == first_asset_id
@@ -123,7 +161,7 @@ def test_image_session_generate_returns_queued_task_without_waiting_for_provider
     )
     app = create_app()
     client = TestClient(app)
-    _login(client)
+    _login(client, token="sk-test", image_model="mock-image-chat-v1")
 
     created = client.post("/api/image-sessions", json={"title": "异步提交"})
     assert created.status_code == 201
@@ -132,7 +170,7 @@ def test_image_session_generate_returns_queued_task_without_waiting_for_provider
         json={"prompt": "只创建任务，不等待 provider", "size": "1024x1024"},
     )
 
-    assert response.status_code == 202
+    assert response.status_code == 202, response.text
     payload = response.json()
     assert payload["rounds"] == []
     assert len(payload["generation_tasks"]) == 1
@@ -169,6 +207,39 @@ def test_image_session_generate_returns_queued_task_without_waiting_for_provider
     assert sent == [task["id"]]
 
 
+def test_image_session_generation_writes_model_call_usage_event(configured_env: Path, db_session) -> None:
+    from productflow_backend.application.image_sessions import (
+        create_image_session,
+        create_image_session_generation_task,
+        execute_image_session_generation_task,
+    )
+    from productflow_backend.infrastructure.db.models import AuditEvent
+
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="user-a",
+        title="usage event",
+    )
+    result = create_image_session_generation_task(
+        db_session,
+        image_session_id=image_session.id,
+        owner_user_id="user-a",
+        prompt="记录一次模型调用",
+        size="1024x1024",
+    )
+    execute_image_session_generation_task(result.task.id)
+
+    event = db_session.query(AuditEvent).filter_by(event_type="model_call").one()
+    assert event.subject_user_id == "user-a"
+    assert event.status == "succeeded"
+    assert event.model_name == "mock-image-chat-v1"
+    assert event.provider_name == "openai-images"
+    assert event.atelier_request_id.startswith("atr_")
+    assert event.resource_type == "image_generation_task"
+    assert event.resource_id == result.task.id
+
+
 def test_first_queued_image_session_task_without_base_still_executes_if_later_task_exists(
     configured_env: Path,
     db_session,
@@ -180,7 +251,12 @@ def test_first_queued_image_session_task_without_base_still_executes_if_later_ta
     )
     from productflow_backend.domain.enums import JobStatus
 
-    image_session = create_image_session(db_session, product_id=None, title="首任务 worker 校验")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="首任务 worker 校验",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -269,9 +345,10 @@ def test_image_session_status_returns_lightweight_task_snapshot(
     assert completed_payload["generation_tasks"][0]["is_cancelable"] is False
     assert completed_payload["generation_tasks"][0]["progress_phase"] == "succeeded"
     assert completed_payload["generation_tasks"][0]["progress_updated_at"] is not None
-    assert completed_payload["generation_tasks"][0]["result_generation_group_id"] == completed_payload[
-        "latest_generation_group_id"
-    ]
+    assert (
+        completed_payload["generation_tasks"][0]["result_generation_group_id"]
+        == completed_payload["latest_generation_group_id"]
+    )
 
 
 def test_image_session_generation_accepts_per_request_tool_options_and_exposes_provider_notes(
@@ -296,9 +373,7 @@ def test_image_session_generation_accepts_per_request_tool_options_and_exposes_p
             generated_at=datetime.now(UTC),
             provider_request_json={"tool_options": kwargs.get("tool_options")},
             provider_output_json={
-                "_productflow": {
-                    "notes": [{"kind": "fallback", "message": "供应商不支持部分参数，已按基础参数完成。"}]
-                }
+                "_productflow": {"notes": [{"kind": "fallback", "message": "供应商不支持部分参数，已按基础参数完成。"}]}
             },
         )
 
@@ -373,8 +448,11 @@ def test_image_session_generation_accepts_per_request_tool_options_and_exposes_p
         },
     )
     assert explicitly_allowed.status_code == 202
-    assert calls[-1] == {"quality": "high"}
-    assert explicitly_allowed.json()["generation_tasks"][-1]["tool_options"] == {"quality": "high"}
+    assert calls[-1] == {"model": "mock-image-chat-v1", "quality": "high"}
+    assert explicitly_allowed.json()["generation_tasks"][-1]["tool_options"] == {
+        "model": "mock-image-chat-v1",
+        "quality": "high",
+    }
 
     invalid = client.post(
         f"/api/image-sessions/{created.json()['id']}/generate",
@@ -627,7 +705,12 @@ def test_image_session_generation_cancel_after_file_save_does_not_persist_round_
         generate_success,
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="保存后取消")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="保存后取消",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -678,7 +761,12 @@ def test_image_session_generation_cancelled_task_is_not_overwritten_by_late_fail
     )
     from productflow_backend.domain.enums import JobStatus
 
-    image_session = create_image_session(db_session, product_id=None, title="取消后失败不覆盖")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="取消后失败不覆盖",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -948,7 +1036,12 @@ def test_image_session_worker_auto_retry_exposes_last_failure_metadata(
         lambda task_id: sent.append(task_id),
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="自动重试元数据")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="自动重试元数据",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1017,25 +1110,22 @@ def test_image_session_generation_task_uses_current_principal_new_api_token(
     )
     from productflow_backend.domain.enums import JobStatus
 
-    client_kwargs: list[dict[str, str]] = []
-    calls: list[dict[str, object]] = []
     encoded_result = b64encode(_make_demo_image_bytes()).decode("utf-8")
+    calls: list[dict[str, object]] = []
 
-    class DummyImages:
-        def generate(self, **kwargs):
-            calls.append(kwargs)
-            return SimpleNamespace(
-                data=[SimpleNamespace(b64_json=encoded_result, revised_prompt="relay result")]
-            )
+    def fake_post(url, *, headers, json, timeout):
+        del timeout
+        calls.append({"url": url, "headers": headers, "json": json})
+        return _images_api_response(encoded_result)
 
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            client_kwargs.append(kwargs)
-            self.images = DummyImages()
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
-
-    image_session = create_image_session(db_session, product_id=None, title="relay token")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="relay token",
+    )
     principal = Principal(
         session_id="auth-session-1",
         kind=principal_kind,
@@ -1070,17 +1160,22 @@ def test_image_session_generation_task_uses_current_principal_new_api_token(
     assert task.new_api_token_group == "GPT-Image-2"
     assert task.new_api_image_model == "gpt-image-2"
     assert task.new_api_token == token
-    assert client_kwargs == [{"api_key": token, "base_url": "https://relay.example/v1"}]
     assert calls == [
         {
-            "model": "gpt-image-2",
-            "prompt": calls[0]["prompt"],
-            "size": "1024x1024",
-            "n": 1,
-            "response_format": "b64_json",
+            "url": "https://relay.example/v1/images/generations",
+            "headers": calls[0]["headers"],
+            "json": {
+                "model": "gpt-image-2",
+                "prompt": calls[0]["json"]["prompt"],
+                "size": "1024x1024",
+                "n": 1,
+                "response_format": "b64_json",
+            },
         }
     ]
-    assert isinstance(calls[0]["prompt"], str)
+    assert calls[0]["headers"]["Authorization"] == f"Bearer {token}"
+    assert isinstance(calls[0]["headers"]["X-Atelier-Request-Id"], str)
+    assert isinstance(calls[0]["json"]["prompt"], str)
     get_settings.cache_clear()
 
 
@@ -1114,20 +1209,19 @@ def test_image_session_generation_uses_selected_new_api_image_model(
     calls: list[dict[str, object]] = []
     encoded_result = b64encode(_make_demo_image_bytes()).decode("utf-8")
 
-    class DummyImages:
-        def generate(self, **kwargs):
-            calls.append(kwargs)
-            return SimpleNamespace(
-                data=[SimpleNamespace(b64_json=encoded_result, revised_prompt="relay result")]
-            )
+    def fake_post(url, *, headers, json, timeout):
+        del url, headers, timeout
+        calls.append(json)
+        return _images_api_response(encoded_result)
 
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = DummyImages()
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
-
-    image_session = create_image_session(db_session, product_id=None, title="personal model")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="personal model",
+    )
     principal = Principal(
         session_id="auth-session-1",
         kind="user",
@@ -1163,7 +1257,12 @@ def test_image_session_generation_uses_selected_new_api_image_model(
     assert task.tool_options == {"model": "gpt-image-3"}
     assert calls[0]["model"] == "gpt-image-3"
 
-    invalid_session = create_image_session(db_session, product_id=None, title="invalid model")
+    invalid_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="invalid model",
+    )
     with pytest.raises(BusinessValidationError, match="所选生图模型"):
         create_image_session_generation_task(
             db_session,
@@ -1174,7 +1273,12 @@ def test_image_session_generation_uses_selected_new_api_image_model(
             principal=principal,
         )
 
-    stale_session = create_image_session(db_session, product_id=None, title="stale sso session")
+    stale_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="stale sso session",
+    )
     stale_principal = Principal(
         session_id="auth-session-2",
         kind="user",
@@ -1209,7 +1313,12 @@ def test_image_session_generation_task_rejects_bootstrap_admin_without_new_api_t
     from productflow_backend.application.provider_runtime import MISSING_NEW_API_TOKEN_DETAIL
     from productflow_backend.domain.errors import BusinessValidationError
 
-    image_session = create_image_session(db_session, product_id=None, title="bootstrap no token")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="bootstrap no token",
+    )
     principal = Principal(
         session_id="bootstrap-session",
         kind="admin",
@@ -1257,7 +1366,7 @@ def test_image_session_worker_non_retryable_policy_failure_stops_without_auto_re
         "productflow_backend.infrastructure.image.chat_service.ImageChatService.generate",
         fail_generate,
     )
-    image_session = create_image_session(db_session, product_id=None, title="策略拒绝")
+    image_session = create_image_session(db_session, product_id=None, title="策略拒绝", owner_user_id="admin-user")
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1316,7 +1425,12 @@ def test_image_session_worker_non_retryable_parameter_failure_stops_without_auto
         lambda task_id: sent.append(task_id),
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="参数拒绝")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="参数拒绝",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1428,7 +1542,12 @@ def test_image_session_worker_surfaces_completed_text_without_image_reason(
         fail_with_text_output,
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="provider text only")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="provider text only",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1480,8 +1599,15 @@ def test_image_session_worker_partial_retry_continues_remaining_candidates_witho
         "productflow_backend.infrastructure.image.chat_service.ImageChatService.generate",
         generate_then_timeout,
     )
+    monkeypatch.setenv("IMAGE_PROVIDER_KIND", "mock")
+    get_settings.cache_clear()
 
-    image_session = create_image_session(db_session, product_id=None, title="部分成功超时")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="部分成功超时",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1539,7 +1665,12 @@ def test_image_session_worker_marks_task_failed_when_time_limit_raises_outside_c
         lambda *args, **kwargs: (_ for _ in ()).throw(TimeLimitExceeded()),
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="整体超时")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="整体超时",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1578,7 +1709,12 @@ def test_image_session_worker_failure_settles_task_when_parent_session_deleted(
         lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("provider failed")),
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="父会话已删除")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="父会话已删除",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1639,7 +1775,12 @@ def test_image_session_worker_failure_settlement_retries_after_stale_data_error(
 
     monkeypatch.setattr(image_session_app, "_handle_image_generation_task_failure", flaky_handle_failure)
 
-    image_session = create_image_session(db_session, product_id=None, title="stale 收口")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="stale 收口",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1707,7 +1848,12 @@ def test_image_session_worker_persists_provider_progress_heartbeat(
         generate_with_progress,
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="provider progress")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="provider progress",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1742,7 +1888,12 @@ def test_image_session_worker_duplicate_message_noops_terminal_task(
         execute_image_session_generation_task,
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="重复消息")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="重复消息",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1773,7 +1924,12 @@ def test_image_session_worker_duplicate_message_noops_running_task(
     )
     from productflow_backend.domain.enums import JobStatus
 
-    image_session = create_image_session(db_session, product_id=None, title="running 重复消息")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="running 重复消息",
+    )
     result = create_image_session_generation_task(
         db_session,
         image_session_id=image_session.id,
@@ -1812,7 +1968,12 @@ def test_image_session_worker_defers_queued_task_when_global_running_capacity_fu
     from productflow_backend.domain.enums import JobStatus
     from productflow_backend.infrastructure.db.models import AppSetting
 
-    image_session = create_image_session(db_session, product_id=None, title="同会话并发上限")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="同会话并发上限",
+    )
     running = ImageSessionGenerationTask(
         session_id=image_session.id,
         status=JobStatus.RUNNING,
@@ -1913,13 +2074,13 @@ def test_image_session_branch_uses_selected_base_and_references_only(configured_
     assert persisted is not None
     assert persisted.base_asset_id == first_asset_id
     assert persisted.selected_reference_asset_ids == [reference_ids[1]]
-    assert persisted.provider_request_json == {
-        "prompt": "只从第一张和第二张参考图继续",
-        "size": "1024x1024",
-        "history_count": 0,
-        "manual_reference_count": 2,
-        "previous_response_id": None,
-    }
+    assert persisted.provider_request_json["size"] == "1024x1024"
+    assert persisted.provider_request_json["image_count"] == 2
+    assert persisted.provider_request_json["images"] == [
+        {"filename": "base.png", "mime_type": "image/png"},
+        {"filename": "reference-1.png", "mime_type": "image/png"},
+    ]
+    assert "只从第一张和第二张参考图继续" in persisted.provider_request_json["prompt"]
 
 
 def test_image_session_openai_images_uses_selected_base_and_references_only(
@@ -1939,30 +2100,24 @@ def test_image_session_openai_images_uses_selected_base_and_references_only(
     get_settings.cache_clear()
 
     calls: list[dict] = []
+    encoded_result = b64encode(_make_demo_image_bytes()).decode("utf-8")
 
-    class DummyItem:
-        b64_json = b64encode(_make_demo_image_bytes()).decode("utf-8")
-        revised_prompt = None
+    def fake_post(url, *, headers, json=None, data=None, files=None, timeout):
+        del url, headers, timeout
+        if json is not None:
+            calls.append({"method": "generate", **json})
+        else:
+            calls.append({"method": "edit", "files": files, **data})
+        return _images_api_response(encoded_result)
 
-    class DummyResponse:
-        data = [DummyItem()]
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
-    class DummyImages:
-        def generate(self, **kwargs):
-            calls.append({"method": "generate", **kwargs})
-            return DummyResponse()
-
-        def edit(self, **kwargs):
-            calls.append({"method": "edit", **kwargs})
-            return DummyResponse()
-
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = DummyImages()
-
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
-
-    image_session = create_image_session(db_session, product_id=None, title="Images API 分支测试")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="Images API 分支测试",
+    )
     first = generate_image_session_round(
         db_session,
         image_session_id=image_session.id,
@@ -2000,7 +2155,7 @@ def test_image_session_openai_images_uses_selected_base_and_references_only(
 
     assert calls[0]["method"] == "generate"
     assert calls[1]["method"] == "edit"
-    assert [image.name for image in calls[1]["image"]] == ["base.png", "reference-1.png"]
+    assert [item[1][0] for item in calls[1]["files"] if item[0] == "image"] == ["base.png", "reference-1.png"]
     assert "previous_response_id" not in calls[1]
 
     db_session.expire_all()
@@ -2079,7 +2234,12 @@ def test_image_session_google_gemini_uses_selected_base_and_references_only(
         fake_generate_image,
     )
 
-    image_session = create_image_session(db_session, product_id=None, title="Gemini 分支测试")
+    image_session = create_image_session(
+        db_session,
+        product_id=None,
+        owner_user_id="test-user",
+        title="Gemini 分支测试",
+    )
     first = generate_image_session_round(
         db_session,
         image_session_id=image_session.id,
@@ -2127,6 +2287,77 @@ def test_image_session_google_gemini_uses_selected_base_and_references_only(
         {"filename": "base.png", "mime_type": "image/png"},
         {"filename": "reference-1.png", "mime_type": "image/png"},
     ]
+
+
+def test_image_session_sso_generation_rejects_non_relay_image_provider(
+    configured_env: Path,
+    db_session,
+) -> None:
+    from productflow_backend.application.image_sessions import (
+        create_image_session,
+        create_image_session_generation_task,
+        execute_image_session_generation_task,
+    )
+    from productflow_backend.domain.enums import ImageSessionAssetKind, JobStatus
+
+    profile = ProviderProfile(
+        name="Gemini",
+        provider_type="google_gemini",
+        base_url=None,
+        api_key="google-api-key",
+        capabilities_json=["image_google_gemini"],
+        default_models_json={},
+        config_json={},
+        enabled=True,
+    )
+    db_session.add(profile)
+    db_session.flush()
+    db_session.add(
+        ProviderBinding(
+            purpose="image",
+            provider_kind="google_gemini_image",
+            provider_profile_id=profile.id,
+            model_settings_json={"model": "gemini-2.5-flash-image"},
+            config_json={"gemini_api_version": "v1beta"},
+        )
+    )
+    db_session.commit()
+    get_settings.cache_clear()
+
+    image_session = create_image_session(db_session, product_id=None, title="relay required", owner_user_id="user-a")
+    task_result = create_image_session_generation_task(
+        db_session,
+        image_session_id=image_session.id,
+        owner_user_id="user-a",
+        prompt="生成商品图",
+        size="1024x1024",
+        principal=Principal(
+            session_id="sso-session",
+            username="alice",
+            email=None,
+            group=None,
+            role="1",
+            new_api_user_id="user-a",
+            new_api_token_id="61",
+            new_api_token_name="Atelier",
+            new_api_token="sk-user-token",
+            new_api_token_group="GPT-Image-2",
+            new_api_image_model="gpt-image-2",
+            new_api_image_models=("gpt-image-2",),
+            new_api_text_model=None,
+            new_api_text_models=(),
+            kind="user",
+        ),
+    )
+
+    execute_image_session_generation_task(task_result.task.id)
+
+    db_session.expire_all()
+    persisted_task = db_session.get(ImageSessionGenerationTask, task_result.task.id)
+    assert persisted_task is not None
+    assert persisted_task.status == JobStatus.FAILED
+    assert "New API relay 当前只支持 OpenAI 兼容图片 provider" in (persisted_task.failure_reason or "")
+    assert not any(asset.kind == ImageSessionAssetKind.GENERATED_IMAGE for asset in image_session.assets)
 
 
 def test_image_session_branch_validates_asset_scope_and_kind(configured_env: Path) -> None:
@@ -2211,15 +2442,12 @@ def test_image_session_branch_validates_asset_scope_and_kind(configured_env: Pat
 
     too_many_upload = client.post(
         f"/api/image-sessions/{session_id}/reference-images",
-        files=[
-            ("reference_images", (f"ref-{index}.png", _make_demo_image_bytes(), "image/png"))
-            for index in range(6)
-        ],
+        files=[("reference_images", (f"ref-{index}.png", _make_demo_image_bytes(), "image/png")) for index in range(6)],
     )
     assert too_many_upload.status_code == 200
-    reference_ids = [
-        asset["id"] for asset in too_many_upload.json()["assets"] if asset["kind"] == "reference_upload"
-    ][-6:]
+    reference_ids = [asset["id"] for asset in too_many_upload.json()["assets"] if asset["kind"] == "reference_upload"][
+        -6:
+    ]
     too_many = client.post(
         f"/api/image-sessions/{session_id}/generate",
         json={
@@ -2285,6 +2513,13 @@ def test_image_session_openai_images_candidate_count_sets_provider_batch_n(
 ) -> None:
     from productflow_backend.presentation.api import create_app
 
+    settings_session = get_session_factory()()
+    try:
+        settings_session.merge(AppSetting(key="new_api_base_url", value="https://relay.example"))
+        settings_session.commit()
+    finally:
+        settings_session.close()
+
     monkeypatch.setenv("IMAGE_PROVIDER_KIND", "openai_images")
     monkeypatch.setenv("IMAGE_API_KEY", "demo-api-key")
     monkeypatch.setenv("IMAGE_GENERATE_MODEL", "gpt-image-1")
@@ -2300,28 +2535,16 @@ def test_image_session_openai_images_candidate_count_sets_provider_batch_n(
     calls: list[dict] = []
     encoded_result = b64encode(_make_demo_image_bytes()).decode("utf-8")
 
-    class DummyItem:
-        def __init__(self, index: int) -> None:
-            self.b64_json = encoded_result
-            self.revised_prompt = f"revised-{index}"
+    def fake_post(url, *, headers, json=None, data=None, files=None, timeout):
+        del url, headers, data, files, timeout
+        calls.append({"method": "generate", **json})
+        return _images_api_response(b64_jsons=[encoded_result] * 10)
 
-    class DummyResponse:
-        data = [DummyItem(index) for index in range(1, 11)]
-
-    class DummyImages:
-        def generate(self, **kwargs):
-            calls.append({"method": "generate", **kwargs})
-            return DummyResponse()
-
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = DummyImages()
-
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
     app = create_app()
     client = TestClient(app)
-    _login(client)
+    _login(client, image_model="gpt-image-1", image_models=("gpt-image-1",))
 
     created = client.post("/api/image-sessions", json={"title": "Images API n"})
     assert created.status_code == 201
@@ -2331,19 +2554,15 @@ def test_image_session_openai_images_candidate_count_sets_provider_batch_n(
     )
 
     assert generated.status_code == 202
-    assert calls == [
-        {
-            "method": "generate",
-            "model": "gpt-image-1",
-            "prompt": calls[0]["prompt"],
-            "size": "1024x1024",
-            "n": 10,
-            "response_format": "b64_json",
-        }
-    ]
+    assert len(calls) == 1
+    assert calls[0]["method"] == "generate"
+    assert calls[0]["model"] == "gpt-image-1"
+    assert calls[0]["size"] == "1024x1024"
+    assert calls[0]["n"] == 10
+    assert calls[0]["response_format"] == "b64_json"
     payload = generated.json()
     assert payload["generation_tasks"][0]["generation_count"] == 10
-    assert payload["generation_tasks"][0]["tool_options"] is None
+    assert payload["generation_tasks"][0]["tool_options"] == {"model": "gpt-image-1"}
     rounds = payload["rounds"]
     assert len(rounds) == 10
     assert [round_item["candidate_index"] for round_item in rounds] == list(range(1, 11))
@@ -2455,6 +2674,7 @@ def test_image_session_reference_image_can_be_deleted(configured_env: Path, db_s
     assert db_session.get(ImageSessionAsset, reference_asset["id"]) is None
     assert not reference_path.exists()
 
+
 def test_image_session_can_be_deleted_with_files(configured_env: Path, db_session) -> None:
     from productflow_backend.presentation.api import create_app
 
@@ -2498,6 +2718,7 @@ def test_image_session_can_be_deleted_with_files(configured_env: Path, db_sessio
     assert db_session.get(ImageSession, session_id) is None
     assert all(not path.exists() for path in asset_paths)
     assert not session_root.exists()
+
 
 def test_image_session_result_can_write_back_to_product(configured_env: Path) -> None:
     from productflow_backend.presentation.api import create_app

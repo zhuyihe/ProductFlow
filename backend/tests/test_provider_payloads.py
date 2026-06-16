@@ -58,7 +58,10 @@ from productflow_backend.infrastructure.image.gemini_provider import (
 )
 from productflow_backend.infrastructure.image.images_provider import OpenAIImagesImageProvider
 from productflow_backend.infrastructure.image.responses_provider import OpenAIResponsesImageProvider
-from productflow_backend.infrastructure.provider_config import ResolvedImageProviderConfig
+from productflow_backend.infrastructure.provider_config import (
+    ResolvedImageProviderConfig,
+    ResolvedTextProviderConfig,
+)
 
 REMOVED_COPY_OUTPUT_KEYS = [
     "derived" + "_fields",
@@ -135,10 +138,13 @@ def test_prompt_settings_reach_provider_prompt_builders(configured_env: Path, mo
     from productflow_backend.infrastructure.prompts import render_prompt_template
     from productflow_backend.infrastructure.text.openai_provider import OpenAITextProvider
 
-    assert render_prompt_template(
-        "示例 JSON：{\"title\":\"{title}\"}；未知：{unknown}；坏括号：{",
-        {"title": "主标题"},
-    ) == "示例 JSON：{\"title\":\"主标题\"}；未知：{unknown}；坏括号：{"
+    assert (
+        render_prompt_template(
+            '示例 JSON：{"title":"{title}"}；未知：{unknown}；坏括号：{',
+            {"title": "主标题"},
+        )
+        == '示例 JSON：{"title":"主标题"}；未知：{unknown}；坏括号：{'
+    )
 
     session = get_session_factory()()
     try:
@@ -257,19 +263,101 @@ def test_prompt_settings_reach_provider_prompt_builders(configured_env: Path, mo
     assert chat_prompt.endswith("改成白底")
 
 
+def test_text_provider_forwards_atelier_request_id_header(configured_env: Path, monkeypatch) -> None:
+    from productflow_backend.infrastructure.text.openai_provider import OpenAITextProvider
+
+    client_kwargs: list[dict] = []
+
+    class DummyOpenAI:
+        def __init__(self, **kwargs) -> None:
+            client_kwargs.append(kwargs)
+            self.responses = object()
+
+    monkeypatch.setattr("productflow_backend.infrastructure.text.openai_provider.OpenAI", DummyOpenAI)
+
+    OpenAITextProvider(
+        ResolvedTextProviderConfig(
+            provider_kind="openai",
+            brief_model="gpt-5.2",
+            copy_model="gpt-5.2",
+            api_key="sk-test",
+            base_url="https://relay.example/v1",
+            atelier_request_id="atr_test_text",
+        )
+    )
+
+    assert client_kwargs == [
+        {
+            "api_key": "sk-test",
+            "base_url": "https://relay.example/v1",
+            "default_headers": {"X-Atelier-Request-Id": "atr_test_text"},
+        }
+    ]
+
+
+def test_responses_image_client_forwards_atelier_request_id_header(configured_env: Path, monkeypatch) -> None:
+    from productflow_backend.infrastructure.image.responses_provider import OpenAIResponsesImageClient
+
+    client_kwargs: list[dict] = []
+
+    class DummyOpenAI:
+        def __init__(self, **kwargs) -> None:
+            client_kwargs.append(kwargs)
+            self.responses = object()
+
+    monkeypatch.setattr("productflow_backend.infrastructure.image.responses_provider.OpenAI", DummyOpenAI)
+    client = OpenAIResponsesImageClient(
+        ResolvedImageProviderConfig(
+            provider_kind="openai_responses",
+            model="gpt-image-2",
+            api_key="sk-test",
+            base_url="https://relay.example/v1",
+            responses_background_enabled=False,
+            atelier_request_id="atr_test_image",
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="图片供应商请求失败"):
+        client.generate_image(prompt="x", size="1024x1024")
+
+    assert client_kwargs == [
+        {
+            "api_key": "sk-test",
+            "base_url": "https://relay.example/v1",
+            "default_headers": {"X-Atelier-Request-Id": "atr_test_image"},
+        }
+    ]
+
+
+def test_images_api_client_forwards_atelier_request_id_header(configured_env: Path) -> None:
+    from productflow_backend.infrastructure.image.images_provider import OpenAIImagesClient
+
+    client = OpenAIImagesClient(
+        ResolvedImageProviderConfig(
+            provider_kind="openai_images",
+            model="gpt-image-2",
+            api_key="sk-test",
+            base_url="https://relay.example/v1",
+            atelier_request_id="atr_test_images_api",
+        )
+    )
+
+    assert client._images_api_headers()["X-Atelier-Request-Id"] == "atr_test_images_api"
+
+
 def test_openai_text_provider_reads_sse_text_response() -> None:
     from productflow_backend.infrastructure.text.openai_provider import OpenAITextProvider
 
     provider = object.__new__(OpenAITextProvider)
     response = "\n".join(
         [
-            'event: response.output_text.delta',
+            "event: response.output_text.delta",
             'data: {"type":"response.output_text.delta","delta":"{\\"version\\":2,"}',
             "",
-            'event: response.output_text.delta',
+            "event: response.output_text.delta",
             'data: {"type":"response.output_text.delta","delta":"\\"summary\\":\\"促销文案\\","}',
             "",
-            'event: response.output_text.delta',
+            "event: response.output_text.delta",
             (
                 'data: {"type":"response.output_text.delta","delta":"\\"content\\":'
                 '{\\"kind\\":\\"freeform\\",\\"text\\":\\"五一促销\\"}}"}'
@@ -842,8 +930,16 @@ def test_product_workflow_uses_selected_new_api_text_model(
         db_session.close()
     get_settings.cache_clear()
 
-    assert client_kwargs == [{"api_key": "sk-user-token", "base_url": "https://relay.example/v1"}]
+    assert len(client_kwargs) == 2
+    for kwargs in client_kwargs:
+        assert kwargs["api_key"] == "sk-user-token"
+        assert kwargs["base_url"] == "https://relay.example/v1"
+        request_headers = kwargs["default_headers"]
+        assert isinstance(request_headers, dict)
+        assert isinstance(request_headers["X-Atelier-Request-Id"], str)
+        assert request_headers["X-Atelier-Request-Id"].startswith("atr_")
     assert models_seen == ["gpt-4.1-mini", "gpt-4.1-mini"]
+
 
 def test_mock_image_provider_does_not_read_runtime_settings_during_generation(
     configured_env: Path,
@@ -882,6 +978,7 @@ def test_mock_image_provider_does_not_read_runtime_settings_during_generation(
     assert generated.width == 512
     assert generated.height == 512
     assert generated.bytes_data
+
 
 def test_image_generation_without_copy_link_uses_image_edit_prompt_mode(
     configured_env: Path,
@@ -988,11 +1085,21 @@ def test_image_generation_without_copy_link_uses_image_edit_prompt_mode(
     assert captured_inputs[0].copy_prompt_mode == "image_edit"
     assert captured_inputs[0].instruction and "暖色露营场景" in captured_inputs[0].instruction
 
+
 def test_image_session_openai_responses_uses_explicit_branch_context(
     configured_env: Path,
     monkeypatch,
 ) -> None:
+    from productflow_backend.application.image_sessions import execute_image_session_generation_task
     from productflow_backend.presentation.api import create_app
+
+    settings_session = get_session_factory()()
+    try:
+        settings_session.merge(AppSetting(key="new_api_base_url", value="https://relay.example"))
+        settings_session.commit()
+    finally:
+        settings_session.close()
+    get_settings.cache_clear()
 
     monkeypatch.setenv("IMAGE_PROVIDER_KIND", "openai_responses")
     monkeypatch.setenv("IMAGE_BASE_URL", "https://example.test/v1")
@@ -1064,7 +1171,11 @@ def test_image_session_openai_responses_uses_explicit_branch_context(
         json={"prompt": "生成日漫风商品场景", "size": "1024x1024"},
     )
     assert first.status_code == 202
-    first_round = first.json()["rounds"][-1]
+    first_task_id = first.json()["generation_tasks"][0]["id"]
+    execute_image_session_generation_task(first_task_id)
+    first_detail = client.get(f"/api/image-sessions/{session_id}")
+    assert first_detail.status_code == 200
+    first_round = first_detail.json()["rounds"][-1]
     assert first_round["provider_name"] == "openai-responses"
     assert first_round["provider_response_id"] == "resp_1"
     assert first_round["previous_response_id"] is None
@@ -1088,15 +1199,25 @@ def test_image_session_openai_responses_uses_explicit_branch_context(
         },
     )
     assert branched.status_code == 202
-    branched_round = branched.json()["rounds"][-1]
+    branched_task_id = branched.json()["generation_tasks"][0]["id"]
+    execute_image_session_generation_task(branched_task_id)
+    branched_detail = client.get(f"/api/image-sessions/{session_id}")
+    assert branched_detail.status_code == 200
+    branched_round = branched_detail.json()["rounds"][-1]
     assert branched_round["provider_response_id"] == "resp_2"
     assert branched_round["previous_response_id"] is None
     assert branched_round["base_asset_id"] == first_asset_id
     assert branched_round["selected_reference_asset_ids"] == [reference_id]
 
-    assert client_kwargs[0] == {"api_key": "demo-api-key", "base_url": "https://example.test/v1"}
-    assert calls[0]["model"] == "gpt-5.4"
-    assert calls[0]["tools"] == [{"type": "image_generation", "size": "1024x1024"}]
+    assert len(client_kwargs) == 2
+    for kwargs in client_kwargs:
+        assert kwargs["api_key"] == "sk-test"
+        assert kwargs["base_url"] == "https://relay.example/v1"
+        request_headers = kwargs["default_headers"]
+        assert isinstance(request_headers, dict)
+        assert isinstance(request_headers["X-Atelier-Request-Id"], str)
+    assert calls[0]["model"] == "mock-image-chat-v1"
+    assert calls[0]["tools"] == [{"type": "image_generation", "size": "1024x1024", "model": "mock-image-chat-v1"}]
     assert "previous_response_id" not in calls[0]
     assert "previous_response_id" not in calls[1]
     assert isinstance(calls[0]["input"], str)
@@ -1107,6 +1228,7 @@ def test_image_session_openai_responses_uses_explicit_branch_context(
     assert all(item["image_url"].startswith("data:image/png;base64,") for item in branch_images)
     assert "/images/generations" not in str(calls)
     assert "/images/edits" not in str(calls)
+
 
 def test_openai_responses_poster_provider_uses_image_generation_tool(
     configured_env: Path,
@@ -1330,10 +1452,7 @@ def test_openai_responses_image_client_polls_background_response_and_reports_pro
             return {
                 "id": self.id,
                 "status": self.status,
-                "output": [
-                    output.model_dump(mode=mode, exclude_none=exclude_none)
-                    for output in self.output
-                ],
+                "output": [output.model_dump(mode=mode, exclude_none=exclude_none) for output in self.output],
             }
 
     class DummyResponses:
@@ -1751,20 +1870,13 @@ def test_openai_images_provider_factory_and_client_generate_payload(
     get_settings.cache_clear()
 
     calls: list[dict] = []
-    client_kwargs: list[dict] = []
     encoded_result = _make_demo_image_data_url().split(",", maxsplit=1)[1]
 
-    class DummyImages:
-        def generate(self, **kwargs):
-            calls.append(kwargs)
-            return DummyImagesAPIResponse(encoded_result)
+    def fake_post(url, *, headers, json, timeout):
+        calls.append({"url": url, "headers": headers, "json": json, "timeout": timeout})
+        return _images_api_http_response(encoded_result)
 
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            client_kwargs.append(kwargs)
-            self.images = DummyImages()
-
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
     from productflow_backend.infrastructure.image.factory import get_image_provider
     from productflow_backend.infrastructure.image.images_provider import OpenAIImagesClient
@@ -1773,18 +1885,17 @@ def test_openai_images_provider_factory_and_client_generate_payload(
 
     result = OpenAIImagesClient().generate(prompt="生成商品图", size="1024x1024")[0]
 
-    assert client_kwargs == [{"api_key": "demo-api-key", "base_url": "https://example.test/v1"}]
-    assert calls == [
-        {
-            "model": "gpt-image-1",
-            "prompt": "生成商品图",
-            "size": "1024x1024",
-            "n": 1,
-            "response_format": "b64_json",
-            "quality": "high",
-            "style": "vivid",
-        }
-    ]
+    assert calls[0]["url"] == "https://example.test/v1/images/generations"
+    assert calls[0]["headers"]["Authorization"] == "Bearer demo-api-key"
+    assert calls[0]["json"] == {
+        "model": "gpt-image-1",
+        "prompt": "生成商品图",
+        "size": "1024x1024",
+        "n": 1,
+        "response_format": "b64_json",
+        "quality": "high",
+        "style": "vivid",
+    }
     assert result.mime_type == "image/png"
     assert result.model_name == "gpt-image-1"
     assert result.provider_request_json == {
@@ -1925,18 +2036,14 @@ def test_openai_images_client_retries_generate_without_optional_fields(
     calls: list[dict] = []
     encoded_result = _make_demo_image_data_url().split(",", maxsplit=1)[1]
 
-    class DummyImages:
-        def generate(self, **kwargs):
-            calls.append(kwargs)
-            if len(calls) == 1:
-                raise RuntimeError("unsupported optional field")
-            return DummyImagesAPIResponse(encoded_result)
+    def fake_post(url, *, headers, json, timeout):
+        del url, headers, timeout
+        calls.append(json)
+        if len(calls) == 1:
+            return _images_api_http_response(status_code=400, text="unsupported optional field")
+        return _images_api_http_response(encoded_result)
 
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = DummyImages()
-
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
     from productflow_backend.infrastructure.image.images_provider import OpenAIImagesClient
 
@@ -1966,18 +2073,14 @@ def test_openai_images_client_edit_sends_multiple_images_and_falls_back_to_base_
     calls: list[dict] = []
     encoded_result = _make_demo_image_data_url().split(",", maxsplit=1)[1]
 
-    class DummyImages:
-        def edit(self, **kwargs):
-            calls.append(kwargs)
-            if len(calls) == 1:
-                raise RuntimeError("multiple files are not supported")
-            return DummyImagesAPIResponse(encoded_result)
+    def fake_post(url, *, headers, data, files, timeout):
+        del url, headers, timeout
+        calls.append({"data": data, "files": files})
+        if len(calls) == 1:
+            return _images_api_http_response(status_code=400, text="multiple files are not supported")
+        return _images_api_http_response(encoded_result)
 
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = DummyImages()
-
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
     from productflow_backend.infrastructure.image.images_provider import ImagesReferenceImage, OpenAIImagesClient
 
@@ -1991,11 +2094,10 @@ def test_openai_images_client_edit_sends_multiple_images_and_falls_back_to_base_
     )[0]
 
     assert len(calls) == 2
-    assert isinstance(calls[0]["image"], list)
-    assert [image.name for image in calls[0]["image"]] == ["base.png", "ref.png"]
-    assert calls[0]["quality"] == "high"
-    assert calls[1]["image"].name == "base.png"
-    assert "quality" not in calls[1]
+    assert calls[0]["data"]["quality"] == "high"
+    assert [file[1][0] for file in calls[0]["files"] if file[0] == "image"] == ["base.png", "ref.png"]
+    assert [file[1][0] for file in calls[1]["files"] if file[0] == "image"] == ["base.png"]
+    assert "quality" not in calls[1]["data"]
     assert result.provider_request_json == {
         "model": "gpt-image-1",
         "prompt": "改图",
@@ -2026,31 +2128,28 @@ def test_openai_images_client_reports_missing_output_and_sanitizes_failures(
     monkeypatch.setenv("IMAGE_GENERATE_MODEL", "gpt-image-1")
     get_settings.cache_clear()
 
-    class MissingOutputImages:
-        def generate(self, **kwargs):
-            return DummyImagesAPIResponse(None)
-
-    class FailingImages:
-        def generate(self, **kwargs):
-            raise RuntimeError(f"raw failure with {kwargs}")
-
-    class MissingOutputOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = MissingOutputImages()
-
-    class FailingOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = FailingImages()
-
-    from productflow_backend.infrastructure.image import images_provider
     from productflow_backend.infrastructure.image.images_provider import OpenAIImagesClient
 
-    monkeypatch.setattr(images_provider, "OpenAI", MissingOutputOpenAI)
+    def fake_missing_output_post(url, *, headers, json, timeout):
+        del url, headers, json, timeout
+        return _images_api_http_response(None)
+
+    monkeypatch.setattr(
+        "productflow_backend.infrastructure.image.images_provider.httpx.post",
+        fake_missing_output_post,
+    )
     with pytest.raises(RuntimeError) as missing_error:
         OpenAIImagesClient().generate(prompt="没有图", size="1024x1024")
     assert str(missing_error.value) == "图片供应商没有返回图片结果，请稍后重试"
 
-    monkeypatch.setattr(images_provider, "OpenAI", FailingOpenAI)
+    def fake_failing_post(url, *, headers, json, timeout):
+        del url, headers, json, timeout
+        raise httpx.ConnectError("raw failure with sk-sensitive https://secret-provider.example/v1")
+
+    monkeypatch.setattr(
+        "productflow_backend.infrastructure.image.images_provider.httpx.post",
+        fake_failing_post,
+    )
     with pytest.raises(RuntimeError) as failure_error:
         OpenAIImagesClient().generate(prompt="失败", size="1024x1024")
     assert str(failure_error.value) == "图片供应商请求失败，请检查供应商配置后重试"
@@ -2070,16 +2169,12 @@ def test_openai_images_poster_provider_uses_existing_prompt_contract_and_referen
     calls: list[dict] = []
     encoded_result = _make_demo_image_data_url().split(",", maxsplit=1)[1]
 
-    class DummyImages:
-        def edit(self, **kwargs):
-            calls.append(kwargs)
-            return DummyImagesAPIResponse(encoded_result)
+    def fake_post(url, *, headers, data, files, timeout):
+        del url, headers, timeout
+        calls.append({"data": data, "files": files})
+        return _images_api_http_response(encoded_result)
 
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = DummyImages()
-
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
     session = get_session_factory()()
     try:
@@ -2129,10 +2224,13 @@ def test_openai_images_poster_provider_uses_existing_prompt_contract_and_referen
     assert generated_image.mime_type == "image/png"
     assert model_name == "gpt-image-1"
     payload = calls[0]
-    assert payload["model"] == "gpt-image-1"
-    assert payload["size"] == "1024x1024"
-    assert [image.name for image in payload["image"]] == ["images-source.png", "reference.png"]
-    prompt = payload["prompt"]
+    assert payload["data"]["model"] == "gpt-image-1"
+    assert payload["data"]["size"] == "1024x1024"
+    assert [file[1][0] for file in payload["files"] if file[0] == "image"] == [
+        "images-source.png",
+        "reference.png",
+    ]
+    prompt = payload["data"]["prompt"]
     assert "EDIT 测试商品/测试类目/9.90/防水牛津布/背景更干净/主图/1024x1024" in prompt
     assert "- 补充说明：防水牛津布" in prompt
     assert "- 参考图片数量：2" in prompt
@@ -2154,16 +2252,12 @@ def test_openai_images_poster_provider_batches_count_as_images_api_n(
     calls: list[dict] = []
     encoded_result = _make_demo_image_data_url().split(",", maxsplit=1)[1]
 
-    class DummyImages:
-        def generate(self, **kwargs):
-            calls.append(kwargs)
-            return DummyImagesAPIResponse(b64_jsons=[encoded_result, encoded_result, encoded_result])
+    def fake_post(url, *, headers, json, timeout):
+        del url, headers, timeout
+        calls.append(json)
+        return _images_api_http_response(b64_jsons=[encoded_result, encoded_result, encoded_result])
 
-    class DummyOpenAI:
-        def __init__(self, **kwargs) -> None:
-            self.images = DummyImages()
-
-    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.OpenAI", DummyOpenAI)
+    monkeypatch.setattr("productflow_backend.infrastructure.image.images_provider.httpx.post", fake_post)
 
     generated_images = OpenAIImagesImageProvider().generate_poster_images(
         poster=PosterGenerationInput(
@@ -2195,6 +2289,7 @@ def test_generated_poster_mode_uses_image_provider(
 
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="便携榨汁杯",
         category="小家电",
         price="89.00",
@@ -2217,6 +2312,7 @@ def test_generated_poster_mode_uses_image_provider(
         "workflow:mock:mock-generated-r1:mock-image-v1" in poster.template_name
         for poster in product_after_poster.poster_variants
     )
+
 
 def test_default_image_prompts_are_low_pollution_context_carriers(configured_env: Path) -> None:
     from productflow_backend.infrastructure.image.chat_service import ImageChatService

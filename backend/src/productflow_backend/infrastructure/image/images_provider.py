@@ -6,12 +6,13 @@ Supports any OpenAI-compatible image generation endpoint (DALL-E, SD WebUI, Comf
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
 
+import httpx
 from openai import OpenAI
 
 from productflow_backend.application.contracts import PosterGenerationInput
@@ -47,6 +48,8 @@ MULTI_IMAGE_FALLBACK_NOTE = {
     "message": "供应商不支持多张编辑输入，已仅使用基图完成。",
 }
 IMAGES_API_MAX_N = 10
+DEFAULT_OPENAI_IMAGES_BASE_URL = "https://api.openai.com/v1"
+IMAGES_HTTP_CONNECT_TIMEOUT_SECONDS = 30.0
 
 
 @dataclass(slots=True)
@@ -68,6 +71,15 @@ class ImagesReferenceImage:
     filename: str
 
 
+class ImagesAPIRequestError(RuntimeError):
+    """Safe HTTP error summary for provider failure classification."""
+
+    def __init__(self, *, status_code: int, message: str) -> None:
+        self.status_code = status_code
+        self.body = message
+        super().__init__(f"Images API HTTP {status_code}: {message}")
+
+
 def _mime_type_from_image_bytes(data: bytes) -> str:
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
@@ -76,6 +88,20 @@ def _mime_type_from_image_bytes(data: bytes) -> str:
     if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
         return "image/webp"
     return "image/png"
+
+
+def _image_response_data(response: Any) -> Sequence[Any]:
+    if isinstance(response, Mapping):
+        data = response.get("data")
+    else:
+        data = getattr(response, "data", None)
+    return data if isinstance(data, Sequence) and not isinstance(data, str | bytes | bytearray) else []
+
+
+def _image_item_value(item: Any, key: str) -> Any:
+    if isinstance(item, Mapping):
+        return item.get(key)
+    return getattr(item, key, None)
 
 
 class OpenAIImagesClient:
@@ -90,6 +116,7 @@ class OpenAIImagesClient:
         self.model = resolved_config.model
         self.quality = resolved_config.images_quality
         self.style = resolved_config.images_style
+        self.atelier_request_id = resolved_config.atelier_request_id
 
     def _client(self) -> OpenAI:
         if not self.api_key:
@@ -98,6 +125,115 @@ class OpenAIImagesClient:
         if self.base_url:
             kwargs["base_url"] = self.base_url
         return OpenAI(**kwargs)
+
+    def _images_api_url(self, path: str) -> str:
+        base_url = (self.base_url or DEFAULT_OPENAI_IMAGES_BASE_URL).rstrip("/")
+        return f"{base_url}/{path.lstrip('/')}"
+
+    def _images_api_timeout(self) -> httpx.Timeout:
+        timeout_seconds = float(get_runtime_settings().workflow_image_generation_provider_timeout_seconds)
+        return httpx.Timeout(
+            timeout_seconds,
+            connect=min(IMAGES_HTTP_CONNECT_TIMEOUT_SECONDS, timeout_seconds),
+        )
+
+    def _images_api_headers(self) -> dict[str, str]:
+        if not self.api_key:
+            raise RuntimeError("图片供应商档案缺少 API Key")
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Accept": "application/json",
+        }
+        if self.atelier_request_id:
+            headers["X-Atelier-Request-Id"] = self.atelier_request_id
+        return headers
+
+    def _request_json(self, path: str, request_params: dict[str, Any]) -> dict[str, Any]:
+        try:
+            response = httpx.post(
+                self._images_api_url(path),
+                headers={**self._images_api_headers(), "Content-Type": "application/json"},
+                json=request_params,
+                timeout=self._images_api_timeout(),
+            )
+            return self._decode_images_response(response)
+        except httpx.HTTPError as exc:
+            raise RuntimeError(PROVIDER_REQUEST_FAILURE_MESSAGE) from exc
+
+    def _request_multipart(
+        self,
+        path: str,
+        request_params: dict[str, Any],
+        *,
+        image_metadata: list[dict[str, str]],
+        has_mask: bool,
+    ) -> dict[str, Any]:
+        files: list[tuple[str, tuple[str, bytes, str]]] = []
+        data: dict[str, str] = {}
+        for key, value in request_params.items():
+            if key == "image":
+                image_values = value if isinstance(value, list) else [value]
+                for image_file, metadata in zip(image_values, image_metadata, strict=False):
+                    files.append(
+                        (
+                            "image",
+                            (
+                                metadata["filename"],
+                                image_file.getvalue(),
+                                metadata["mime_type"],
+                            ),
+                        )
+                    )
+            elif key == "mask" and has_mask:
+                files.append(("mask", ("mask.png", value.getvalue(), "image/png")))
+            else:
+                data[key] = str(value)
+        try:
+            response = httpx.post(
+                self._images_api_url(path),
+                headers=self._images_api_headers(),
+                data=data,
+                files=files,
+                timeout=self._images_api_timeout(),
+            )
+            return self._decode_images_response(response)
+        except httpx.HTTPError as exc:
+            raise RuntimeError(PROVIDER_REQUEST_FAILURE_MESSAGE) from exc
+
+    def _decode_images_response(self, response: httpx.Response) -> dict[str, Any]:
+        if response.status_code >= 400:
+            raise ImagesAPIRequestError(
+                status_code=response.status_code,
+                message=self._safe_response_error_message(response),
+            )
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise RuntimeError(PROVIDER_MISSING_OUTPUT_MESSAGE) from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError(PROVIDER_MISSING_OUTPUT_MESSAGE)
+        return payload
+
+    def _safe_response_error_message(self, response: httpx.Response) -> str:
+        content_type = response.headers.get("content-type", "")
+        if "application/json" in content_type.lower():
+            try:
+                payload = response.json()
+            except ValueError:
+                return response.reason_phrase or "provider rejected request"
+            detail = payload.get("error") if isinstance(payload, dict) else None
+            if isinstance(detail, dict):
+                message = detail.get("message") or detail.get("code") or detail.get("type")
+                if message:
+                    return str(message)[:300]
+            if isinstance(payload, dict):
+                for key in ("message", "detail", "error"):
+                    value = payload.get(key)
+                    if isinstance(value, str) and value:
+                        return value[:300]
+            return response.reason_phrase or "provider rejected request"
+        message = " ".join(response.text.strip().split())
+        return (message or response.reason_phrase or "provider rejected request")[:300]
 
     def _parse_response(
         self,
@@ -110,8 +246,8 @@ class OpenAIImagesClient:
     ) -> list[ImagesAPIResult]:
         results: list[ImagesAPIResult] = []
         now = datetime.now(UTC)
-        for item in getattr(response, "data", []) or []:
-            b64 = getattr(item, "b64_json", None)
+        for item in _image_response_data(response):
+            b64 = _image_item_value(item, "b64_json")
             if not b64:
                 continue
             image_bytes = decode_b64_image(b64)
@@ -122,7 +258,7 @@ class OpenAIImagesClient:
                     model_name=model,
                     size=size,
                     generated_at=now,
-                    revised_prompt=getattr(item, "revised_prompt", None),
+                    revised_prompt=_image_item_value(item, "revised_prompt"),
                     provider_request_json=provider_request_json,
                     provider_output_json=provider_output_json or {},
                 )
@@ -165,7 +301,6 @@ class OpenAIImagesClient:
         style: str | None = None,
         n: int = 1,
     ) -> list[ImagesAPIResult]:
-        client = self._client()
         req_model = model or self.model
         req_quality = quality or self.quality
         req_style = style or self.style
@@ -184,7 +319,7 @@ class OpenAIImagesClient:
 
         fallback_used = False
         try:
-            response = client.images.generate(**request_params)
+            response = self._request_json("/images/generations", request_params)
         except Exception as exc:  # noqa: BLE001
             if not self._should_retry_without_optional_fields(request_params):
                 logger.error("OpenAI Images API generate 失败: %s", exc, exc_info=True)
@@ -194,7 +329,7 @@ class OpenAIImagesClient:
                 key: value for key, value in request_params.items() if key not in {"quality", "style"}
             }
             try:
-                response = client.images.generate(**fallback_params)
+                response = self._request_json("/images/generations", fallback_params)
                 request_params = fallback_params
             except Exception as fallback_exc:  # noqa: BLE001
                 logger.error("OpenAI Images API generate 失败: %s", fallback_exc, exc_info=True)
@@ -223,7 +358,6 @@ class OpenAIImagesClient:
         quality: str | None = None,
         n: int = 1,
     ) -> list[ImagesAPIResult]:
-        client = self._client()
         req_model = model or self.model
         req_quality = quality or self.quality
 
@@ -255,11 +389,17 @@ class OpenAIImagesClient:
         requested_image_count = len(image_files)
         effective_image_count = len(image_files)
         try:
-            response = client.images.edit(**request_params)
+            response = self._request_multipart(
+                "/images/edits",
+                request_params,
+                image_metadata=image_metadata,
+                has_mask=mask is not None,
+            )
         except Exception as exc:  # noqa: BLE001
             fallback_params = dict(request_params)
             can_reduce_optional = self._should_retry_without_optional_fields(fallback_params)
             can_reduce_images = len(image_files) > 1
+            fallback_image_metadata = image_metadata
             if not can_reduce_optional and not can_reduce_images:
                 logger.error("OpenAI Images API edit 失败: %s", exc, exc_info=True)
                 raise RuntimeError(PROVIDER_REQUEST_FAILURE_MESSAGE) from exc
@@ -271,14 +411,20 @@ class OpenAIImagesClient:
             if can_reduce_images:
                 fallback_params["image"] = image_files[0]
                 effective_image_count = 1
+                fallback_image_metadata = image_metadata[:1]
                 fallback_notes.append(MULTI_IMAGE_FALLBACK_NOTE)
             try:
-                response = client.images.edit(**fallback_params)
+                response = self._request_multipart(
+                    "/images/edits",
+                    fallback_params,
+                    image_metadata=fallback_image_metadata,
+                    has_mask=mask is not None,
+                )
                 request_params = fallback_params
                 log_params = self._sanitize_edit_request_params(
                     request_params,
                     image_count=effective_image_count,
-                    image_metadata=image_metadata[:effective_image_count],
+                    image_metadata=fallback_image_metadata,
                     has_mask=mask is not None,
                 )
             except Exception as fallback_exc:  # noqa: BLE001

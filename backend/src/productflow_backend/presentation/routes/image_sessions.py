@@ -23,7 +23,7 @@ from productflow_backend.application.image_sessions import (
 )
 from productflow_backend.infrastructure.storage import ImageVariantName, LocalStorage
 from productflow_backend.presentation.deps import (
-    current_owner_user_id,
+    current_workspace_owner_user_id,
     get_session,
     request_audit_context,
     require_deletion_enabled,
@@ -55,7 +55,7 @@ router = APIRouter(prefix="/api", tags=["image-sessions"], dependencies=[Depends
 def list_image_sessions_endpoint(
     product_id: str | None = Query(default=None),
     session: Session = Depends(get_session),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
 ) -> ImageSessionListResponse:
     items = list_image_sessions(session, product_id=product_id, owner_user_id=owner_user_id)
     return ImageSessionListResponse(items=[serialize_image_session_summary(item) for item in items])
@@ -65,7 +65,7 @@ def list_image_sessions_endpoint(
 def create_image_session_endpoint(
     payload: CreateImageSessionRequest,
     session: Session = Depends(get_session),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
 ) -> ImageSessionDetailResponse:
     image_session = create_image_session(
         session,
@@ -81,7 +81,7 @@ def get_image_session_detail_endpoint(
     image_session_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
     image_session = get_image_session_detail(session, image_session_id, owner_user_id)
@@ -102,7 +102,7 @@ def get_image_session_status_endpoint(
     image_session_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionStatusResponse:
     snapshot = get_image_session_status(session, image_session_id, owner_user_id)
@@ -124,7 +124,7 @@ def update_image_session_endpoint(
     payload: UpdateImageSessionRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
     image_session = update_image_session(
@@ -154,7 +154,7 @@ def delete_image_session_endpoint(
     image_session_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> None:
     image_session = get_image_session_detail(session, image_session_id, owner_user_id)
@@ -177,7 +177,7 @@ async def upload_image_session_reference_images_endpoint(
     reference_images: list[UploadFile] = File(...),
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
     payloads: list[tuple[bytes, str, str]] = []
@@ -218,7 +218,7 @@ def delete_image_session_reference_image_endpoint(
     asset_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
     image_session = delete_image_session_reference_image(
@@ -249,7 +249,7 @@ def generate_image_session_round_endpoint(
     payload: GenerateImageSessionRoundRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
     image_session = submit_image_session_generation_task(
@@ -286,7 +286,7 @@ def retry_image_session_generation_task_endpoint(
     task_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
     image_session = retry_image_session_generation_task(
@@ -316,7 +316,7 @@ def cancel_image_session_generation_task_endpoint(
     task_id: str,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ImageSessionDetailResponse:
     image_session = cancel_image_session_generation_task(
@@ -347,7 +347,7 @@ def attach_image_session_asset_to_product_endpoint(
     payload: AttachImageSessionAssetRequest,
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> ProductWritebackResponse:
     product = attach_image_session_asset_to_product(
@@ -377,7 +377,7 @@ def download_image_session_asset_endpoint(
     variant: ImageVariantName = Query(default="original"),
     session: Session = Depends(get_session),
     principal: Principal = Depends(require_workspace_principal),
-    owner_user_id: str | None = Depends(current_owner_user_id),
+    owner_user_id: str = Depends(current_workspace_owner_user_id),
     audit_context: AuditRequestContext = Depends(request_audit_context),
 ) -> FileResponse:
     asset = get_image_session_asset_or_raise(session, asset_id, owner_user_id=owner_user_id)

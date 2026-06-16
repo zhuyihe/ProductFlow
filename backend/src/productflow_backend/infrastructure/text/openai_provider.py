@@ -30,6 +30,8 @@ class OpenAITextProvider(TextProvider):
         client_kwargs = {"api_key": resolved_config.api_key}
         if resolved_config.base_url:
             client_kwargs["base_url"] = resolved_config.base_url
+        if resolved_config.atelier_request_id:
+            client_kwargs["default_headers"] = {"X-Atelier-Request-Id": resolved_config.atelier_request_id}
         self.client = OpenAI(**client_kwargs)
         self.brief_model = resolved_config.brief_model
         self.copy_model = resolved_config.copy_model

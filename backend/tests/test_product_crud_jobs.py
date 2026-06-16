@@ -148,7 +148,8 @@ def test_product_create_materializes_full_canvas_template(configured_env: Path, 
                 and node.title == template_node.title
                 and node.position_x == template_node.position_x
                 and node.position_y == template_node.position_y
-                and node.config_json == {
+                and node.config_json
+                == {
                     **template_node.config_json,
                     TEMPLATE_METADATA_CONFIG_KEY: {
                         "source": "builtin",
@@ -284,9 +285,11 @@ def test_product_can_be_deleted_from_api(configured_env: Path) -> None:
     assert missing.status_code == 404
     assert not product_root.exists()
 
+
 def test_reference_images_can_be_attached_to_product(db_session, configured_env: Path) -> None:
     product = create_product(
         db_session,
+        owner_user_id="test-user",
         name="陶瓷马克杯",
         category="家居",
         price="39.00",
@@ -313,6 +316,7 @@ def test_reference_images_can_be_attached_to_product(db_session, configured_env:
 def test_product_status_filter_uses_database_pagination_before_eager_loading(db_session, configured_env: Path) -> None:
     draft = create_product(
         db_session,
+        owner_user_id="test-user",
         name="草稿商品",
         category=None,
         price=None,
@@ -323,6 +327,7 @@ def test_product_status_filter_uses_database_pagination_before_eager_loading(db_
     )
     copy_ready = create_product(
         db_session,
+        owner_user_id="test-user",
         name="文案商品",
         category=None,
         price=None,
@@ -333,6 +338,7 @@ def test_product_status_filter_uses_database_pagination_before_eager_loading(db_
     )
     poster_ready = create_product(
         db_session,
+        owner_user_id="test-user",
         name="海报商品",
         category=None,
         price=None,

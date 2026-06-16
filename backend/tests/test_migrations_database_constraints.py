@@ -20,6 +20,7 @@ from productflow_backend.domain.enums import (
     WorkflowRunStatus,
 )
 from productflow_backend.infrastructure.db.models import (
+    AuditEvent,
     AuditLog,
     AuthSession,
     CopySet,
@@ -43,6 +44,11 @@ MODEL_LEGACY_COPY_COLUMNS = [
     "model_" + suffix for suffix in ("title", "selling" + "_points", "poster" + "_headline", "c" + "ta")
 ]
 LEGACY_COPY_COLUMNS = ["title", "selling" + "_points", "poster" + "_headline", "c" + "ta"]
+OWNER_CHECK_CONSTRAINTS = {
+    "products": "ck_products_owner_user_id_not_null",
+    "image_sessions": "ck_image_sessions_owner_user_id_not_null",
+    "user_canvas_templates": "ck_user_canvas_templates_owner_user_id_not_null",
+}
 
 
 def test_sqlalchemy_enum_columns_use_database_values() -> None:
@@ -235,15 +241,93 @@ def test_audit_log_model_matches_migration_contract() -> None:
     }
 
 
+def test_audit_event_model_matches_migration_contract() -> None:
+    table = AuditEvent.__table__
+    assert table.c.id.type.length == 36
+    assert not table.c.id.nullable
+    assert table.c.id.default is not None
+    assert table.c.id.default.arg.__name__ == new_id.__name__
+    assert table.c.event_type.type.length == 40
+    assert not table.c.event_type.nullable
+    assert table.c.actor_user_id.type.length == 64
+    assert table.c.actor_user_id.nullable
+    assert table.c.actor_username.type.length == 255
+    assert table.c.actor_username.nullable
+    assert table.c.actor_principal_kind.type.length == 20
+    assert table.c.actor_principal_kind.nullable
+    assert table.c.subject_user_id.type.length == 64
+    assert table.c.subject_user_id.nullable
+    assert table.c.subject_username.type.length == 255
+    assert table.c.subject_username.nullable
+    assert table.c.status.type.length == 32
+    assert not table.c.status.nullable
+    assert table.c.source.type.length == 32
+    assert not table.c.source.nullable
+    assert table.c.atelier_request_id.type.length == 64
+    assert table.c.atelier_request_id.nullable
+    assert table.c.new_api_request_id.type.length == 120
+    assert table.c.new_api_request_id.nullable
+    assert table.c.new_api_upstream_request_id.type.length == 120
+    assert table.c.new_api_upstream_request_id.nullable
+    assert table.c.new_api_log_id.type.length == 64
+    assert table.c.new_api_log_id.nullable
+    assert table.c.new_api_token_id.type.length == 64
+    assert table.c.new_api_token_id.nullable
+    assert table.c.new_api_token_name.type.length == 120
+    assert table.c.new_api_token_name.nullable
+    assert table.c.new_api_token_group.type.length == 120
+    assert table.c.new_api_token_group.nullable
+    assert table.c.model_name.type.length == 255
+    assert table.c.model_name.nullable
+    assert table.c.provider_name.type.length == 120
+    assert table.c.provider_name.nullable
+    assert table.c.quota.type.precision == 18
+    assert table.c.quota.type.scale == 6
+    assert table.c.prompt_tokens.nullable
+    assert table.c.completion_tokens.nullable
+    assert table.c.use_time_seconds.type.precision == 10
+    assert table.c.use_time_seconds.type.scale == 3
+    assert table.c.error_code.type.length == 120
+    assert table.c.error_code.nullable
+    assert table.c.error_message.nullable
+    assert table.c.resource_type.type.length == 80
+    assert table.c.resource_type.nullable
+    assert table.c.resource_id.type.length == 120
+    assert table.c.resource_id.nullable
+    assert table.c.parent_resource_type.type.length == 80
+    assert table.c.parent_resource_type.nullable
+    assert table.c.parent_resource_id.type.length == 120
+    assert table.c.parent_resource_id.nullable
+    assert table.c.metadata_json.nullable
+    assert not table.c.created_at.nullable
+    assert not table.c.updated_at.nullable
+    assert {index.name for index in table.indexes} == {
+        "ix_audit_events_subject_created_at",
+        "ix_audit_events_event_type_created_at",
+        "ix_audit_events_atelier_request_id",
+        "ix_audit_events_new_api_request_id",
+        "ix_audit_events_resource",
+        "ix_audit_events_status_created_at",
+    }
+
+
 def test_multi_user_owner_model_columns_match_migration_contract() -> None:
     owned_tables = (
-        (Product.__table__, "ix_products_owner_user_id"),
-        (ImageSession.__table__, "ix_image_sessions_owner_user_id"),
-        (UserCanvasTemplate.__table__, "ix_user_canvas_templates_owner_user_id"),
+        (Product.__table__, "ix_products_owner_user_id", "ck_products_owner_user_id_not_null"),
+        (ImageSession.__table__, "ix_image_sessions_owner_user_id", "ck_image_sessions_owner_user_id_not_null"),
+        (
+            UserCanvasTemplate.__table__,
+            "ix_user_canvas_templates_owner_user_id",
+            "ck_user_canvas_templates_owner_user_id_not_null",
+        ),
     )
-    for table, index_name in owned_tables:
+    for table, index_name, check_name in owned_tables:
         assert table.c.owner_user_id.type.length == 64
         assert table.c.owner_user_id.nullable
+        check_constraints = {
+            constraint.name for constraint in table.constraints if isinstance(constraint, sa.CheckConstraint)
+        }
+        assert check_name in check_constraints
         indexes = {index.name: index for index in table.indexes}
         assert index_name in indexes
         assert [column.name for column in indexes[index_name].columns] == ["owner_user_id"]
@@ -368,6 +452,8 @@ def test_resource_owner_columns_migration_schema_and_downgrade_support_sqlite(
         assert columns["owner_user_id"]["nullable"] is True
         indexes = {index["name"]: index for index in inspector.get_indexes(table_name)}
         assert indexes[index_name]["column_names"] == ["owner_user_id"]
+        check_constraints = {constraint["name"] for constraint in inspector.get_check_constraints(table_name)}
+        assert OWNER_CHECK_CONSTRAINTS[table_name] in check_constraints
 
     engine.dispose()
     command.downgrade(config, "20260522_0029")
@@ -376,6 +462,153 @@ def test_resource_owner_columns_migration_schema_and_downgrade_support_sqlite(
     for table_name in expected:
         columns = {column["name"] for column in inspector.get_columns(table_name)}
         assert "owner_user_id" not in columns
+    engine.dispose()
+    get_settings.cache_clear()
+
+
+def test_owner_not_null_check_constraints_preserve_legacy_rows_and_reject_new_nulls_sqlite(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "owner-check-constraints.db"
+    storage_root = tmp_path / "storage"
+    monkeypatch.setenv("ADMIN_ACCESS_KEY", "super-secret-admin-key")
+    monkeypatch.setenv("SESSION_SECRET", "super-secret-session-key-123")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database_path}")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/9")
+    monkeypatch.setenv("STORAGE_ROOT", str(storage_root))
+    get_settings.cache_clear()
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    config = Config(str(backend_dir / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.upgrade(config, "20260615_0037")
+
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    now = "2026-06-16 00:00:00"
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text(
+                "INSERT INTO products (id, owner_user_id, name, created_at, updated_at) "
+                "VALUES ('legacy-product', NULL, '历史商品', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            sa.text(
+                "INSERT INTO image_sessions (id, owner_user_id, product_id, title, created_at, updated_at) "
+                "VALUES ('legacy-session', NULL, NULL, '历史会话', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            sa.text(
+                """
+                INSERT INTO user_canvas_templates (
+                    id, key, owner_user_id, is_public, title, kind, schema_version,
+                    template_json, created_at, updated_at
+                )
+                VALUES (
+                    'legacy-template', 'template:legacy', NULL, 0, '历史模板', 'node_group', 1,
+                    '{}', :now, :now
+                )
+                """
+            ),
+            {"now": now},
+        )
+
+    engine.dispose()
+    command.upgrade(config, "head")
+
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    for table_name, constraint_name in OWNER_CHECK_CONSTRAINTS.items():
+        check_constraints = {constraint["name"] for constraint in inspector.get_check_constraints(table_name)}
+        assert constraint_name in check_constraints
+
+    with engine.connect() as connection:
+        legacy_product_owner = connection.execute(
+            sa.text("SELECT owner_user_id FROM products WHERE id = 'legacy-product'")
+        ).scalar_one()
+        legacy_session_owner = connection.execute(
+            sa.text("SELECT owner_user_id FROM image_sessions WHERE id = 'legacy-session'")
+        ).scalar_one()
+        legacy_template_owner = connection.execute(
+            sa.text("SELECT owner_user_id FROM user_canvas_templates WHERE id = 'legacy-template'")
+        ).scalar_one()
+        assert legacy_product_owner is None
+        assert legacy_session_owner is None
+        assert legacy_template_owner is None
+
+    null_owner_inserts = (
+        (
+            "products",
+            "INSERT INTO products (id, owner_user_id, name, created_at, updated_at) "
+            "VALUES ('bad-product', NULL, '坏商品', :now, :now)",
+        ),
+        (
+            "image_sessions",
+            "INSERT INTO image_sessions (id, owner_user_id, product_id, title, created_at, updated_at) "
+            "VALUES ('bad-session', NULL, NULL, '坏会话', :now, :now)",
+        ),
+        (
+            "user_canvas_templates",
+            """
+            INSERT INTO user_canvas_templates (
+                id, key, owner_user_id, is_public, title, kind, schema_version,
+                template_json, created_at, updated_at
+            )
+            VALUES (
+                'bad-template', 'template:bad', NULL, 0, '坏模板', 'node_group', 1,
+                '{}', :now, :now
+            )
+            """,
+        ),
+    )
+    for table_name, statement in null_owner_inserts:
+        with pytest.raises(sa.exc.IntegrityError, match=OWNER_CHECK_CONSTRAINTS[table_name]):
+            with engine.begin() as connection:
+                connection.execute(sa.text(statement), {"now": now})
+
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text(
+                "INSERT INTO products (id, owner_user_id, name, created_at, updated_at) "
+                "VALUES ('owned-product', 'user-a', '有主商品', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            sa.text(
+                "INSERT INTO image_sessions (id, owner_user_id, product_id, title, created_at, updated_at) "
+                "VALUES ('owned-session', 'user-a', NULL, '有主会话', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            sa.text(
+                """
+                INSERT INTO user_canvas_templates (
+                    id, key, owner_user_id, is_public, title, kind, schema_version,
+                    template_json, created_at, updated_at
+                )
+                VALUES (
+                    'owned-template', 'template:owned', 'user-a', 0, '有主模板', 'node_group', 1,
+                    '{}', :now, :now
+                )
+                """
+            ),
+            {"now": now},
+        )
+
+    engine.dispose()
+    command.downgrade(config, "20260615_0037")
+    engine = sa.create_engine(f"sqlite:///{database_path}")
+    inspector = sa.inspect(engine)
+    for table_name, constraint_name in OWNER_CHECK_CONSTRAINTS.items():
+        check_constraints = {constraint["name"] for constraint in inspector.get_check_constraints(table_name)}
+        assert constraint_name not in check_constraints
+
     engine.dispose()
     get_settings.cache_clear()
 
